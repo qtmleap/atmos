@@ -1,0 +1,26 @@
+# Repo-root-level ignores only. Package-specific ignores (node_modules,
+# dist, .venv, __pycache__, etc.) live in apps/web/.gitignore and
+# packages/python-sdk/.gitignore — git applies nested .gitignore files to
+# their own subtree, so there is no need to duplicate them here.
+
+# === macOS / Windows / Linux ===
+.DS_Store
+Thumbs.db
+*~
+
+# === Env files ===
+.env
+.env.local
+!.env.example
+.envrc
+
+# === Agents ===
+.claude/
+.codex/
+
+# === Act (GitHub Actions local runner) ===
+.secrets
+!.secrets.example
+
+# === Playwright MCP (outputDir from playwright-mcp.config.json) ===
+screenshots/

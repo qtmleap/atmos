@@ -1,0 +1,46 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - node_modules:/home/vscode/app/apps/web/node_modules
+      - venv:/home/vscode/app/packages/python-sdk/.venv
+      - uv-cache:/home/vscode/.cache/uv
+      - ../:/home/vscode/app:cached
+    environment:
+      NODE_ENV: development
+      NODE_OPTIONS: "--no-deprecation"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    tty: true
+    stdin_open: true
+
+  # モックの突き合わせビューア。mock-diff プラグインの MCP サーバーは橋渡しだけで、
+  # 描画も計測もこちらがやる。これが居ないとプラグインのツールは全部失敗する。
+  # MCP 側は 127.0.0.1:12355 を見に行き、向き先を変える手段が無いので、
+  # network_mode でアプリと同じネットワーク名前空間に入れて PORT を合わせる。
+  mock-diff:
+    image: ghcr.io/qtmleap/mock-diff-viewer:0.3.2
+    network_mode: "service:app"
+    volumes:
+      # docs/mock-diff だけを渡す。mock-diff.yaml のパスはここを根に書き、
+      # 決定稿はビューアが mock-diff.adopted.yaml に書き戻すので書き込み可にする。
+      - ../docs/mock-diff:/workspace
+      # 計測結果の置き場。どの決定稿に対して測ったかで引くので、差分の増減が追える。
+      - mock-diff:/data
+    environment:
+      MOCK_DIFF_WORKSPACE: /workspace
+      MOCK_DIFF_CONFIG: /workspace/mock-diff.yaml
+      MOCK_DIFF_DATA_DIR: /data
+      PORT: "12355"
+    depends_on:
+      - app
+    init: true
+    restart: unless-stopped
+
+volumes:
+  node_modules:
+  venv:
+  uv-cache:
+  mock-diff:
