@@ -1,0 +1,199 @@
+name: Integration
+on:
+  push:
+    branches-ignore:
+      - main
+      - master
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  commitlint:
+    name: Commit Lint
+    runs-on: self-hosted
+    if: github.event.action != 'closed' || github.event.pull_request.merged != true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install commitlint
+        run: |
+          bun install conventional-changelog-conventionalcommits
+          bun install @commitlint/config-conventional@latest
+          bun install commitlint@latest
+      - name: Validate PR commits
+        if: github.event_name == 'pull_request'
+        run: |
+          bunx commitlint \
+            --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits }} \
+            --to ${{ github.event.pull_request.head.sha }} \
+            --verbose
+      - name: Validate last commit
+        if: github.event_name == 'push'
+        run: bunx commitlint --last --verbose
+
+  # --- apps/web ---
+
+  web-check:
+    name: "web / Biome"
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Cache Bun install
+        uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('apps/web/bun.lock', 'apps/web/package.json') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Biome check
+        run: bunx --bun biome check
+
+  web-typecheck:
+    name: "web / TypeScript"
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Cache Bun install
+        uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('apps/web/bun.lock', 'apps/web/package.json') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Generate Worker types
+        run: bun run cf-typegen
+        continue-on-error: true
+      - name: Type check
+        run: bun run typecheck
+
+  web-build:
+    name: "web / Build"
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Cache Bun install
+        uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('apps/web/bun.lock', 'apps/web/package.json') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Generate Worker types
+        run: bun run cf-typegen
+      - name: Vite build
+        run: bun run build
+        env:
+          CLOUDFLARE_ENV: staging
+
+  web-test:
+    name: "web / Test"
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Cache Bun install
+        uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('apps/web/bun.lock', 'apps/web/package.json') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Run tests
+        run: bun run test
+
+  # --- packages/python-sdk ---
+
+  sdk-ruff:
+    name: "python-sdk / Ruff"
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: packages/python-sdk
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+      - name: Ruff check
+        run: uvx ruff check
+      - name: Ruff format check
+        run: uvx ruff format --check
+
+  sdk-typecheck:
+    name: "python-sdk / mypy"
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: packages/python-sdk
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: mypy
+        run: uv run mypy .
+
+  sdk-test:
+    name: "python-sdk / pytest"
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: packages/python-sdk
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: pytest
+        run: uv run pytest

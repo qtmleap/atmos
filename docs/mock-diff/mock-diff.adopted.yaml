@@ -1,0 +1,21 @@
+adopted:
+  component-foundations: astra
+  component-controls: astra
+  component-data-display: astra
+  component-navigation: astra
+  component-overlays: astra
+  component-run-widgets: astra
+  component-feedback: astra
+  page-projects: astra
+  page-project-jobs: astra
+  page-job-detail: astra
+  page-job-detail-failed: astra
+  page-users: astra
+  page-user-profile: astra
+  page-settings-profile: astra
+  page-settings-tokens: astra
+  page-admin: astra
+  page-setup: astra
+  page-setup-closed: astra
+  page-project-jobs-compare: astra
+  page-project-jobs-compare-drawer: astra

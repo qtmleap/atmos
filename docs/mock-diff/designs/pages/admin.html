@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ユーザー管理 · atmos</title>
+  <link rel="stylesheet" href="../_shared/atmos.css">
+  <style>
+    .page-content { max-width: 1312px; margin: 0 auto; padding: 16px 32px 24px; }
+    .admin-layout { display: grid; grid-template-columns: minmax(0, 1fr) 304px; gap: 32px; padding-top: 28px; }
+    .admin-create { padding-left: 32px; border-left: 1px solid var(--border); }
+    .admin-toolbar { display: flex; gap: 12px; padding-block: 20px 16px; }
+    .input-wrap { position: relative; flex: 1; }
+    .input-wrap > .icon { position: absolute; left: 10px; top: 8px; color: var(--muted-foreground); }
+    .input-wrap > .input { padding-left: 34px; }
+    .admin-toolbar .select-wrap { width: 176px; flex: none; }
+    .role-select { width: 140px; }
+    .table td { padding-block: 5px; }
+    .admin-pagination { margin-top: 20px; }
+    .admin-note { margin-top: 24px; }
+    @media (max-width: 950px) { .admin-layout { grid-template-columns: 1fr; } .admin-create { padding: 24px 0 0; border-left: 0; border-top: 1px solid var(--border); } }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header">
+    <a class="app-logo" href="/" aria-label="atmos ホーム">atmos</a>
+    <nav class="app-nav" aria-label="ログイン時のナビゲーション"><a href="/">プロジェクト</a><a href="/users">メンバー</a></nav>
+    <div class="app-account"><span class="small">田中 美咲</span><span class="avatar" role="img" aria-label="田中 美咲のアバター">田</span><button class="btn btn-ghost btn-icon" type="button" aria-label="ユーザーメニュー" aria-haspopup="menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>
+  </header>
+  <main class="page-content">
+    <header class="page-header"><div class="between"><h1>ユーザー管理</h1><span class="badge badge-outline"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/></svg>管理者専用</span></div><p class="description">チームへのユーザー追加と、アクセス権限を管理します。</p></header>
+    <div class="admin-layout">
+      <section aria-labelledby="users-title">
+        <div class="between"><div class="row"><h2 id="users-title">ユーザー一覧</h2><span class="badge badge-secondary">248人</span></div><span class="small muted">管理者 4人 · メンバー 244人</span></div>
+        <div class="admin-toolbar"><div class="input-wrap"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input class="input" type="search" aria-label="ユーザーを検索" placeholder="名前・ハンドル・メールアドレスで検索"></div><div class="select-wrap"><select class="select" aria-label="ロールで絞り込み"><option>すべてのロール</option><option>管理者</option><option>メンバー</option></select><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></div>
+        <div class="table-wrap"><table class="table"><thead><tr><th scope="col">ユーザー</th><th scope="col">メールアドレス</th><th scope="col">ロール</th></tr></thead><tbody>
+          <tr><td><div class="row"><span class="avatar" aria-hidden="true">田</span><div><p>田中 美咲 <span class="small muted">（自分）</span></p><p class="small muted mono">@misaki_t</p></div></div></td><td class="small">misaki.tanaka@example.com</td><td><div class="select-wrap role-select"><select class="select" aria-label="田中 美咲のロール"><option value="admin" selected>admin</option><option value="user">member</option></select><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></td></tr>
+          <tr><td><div class="row"><span class="avatar" aria-hidden="true">佐</span><div><p>佐藤 悠斗</p><p class="small muted mono">@yuto_s</p></div></div></td><td class="small">yuto.sato@example.com</td><td><div class="select-wrap role-select"><select class="select" aria-label="佐藤 悠斗のロール"><option value="admin" selected>admin</option><option value="user">member</option></select><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></td></tr>
+          <tr><td><div class="row"><span class="avatar" aria-hidden="true">鈴</span><div><p>鈴木 葵</p><p class="small muted mono">@aoi_ml</p></div></div></td><td class="small">aoi.suzuki@example.com</td><td><div class="select-wrap role-select"><select class="select" aria-label="鈴木 葵のロール"><option value="admin">admin</option><option value="user" selected>member</option></select><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></td></tr>
+          <tr><td><div class="row"><span class="avatar" aria-hidden="true">高</span><div><p>高橋 蓮</p><p class="small muted mono">@ren_t</p></div></div></td><td class="small">ren.takahashi@example.com</td><td><div class="select-wrap role-select"><select class="select" aria-label="高橋 蓮のロール"><option value="admin">admin</option><option value="user" selected>member</option></select><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></td></tr>
+          <tr><td><div class="row"><span class="avatar" aria-hidden="true">伊</span><div><p>伊藤 陽菜</p><p class="small muted mono">@hina_ito</p></div></div></td><td class="small">hina.ito@example.com</td><td><div class="select-wrap role-select"><select class="select" aria-label="伊藤 陽菜のロール"><option value="admin">admin</option><option value="user" selected>member</option></select><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></td></tr>
+          <tr><td><div class="row"><span class="avatar" aria-hidden="true">渡</span><div><p>渡辺 湊</p><p class="small muted mono">@minato_w</p></div></div></td><td class="small">minato.watanabe@example.com</td><td><div class="select-wrap role-select"><select class="select" aria-label="渡辺 湊のロール"><option value="admin">admin</option><option value="user" selected>member</option></select><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></td></tr>
+          <tr><td><div class="row"><span class="avatar" aria-hidden="true">山</span><div><p>山本 結衣</p><p class="small muted mono">@yui_y</p></div></div></td><td class="small">yui.yamamoto@example.com</td><td><div class="select-wrap role-select"><select class="select" aria-label="山本 結衣のロール"><option value="admin">admin</option><option value="user" selected>member</option></select><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></td></tr>
+          <tr><td><div class="row"><span class="avatar" aria-hidden="true">中</span><div><p>中村 翔</p><p class="small muted mono">@sho_n</p></div></div></td><td class="small">sho.nakamura@example.com</td><td><div class="select-wrap role-select"><select class="select" aria-label="中村 翔のロール"><option value="admin">admin</option><option value="user" selected>member</option></select><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></td></tr>
+        </tbody></table></div>
+        <nav class="pagination admin-pagination" aria-label="ユーザー一覧のページ送り"><span>248人中 1–8人を表示</span><div class="row"><span>1 / 31ページ</span><button class="btn btn-outline" type="button" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>前へ</button><button class="btn btn-outline" type="button">次へ<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></div></nav>
+        <p class="small muted admin-note">ロールを選択して変更します。最後の管理者を member に変更することはできません。</p>
+      </section>
+      <aside class="admin-create stack" aria-labelledby="create-title">
+        <div class="stack-sm"><h2 id="create-title">ユーザーを作成</h2><p class="description">Cloudflare Access で使用するメールアドレスを登録してください。</p></div>
+        <form class="stack">
+          <div class="form-field"><label class="label" for="new-email">メールアドレス</label><input class="input" type="email" id="new-email" name="cf_access_email" placeholder="name@example.com" required></div>
+          <div class="form-field"><label class="label" for="new-name">表示名</label><input class="input" id="new-name" name="display_name" placeholder="例：山田 太郎" required></div>
+          <div class="form-field"><label class="label" for="new-handle">URL用ハンドル</label><input class="input" id="new-handle" name="handle" placeholder="例：taro_y" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_-]{3,32}" aria-describedby="new-handle-help"><p class="form-description" id="new-handle-help">半角英数・ハイフン・アンダースコア、3〜32文字。</p></div>
+          <div class="form-field"><label class="label" for="new-role">ロール</label><div class="select-wrap"><select class="select" id="new-role" name="role"><option value="user">member（メンバー）</option><option value="admin">admin（管理者）</option></select><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></div>
+          <button class="btn btn-default" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M20 8v6m-3-3h6"/><circle cx="9" cy="7" r="4"/></svg>ユーザーを作成</button>
+        </form>
+        <hr class="separator"><div class="stack-sm"><h3>ロールについて</h3><p class="small muted"><span class="mono">admin</span>：ユーザー作成・ロール変更が可能です。</p><p class="small muted"><span class="mono">member</span>：実験の閲覧・記録が可能です。</p></div>
+      </aside>
+    </div>
+  </main>
+</div>
+</body>
+</html>

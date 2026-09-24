@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>初回セットアップ · atmos</title>
+  <link rel="stylesheet" href="../_shared/atmos.css">
+  <style>
+    .setup-content { width: min(100% - 48px, 520px); margin: 48px auto; }
+    .setup-section { display: grid; gap: 24px; padding-block: 24px; border-bottom: 1px solid var(--border); }
+    .setup-actions { display: grid; gap: 12px; padding-top: 24px; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header"><a class="app-logo" href="/" aria-label="atmos ホーム">atmos</a><div class="app-account"><span class="small muted">初回セットアップ</span></div></header>
+  <main class="setup-content">
+    <header class="page-header"><div class="row"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/></svg><span class="small muted">最初の管理者を登録</span></div><h1>atmos へようこそ</h1><p class="description">実験を記録する準備をはじめましょう。<br>初回セットアップは、一度だけ実行できます。</p></header>
+    <section class="setup-section" aria-labelledby="identity-title"><div class="between"><h3 id="identity-title">Cloudflare Access の認証情報</h3><span class="badge badge-secondary">認証済み</span></div><div class="row"><span class="avatar" aria-hidden="true">田</span><div class="stack-sm"><p>misaki.tanaka@example.com</p><p class="small muted">このメールアドレスを最初の管理者として登録します。</p></div></div></section>
+    <form>
+      <div class="setup-section">
+        <div class="grid-2">
+          <div class="form-field"><label class="label" for="display-name">表示名</label><input class="input" id="display-name" name="display_name" value="田中 美咲" required autocomplete="name"></div>
+          <div class="form-field"><label class="label" for="handle">URL用ハンドル</label><input class="input mono" id="handle" name="handle" value="misaki_t" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_-]{3,32}" autocomplete="username" aria-describedby="handle-help"><p class="form-description" id="handle-help">半角英数・ハイフン・アンダースコア、3〜32文字。</p></div>
+        </div>
+        <div class="form-field"><label class="label" for="init-key">初期管理者キー <span class="small muted mono">INIT_ADMIN_KEY</span></label><input class="input" type="password" id="init-key" name="init_admin_key" placeholder="初期管理者キーを入力" required autocomplete="off" aria-describedby="key-help"><p class="form-description" id="key-help">デプロイ時に Wrangler Secret に設定した INIT_ADMIN_KEY を入力してください。Cloudflare Access のパスワードではありません。</p></div>
+      </div>
+      <div class="setup-actions"><button class="btn btn-default" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/></svg>最初の管理者として登録</button><p class="small muted">登録後はこのページを利用できなくなります。<br>以降のユーザー追加・ロール変更は、管理画面から行えます。</p></div>
+    </form>
+  </main>
+</div>
+</body>
+</html>

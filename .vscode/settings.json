@@ -1,0 +1,142 @@
+{
+  // Editor
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": false,
+  "editor.tabSize": 2,
+  "editor.rulers": [100, 120],
+  "editor.renderWhitespace": "boundary",
+  "editor.guides.bracketPairs": "active",
+  "editor.stickyScroll.enabled": true,
+  "editor.inlineSuggest.enabled": true,
+
+  // Files
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "files.trimFinalNewlines": true,
+  "files.autoSave": "onFocusChange",
+
+  // Explorer noise reduction
+  "files.exclude": {
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/.git": true,
+    "**/node_modules": true,
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/.pytest_cache": true,
+    "**/.mypy_cache": true,
+    "**/.ruff_cache": true,
+    "**/dist": true,
+    "**/.wrangler": true,
+    "**/.cache": true,
+    "**/coverage": true
+  },
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/node_modules/**": true,
+    "**/.venv/**": true,
+    "**/dist/**": true,
+    "**/.wrangler/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.venv": true,
+    "**/coverage": true,
+    "**/*.gen.ts": true,
+    "**/bun.lock": true,
+    "**/package-lock.json": true,
+    "**/pnpm-lock.yaml": true,
+    "**/yarn.lock": true,
+    "**/uv.lock": true
+  },
+
+  // File nesting: keep the explorer tidy
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "package.json": "package-lock.json, pnpm-lock.yaml, yarn.lock, bun.lock, bun.lockb, .npmrc, .nvmrc, .node-version, tsconfig*.json, biome.json, .biomeignore, vite.config*, vitest.config*, wrangler.toml, wrangler.jsonc",
+    "pyproject.toml": "uv.lock, requirements*.txt, .python-version, ruff.toml, .ruff.toml, mypy.ini",
+    "Dockerfile": "compose.yaml, compose.*.yaml, docker-compose.yml, docker-compose.*.yml, .dockerignore",
+    ".gitignore": ".gitattributes",
+    "README.md": "CHANGELOG.md, LICENSE*, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, AUTHORS*",
+    "*.ts": "$(capture).test.ts, $(capture).spec.ts, $(capture).d.ts",
+    "*.tsx": "$(capture).test.tsx, $(capture).spec.tsx, $(capture).module.css"
+  },
+
+  // Diff
+  "diffEditor.ignoreTrimWhitespace": false,
+  "diffEditor.renderSideBySide": true,
+
+  // Git
+  "git.autofetch": true,
+  "git.confirmSync": false,
+  "git.pruneOnFetch": true,
+  "git.branchProtection": ["main", "master", "develop"],
+
+  // Terminal
+  "terminal.integrated.scrollback": 10000,
+  "terminal.integrated.defaultProfile.linux": "zsh",
+
+  // Formatters
+  // devcontainer.json opens the repo root as a single workspace folder (not a
+  // multi-root workspace), so a nested apps/web/.vscode or
+  // packages/python-sdk/.vscode would never be read — every stack's
+  // formatter binding has to live here.
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml"
+  },
+  "[markdown]": {
+    "editor.formatOnSave": false,
+    "files.trimTrailingWhitespace": false
+  },
+
+  // apps/web (Biome)
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.biome": "explicit",
+    "source.fixAll.ruff": "explicit",
+    "source.organizeImports.ruff": "explicit"
+  },
+  "typescript.tsdk": "apps/web/node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // packages/python-sdk (Ruff)
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true
+  },
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml"
+  },
+  "python.defaultInterpreterPath": "packages/python-sdk/.venv/bin/python",
+  "python.terminal.activateEnvironment": false,
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.autoImportCompletions": true,
+  "ruff.importStrategy": "fromEnvironment",
+  "ruff.nativeServer": "on"
+}
