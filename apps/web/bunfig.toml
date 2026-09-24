@@ -1,0 +1,8 @@
+# @qtmleap/* is published to GitHub Packages, not the public npm registry.
+# GITHUB_TOKEN needs read:packages against qtmleap/mock-diff-viewer; CI already
+# has that via the repo's own GITHUB_TOKEN, and locally `gh auth token` covers it.
+[install.scopes]
+"@qtmleap" = { url = "https://npm.pkg.github.com", token = "$GITHUB_TOKEN" }
+
+[test]
+preload = ["./src/app/test/register-dom.ts", "./src/app/test/setup.ts"]
