@@ -47,10 +47,7 @@ export function JobSummary({ series, config }: JobSummaryProps) {
       </div>
       {stats.map((stat) => (
         <div key={stat.key} className="border-l pl-7">
-          <dt className="text-xs text-muted-foreground">
-            {stat.label === null ? null : `${stat.label} `}
-            <span className="font-mono">{stat.key}</span>
-          </dt>
+          <dt className="font-mono text-xs text-muted-foreground">{stat.key}</dt>
           <dd className="mt-1 font-mono text-2xl leading-[30px] tabular-nums">
             {stat.value === null ? '—' : formatMetricStat(stat.value)}
           </dd>

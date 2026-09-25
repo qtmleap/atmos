@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { chartGridColsClass } from '../../src/app/lib/chart-size'
+import { chartGridColsClass, jobChartGridColsClass } from '../../src/app/lib/chart-size'
 
 describe('chartGridColsClass', () => {
   test('uses the size columns when the group fills them', () => {
@@ -16,5 +16,13 @@ describe('chartGridColsClass', () => {
   test('splits two charts in half even where three columns would fit', () => {
     expect(chartGridColsClass('s', 2)).toBe('grid-cols-2')
     expect(chartGridColsClass('m', 2)).toBe('grid-cols-2')
+  })
+})
+
+describe('jobChartGridColsClass', () => {
+  test('keeps the size columns however few charts a group has', () => {
+    expect(jobChartGridColsClass('s')).toBe('grid-cols-3')
+    expect(jobChartGridColsClass('m')).toBe('grid-cols-2 @6xl:grid-cols-3')
+    expect(jobChartGridColsClass('l')).toBe('grid-cols-1')
   })
 })
