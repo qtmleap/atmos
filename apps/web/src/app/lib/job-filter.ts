@@ -4,13 +4,24 @@
 //   ?drawer=jobs             the "ジョブを選ぶ" drawer is open (compare view)
 //   ?jobs=id1,id2            jobs drawn in the comparison; absent means the
 //                            default pick (defaultCompareSelection), empty none
+//   ?run=text                job-name filter of the comparison charts (compare-chart.tsx)
+//   ?smooth=0.6              smoothing weight 0..0.99 of the charts (lib/smoothing.ts)
+//   ?logx=1, ?logy=1         log scale of the chart's x/y axis (lib/chart-scale.ts)
+//   ?size=s|m|l              chart display size; absent means "m" (medium)
+//   ?chart=train/loss        metric key open fullscreen (chart-dialog.tsx)
 //   ?menu=1, ?edit=1, ?delete=1  the heading's "…" menu and its dialogs
 //                            (manage-search.ts)
+// `run`/`smooth`/`logx`/`logy`/`size`/`chart` are `chartViewSearchShape`
+// (chart-view-search.ts), shared with the job detail page's own chart
+// controls (manage-search.ts `jobSearchSchema`).
 import { z } from 'zod'
 import { JOB_STATUSES, type Job, type JobStatus } from '@/shared/types'
 import { withQuery } from './api-client'
+import { type ChartSize, chartViewSearchShape } from './chart-view-search'
 import { jobDisplayName } from './format'
 import { projectActionsSearchShape } from './manage-search'
+
+export { CHART_SIZES, type ChartSize } from './chart-view-search'
 
 /**
  * The search params of /projects/:projectId (routes/_app/projects.$projectId.tsx).
@@ -27,6 +38,7 @@ export const jobsSearchSchema = z.object({
     .union([z.literal(''), z.string().nonempty()])
     .optional()
     .catch(undefined),
+  ...chartViewSearchShape,
   ...projectActionsSearchShape,
 })
 
@@ -100,3 +112,22 @@ export const parseCompareSelection = (
 }
 
 export const serializeCompareSelection = (ids: readonly string[]): string => ids.join(',')
+
+/** Absent (undefined) means the medium size. */
+export const parseChartSize = (value: ChartSize | undefined): ChartSize =>
+  value === undefined ? 'm' : value
+
+/** Absent means no smoothing. */
+export const parseSmoothing = (value: number | undefined): number =>
+  value === undefined ? 0 : value
+
+/** `1` means the axis is log; absent (or anything else the schema drops) is linear. */
+export const parseLogScale = (value: 1 | undefined): boolean => value === 1
+
+/** Jobs whose displayed name contains the filter text (case-insensitive, trimmed). */
+export const filterChartJobs = (jobs: readonly Job[], run: string): Job[] => {
+  const needle = run.trim().toLocaleLowerCase()
+  return needle === ''
+    ? [...jobs]
+    : jobs.filter((job) => jobDisplayName(job).toLocaleLowerCase().includes(needle))
+}
