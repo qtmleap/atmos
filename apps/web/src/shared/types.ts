@@ -41,6 +41,7 @@ import type {
   projectSchema,
   setupRequestSchema,
   setupResponseSchema,
+  setupStatusSchema,
   updateAvatarResponseSchema,
   updateProfileRequestSchema,
   uploadMediaFieldsSchema,
@@ -55,7 +56,7 @@ import type {
 export const ROLES = ['admin', 'user'] as const
 export type Role = (typeof ROLES)[number]
 
-export const VISIBILITIES = ['public', 'private'] as const
+export const VISIBILITIES = ['public', 'internal', 'private'] as const
 export type Visibility = (typeof VISIBILITIES)[number]
 
 export const JOB_STATUSES = ['running', 'finished', 'failed'] as const
@@ -139,8 +140,11 @@ export type AccessToken = z.output<typeof accessTokenSchema>
 export type AccessTokenCreated = z.output<typeof accessTokenCreatedSchema>
 
 // ---------------------------------------------------------------------------
-// §2 Setup — POST /api/setup
+// §2 Setup — GET /api/setup, POST /api/setup
 // ---------------------------------------------------------------------------
+
+/** `GET /api/setup` (no authentication): has atmos been set up yet? */
+export type SetupStatus = z.output<typeof setupStatusSchema>
 
 export type SetupRequest = z.input<typeof setupRequestSchema>
 

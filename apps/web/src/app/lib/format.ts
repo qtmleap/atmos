@@ -74,6 +74,7 @@ export const STATUS_LABELS: Record<JobStatus, string> = {
 
 export const VISIBILITY_LABELS: Record<Visibility, string> = {
   public: '公開',
+  internal: 'メンバー限定',
   private: '非公開',
 }
 

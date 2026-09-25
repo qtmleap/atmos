@@ -6,7 +6,7 @@
 // sequentially. `already_initialized` runs last, once a row exists.
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { createDb } from '../../src/db/schema'
-import { setupResponseSchema } from '../../src/shared/schemas'
+import { setupResponseSchema, setupStatusSchema } from '../../src/shared/schemas'
 import { jsonError, jsonShaped } from '../helpers/http'
 import { createRoutesTestEnv, type RoutesTestEnv } from '../helpers/routes-env'
 
@@ -29,6 +29,16 @@ afterAll(async () => {
   if (t.current !== null) {
     await t.current.dispose()
   }
+})
+
+describe('GET /api/setup', () => {
+  test('initialized: false before any user exists, needs no authentication', async () => {
+    const { dispatch } = testEnv()
+    const res = await dispatch('/api/setup')
+    expect(res.status).toBe(200)
+    const body = await jsonShaped(setupStatusSchema, res)
+    expect(body).toEqual({ initialized: false })
+  })
 })
 
 describe('POST /api/setup', () => {
@@ -123,5 +133,15 @@ describe('POST /api/setup', () => {
     })
     expect(res.status).toBe(403)
     await jsonError(res, 'already_initialized')
+  })
+})
+
+describe('GET /api/setup (after a user exists)', () => {
+  test('initialized: true once a user has been registered', async () => {
+    const { dispatch } = testEnv()
+    const res = await dispatch('/api/setup')
+    expect(res.status).toBe(200)
+    const body = await jsonShaped(setupStatusSchema, res)
+    expect(body).toEqual({ initialized: true })
   })
 })

@@ -2,6 +2,7 @@ import { Link, useLocation } from '@tanstack/react-router'
 import type * as React from 'react'
 import type { UserWithEmail } from '@/shared/types'
 import { type NavSection, navSectionOf } from './nav-sections'
+import { ConnectedThemeToggle } from './theme-toggle'
 import { UserMenu } from './user-menu'
 
 const navItems = [
@@ -15,7 +16,7 @@ export interface AppHeaderBarProps {
   /** Omit the sections entirely (first-run setup). */
   hideNav?: boolean
   navLabel?: string
-  /** Right-hand side: name, avatar and menu button, or a sign-in button. */
+  /** Right-hand side after the theme select: name, avatar and menu button, or a sign-in button. */
   account: React.ReactNode
 }
 
@@ -63,7 +64,10 @@ export interface AppHeaderProps {
   loading: boolean
 }
 
-/** The header every page gets, pinned to the top. */
+/**
+ * The header every page gets, pinned to the top. The theme select comes
+ * first on the right so it is there signed out and during setup too.
+ */
 export function AppHeader({ user, loading }: AppHeaderProps) {
   const pathname = useLocation({ select: (location) => location.pathname })
   const isSetup = pathname === '/setup'
@@ -73,11 +77,14 @@ export function AppHeader({ user, loading }: AppHeaderProps) {
         current={navSectionOf(pathname)}
         hideNav={isSetup}
         account={
-          isSetup ? (
-            <span className="text-xs text-muted-foreground">初回セットアップ</span>
-          ) : (
-            <UserMenu user={user} loading={loading} />
-          )
+          <>
+            <ConnectedThemeToggle />
+            {isSetup ? (
+              <span className="text-xs text-muted-foreground">初回セットアップ</span>
+            ) : (
+              <UserMenu user={user} loading={loading} />
+            )}
+          </>
         }
       />
     </div>

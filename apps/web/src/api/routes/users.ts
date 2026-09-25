@@ -2,7 +2,7 @@
 import { and, desc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { createDb, projects, users } from '../../db/schema'
-import { requireAccessUser, resolveViewer } from '../lib/auth'
+import { projectVisibilityCondition, requireAccessUser, resolveViewer } from '../lib/auth'
 import { notFound } from '../lib/errors'
 import {
   decodeKeysetCursor,
@@ -53,7 +53,6 @@ usersRoutes.get('/users/:handle/projects', async (c) => {
   }
 
   const viewer = await resolveViewer(c.env, c.req.raw)
-  const canSeePrivate = viewer !== null && viewer.id === owner.id
   const { limit, cursor } = parsePagination(c.req.query())
 
   const rows = await db
@@ -62,7 +61,7 @@ usersRoutes.get('/users/:handle/projects', async (c) => {
     .where(
       and(
         eq(projects.ownerId, owner.id),
-        canSeePrivate ? undefined : eq(projects.visibility, 'public'),
+        projectVisibilityCondition(viewer),
         cursor === undefined
           ? undefined
           : keysetCondition(projects.createdAt, projects.id, decodeKeysetCursor(cursor), 'desc'),
