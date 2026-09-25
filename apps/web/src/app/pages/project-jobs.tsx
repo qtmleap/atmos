@@ -10,6 +10,7 @@ import { JobDrawer } from '../components/project/job-drawer'
 import { JobTable } from '../components/project/job-table'
 import { JobsFootnote } from '../components/project/jobs-footnote'
 import { JobsToolbar } from '../components/project/jobs-toolbar'
+import { ProjectActions } from '../components/project/project-actions'
 import { ProjectHeader } from '../components/project/project-header'
 import { useCompareJobs } from '../hooks/use-compare-jobs'
 import { useCompareMetrics } from '../hooks/use-compare-metrics'
@@ -144,6 +145,7 @@ export default function ProjectJobsPage() {
             ? 'ジョブ一覧 ／ 選んだジョブのメトリクスを重ねて比べられます。'
             : 'ジョブ一覧 ／ 学習の進行状況を確認できます。'
         }
+        actions={heading.project === null ? null : <ProjectActions project={heading.project} />}
       />
       {heading.error === null ? null : (
         <p role="alert" className="pt-4 text-xs text-destructive">

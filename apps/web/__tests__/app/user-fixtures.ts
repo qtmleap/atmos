@@ -39,6 +39,7 @@ export const accessTokenCreated = (
   token: 'atmos_sk_test_token_value',
   issued_at: '2026-09-24T00:00:00.000Z',
   revoked_at: null,
+  hint: 'atmos_...alue',
   ...overrides,
 })
 

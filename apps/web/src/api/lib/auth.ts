@@ -29,7 +29,6 @@ import {
   users,
 } from '../../db/schema'
 import { forbidden, unauthenticated } from './errors'
-import { bytesToBase64Url } from './ids'
 
 export const ACCESS_JWT_HEADER = 'Cf-Access-Jwt-Assertion'
 
@@ -186,15 +185,46 @@ export const requireAccessUser = async (
 /** Random bytes per token (256 bits). */
 export const ACCESS_TOKEN_BYTES = 32
 
-/** A new plaintext access token: 32 random bytes, base64url (43 characters). */
-export const generateAccessToken = (): string =>
-  bytesToBase64Url(crypto.getRandomValues(new Uint8Array(ACCESS_TOKEN_BYTES)))
+/** Marks the string as an atmos token for secret scanners and people reading it. */
+export const ACCESS_TOKEN_PREFIX = 'atmos_'
+
+const BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+
+/** 62^43 > 2^256, so 43 base62 digits hold any 32 random bytes. */
+const ACCESS_TOKEN_BODY_LENGTH = 43
+
+/**
+ * A new plaintext access token: `atmos_` + 32 random bytes as 43 base62 digits.
+ * Base62 rather than base64url so there is no `-` and a double-click selects
+ * the whole token, like GitHub's `ghp_` tokens.
+ */
+export const generateAccessToken = (): string => {
+  const bytes = crypto.getRandomValues(new Uint8Array(ACCESS_TOKEN_BYTES))
+  let value = bytes.reduce((acc, byte) => (acc << 8n) | BigInt(byte), 0n)
+  let body = ''
+  for (let i = 0; i < ACCESS_TOKEN_BODY_LENGTH; i++) {
+    body = `${BASE62[Number(value % 62n)]}${body}`
+    value /= 62n
+  }
+  return `${ACCESS_TOKEN_PREFIX}${body}`
+}
 
 /** SHA-256 of the token as lowercase hex; this is what `access_tokens.token_hash` stores. */
 export const hashAccessToken = async (token: string): Promise<string> => {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
+
+/** Trailing characters of the plaintext kept in `access_tokens.token_hint`. */
+export const ACCESS_TOKEN_HINT_LENGTH = 4
+
+/**
+ * `atmos_...w52G`, the prefix and last 4 characters as OpenAI and Stripe show
+ * keys: enough to tell tokens apart, and 4 of 43 random characters leave the
+ * token as strong as before.
+ */
+export const accessTokenHint = (token: string): string =>
+  `${ACCESS_TOKEN_PREFIX}...${token.slice(-ACCESS_TOKEN_HINT_LENGTH)}`
 
 /** Token from `Authorization: Bearer <token>`, or null when absent or malformed. */
 export const readBearerToken = (request: Request): string | null => {
@@ -315,3 +345,14 @@ export const projectVisibilityCondition = (viewer: UserRow | null): SQL | undefi
  */
 export const canWriteProject = (project: Pick<ProjectRow, 'ownerId'>, user: UserRow): boolean =>
   user.id === project.ownerId
+
+/**
+ * The owner or an admin may edit or delete a project (and its jobs): the
+ * PATCH/DELETE endpoints of docs/SPEC.md §6/§7, reachable from the web UI by
+ * an admin acting on someone else's project, not only through the Bearer
+ * token the SDK uses. Unlike `canWriteProject`, a missing permission here is
+ * reported as 403 `forbidden` when the project is otherwise visible (404
+ * only when it is not, or does not exist).
+ */
+export const canManageProject = (project: Pick<ProjectRow, 'ownerId'>, user: UserRow): boolean =>
+  user.id === project.ownerId || isAdmin(user)

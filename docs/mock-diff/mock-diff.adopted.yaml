@@ -14,6 +14,10 @@ adopted:
   page-user-profile: astra
   page-settings-profile: astra
   page-settings-tokens: astra
+  page-settings-tokens-active: astra
+  page-settings-tokens-reissue: astra
+  page-settings-tokens-none: astra
+  page-settings-tokens-revoked: astra
   page-admin: astra
   page-setup: astra
   page-setup-closed: astra
@@ -21,3 +25,9 @@ adopted:
   page-project-jobs-compare-drawer: astra
   page-projects-new: astra
   component-theme-dark: astra
+  page-project-settings: astra
+  page-project-delete: astra
+  page-project-jobs-menu: astra
+  page-job-detail-menu: astra
+  page-job-rename: astra
+  page-job-delete: astra

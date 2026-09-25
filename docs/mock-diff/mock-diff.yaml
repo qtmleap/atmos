@@ -196,7 +196,7 @@ screens:
           astra: {type: html, path: designs/pages/settings-profile.html}
         actual: {type: url, url: "http://localhost:12155/settings/profile"}
   - id: page-settings-tokens
-    name: アクセストークン
+    name: アクセストークン（発行直後）
     category: ページ
     devices:
       - id: desktop
@@ -204,7 +204,47 @@ screens:
         viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
         versions:
           astra: {type: html, path: designs/pages/settings-tokens.html}
+        actual: {type: url, url: "http://localhost:12155/settings/tokens?scenario=issued"}
+  - id: page-settings-tokens-active
+    name: アクセストークン（発行済み）
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/settings-tokens-active.html}
         actual: {type: url, url: "http://localhost:12155/settings/tokens"}
+  - id: page-settings-tokens-reissue
+    name: アクセストークン（再発行の確認）
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/settings-tokens-reissue.html}
+        actual: {type: url, url: "http://localhost:12155/settings/tokens?dialog=reissue"}
+  - id: page-settings-tokens-none
+    name: アクセストークン（未発行）
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/settings-tokens-none.html}
+        actual: {type: url, url: "http://localhost:12155/settings/tokens?scenario=none"}
+  - id: page-settings-tokens-revoked
+    name: アクセストークン（失効後）
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/settings-tokens-revoked.html}
+        actual: {type: url, url: "http://localhost:12155/settings/tokens?scenario=revoked"}
   - id: page-admin
     name: ユーザー管理
     category: ページ
@@ -235,3 +275,63 @@ screens:
         versions:
           astra: {type: html, path: designs/pages/setup-closed.html}
         actual: {type: url, url: "http://localhost:12155/setup?scenario=closed"}
+  - id: page-project-jobs-menu
+    name: 操作メニュー
+    category: ページ/ジョブ/一覧
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/project-jobs-menu.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits?menu=1"}
+  - id: page-project-settings
+    name: プロジェクトを変更
+    category: ページ/プロジェクト
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/project-settings.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits?edit=1"}
+  - id: page-project-delete
+    name: プロジェクトを削除
+    category: ページ/プロジェクト
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/project-delete.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits?delete=1"}
+  - id: page-job-detail-menu
+    name: 操作メニュー
+    category: ページ/ジョブ/詳細
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/job-detail-menu.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits/jobs/job_vits_baseline_042?menu=1"}
+  - id: page-job-rename
+    name: 名前を変更
+    category: ページ/ジョブ/詳細
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/job-rename.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits/jobs/job_vits_baseline_042?rename=1"}
+  - id: page-job-delete
+    name: ジョブを削除
+    category: ページ/ジョブ/詳細
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/job-delete.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits/jobs/job_vits_baseline_042?delete=1"}

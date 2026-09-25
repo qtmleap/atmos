@@ -2,12 +2,21 @@
 // mirror src/api/app.ts; `:name` segments land in `request.params`. Anything
 // under /api that is not listed answers 404 like the real Worker does.
 import { createAdminUser, listAdminUsers, updateAdminUser } from './admin'
-import { finishJob, getJob, getMediaFile, listLogs, listMedia, listMetrics } from './job-detail'
+import {
+  deleteJob,
+  finishJob,
+  getJob,
+  getMediaFile,
+  listLogs,
+  listMedia,
+  listMetrics,
+  updateJob,
+} from './job-detail'
 import { listJobs } from './jobs'
 import { getMe } from './me'
-import { createProject, getProject, listProjects } from './projects'
+import { createProject, deleteProject, getProject, listProjects, updateProject } from './projects'
 import { apiError, type FixtureHandler, type FixtureRequest, type FixtureResponse } from './respond'
-import { issueToken, revokeToken, updateAvatar, updateProfile } from './settings'
+import { getTokenStatus, issueToken, revokeToken, updateAvatar, updateProfile } from './settings'
 import { postSetup } from './setup'
 import { getUser, getUserAvatar, listUserProjects, listUsers } from './users'
 
@@ -36,14 +45,19 @@ export const ROUTES: readonly Route[] = [
 
   { method: 'PATCH', pattern: '/api/settings/profile', handler: updateProfile },
   { method: 'PUT', pattern: '/api/settings/avatar', handler: updateAvatar },
+  { method: 'GET', pattern: '/api/settings/tokens', handler: getTokenStatus },
   { method: 'POST', pattern: '/api/settings/tokens', handler: issueToken },
   { method: 'DELETE', pattern: '/api/settings/tokens', handler: revokeToken },
 
   { method: 'GET', pattern: '/api/projects', handler: listProjects },
   { method: 'POST', pattern: '/api/projects', handler: createProject },
   { method: 'GET', pattern: '/api/projects/:project_id', handler: getProject },
+  { method: 'PATCH', pattern: '/api/projects/:project_id', handler: updateProject },
+  { method: 'DELETE', pattern: '/api/projects/:project_id', handler: deleteProject },
   { method: 'GET', pattern: '/api/projects/:project_id/jobs', handler: listJobs },
   { method: 'GET', pattern: JOB, handler: getJob },
+  { method: 'PATCH', pattern: JOB, handler: updateJob },
+  { method: 'DELETE', pattern: JOB, handler: deleteJob },
   { method: 'POST', pattern: `${JOB}/finish`, handler: finishJob },
   { method: 'GET', pattern: `${JOB}/metrics`, handler: listMetrics },
   { method: 'GET', pattern: `${JOB}/logs`, handler: listLogs },

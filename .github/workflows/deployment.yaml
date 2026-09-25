@@ -52,7 +52,16 @@ jobs:
         run: bun run cf-typegen
 
       - name: Build
-        run: bun run build
+        # Vite only warns when a CSS url() does not resolve, and the url then
+        # falls through to index.html at runtime (every font did, once). Fail
+        # the deploy instead.
+        run: |
+          set -o pipefail
+          bun run build 2>&1 | tee build.log
+          if grep -q "didn't resolve at build time" build.log; then
+            echo "::error::CSS url() left unresolved by the build"
+            exit 1
+          fi
         env:
           CLOUDFLARE_ENV: ${{ env.ENVIRONMENT }}
 

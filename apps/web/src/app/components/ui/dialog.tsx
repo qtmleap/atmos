@@ -35,8 +35,13 @@ function DialogContent({
   className,
   children,
   closeLabel = '閉じる',
+  showClose = true,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & { closeLabel?: string }) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  closeLabel?: string
+  /** False for a confirmation, which is closed only through its buttons. */
+  showClose?: boolean
+}) {
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
@@ -56,16 +61,18 @@ function DialogContent({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={dialogStyles.close}
-            aria-label={closeLabel}
-          >
-            <XIcon />
-          </Button>
-        </DialogPrimitive.Close>
+        {showClose ? (
+          <DialogPrimitive.Close asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={dialogStyles.close}
+              aria-label={closeLabel}
+            >
+              <XIcon />
+            </Button>
+          </DialogPrimitive.Close>
+        ) : null}
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
   )
