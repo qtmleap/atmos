@@ -353,6 +353,38 @@ describe('PATCH /api/projects/:project_id/jobs/:job_id', () => {
     expect((await jsonShaped(jobSchema, res)).name).toBe('renamed-by-admin')
   })
 
+  test('the owner may edit via the CF_Authorization cookie, same-origin only', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'job-patch-cookie-owner@example.com' })
+    const project = await insertProject(env.DB, owner)
+    const job = await insertJob(env.DB, project, { name: 'before' })
+    const cookie = `CF_Authorization=${await access.sign({ email: owner.cfAccessEmail })}`
+
+    const sameOrigin = await dispatch(`/api/projects/${project.id}/jobs/${job.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: cookie,
+        'Sec-Fetch-Site': 'same-origin',
+      },
+      body: JSON.stringify({ name: 'cookie-after' }),
+    })
+    expect(sameOrigin.status).toBe(200)
+    expect((await jsonShaped(jobSchema, sameOrigin)).name).toBe('cookie-after')
+
+    const crossSite = await dispatch(`/api/projects/${project.id}/jobs/${job.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: cookie,
+        'Sec-Fetch-Site': 'cross-site',
+      },
+      body: JSON.stringify({ name: 'should-not-apply' }),
+    })
+    expect(crossSite.status).toBe(401)
+    await jsonError(crossSite, 'unauthenticated')
+  })
+
   test('403 for a signed-in stranger who can view but not manage the project', async () => {
     const { dispatch, env, access } = testEnv()
     const owner = await insertUser(env.DB, {

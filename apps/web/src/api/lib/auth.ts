@@ -1,7 +1,10 @@
 // Authentication and authorization helpers (docs/PLAN.md §3, docs/SPEC.md §0.2).
 //
 // Two independent credentials:
-//   - Cloudflare Access JWT in `Cf-Access-Jwt-Assertion` (browsers).
+//   - Cloudflare Access JWT (browsers): the `Cf-Access-Jwt-Assertion` header
+//     on Access-protected paths, else the `CF_Authorization` cookie. Access
+//     only protects /setup, /settings, /admin and a few /api paths, so on
+//     /api/projects/* the cookie is the only way to see who is logged in.
 //   - `Authorization: Bearer <token>` access token (the Python SDK).
 //
 // Functions named `require*` / `assert*` throw an ApiError (see errors.ts) so
@@ -31,6 +34,7 @@ import {
 import { forbidden, unauthenticated } from './errors'
 
 export const ACCESS_JWT_HEADER = 'Cf-Access-Jwt-Assertion'
+export const ACCESS_JWT_COOKIE = 'CF_Authorization'
 
 // ---------------------------------------------------------------------------
 // Cloudflare Access JWT
@@ -41,6 +45,8 @@ export interface AccessConfig {
   teamDomain: string
   /** Application Audience (AUD) tag. */
   aud: string
+  /** Dev server only: localhost requests are signed in as this email without a JWT. */
+  localEmail?: string
 }
 
 export interface AccessIdentity {
@@ -53,6 +59,7 @@ export type JwksResolver = JWTVerifyGetKey
 export const accessConfigFromEnv = (env: CloudflareBindings): AccessConfig => ({
   teamDomain: env.ACCESS_TEAM_DOMAIN,
   aud: env.ACCESS_AUD,
+  localEmail: env.LOCAL_ACCESS_EMAIL,
 })
 
 export const accessCertsUrl = (teamDomain: string): URL =>
@@ -109,20 +116,84 @@ export const verifyAccessJwt = async (
   }
 }
 
+/** Value of one cookie in the request's Cookie header, or null. */
+export const readCookie = (request: Request, name: string): string | null => {
+  const header = request.headers.get('Cookie')
+  if (header === null) {
+    return null
+  }
+  for (const part of header.split(';')) {
+    const separator = part.indexOf('=')
+    if (separator !== -1 && part.slice(0, separator).trim() === name) {
+      const value = part.slice(separator + 1).trim()
+      return value.length === 0 ? null : value
+    }
+  }
+  return null
+}
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
+// Browsers attach the cookie to cross-site requests too, so a write that is
+// authenticated only by the cookie must come from our own origin: either the
+// browser says so (Sec-Fetch-Site) or the Origin matches the request URL.
+const isSameOrigin = (request: Request): boolean =>
+  request.headers.get('Sec-Fetch-Site') === 'same-origin' ||
+  request.headers.get('Origin') === new URL(request.url).origin
+
 /**
- * Access identity of the request, or null when the header is absent or does
+ * The Access JWT of the request: the header Access adds on protected paths,
+ * else the CF_Authorization cookie. The cookie is not accepted for writes
+ * from another origin. Null when neither is present.
+ */
+const readAccessJwt = (request: Request): string | null => {
+  const header = request.headers.get(ACCESS_JWT_HEADER)
+  if (header !== null && header.length > 0) {
+    return header
+  }
+  const cookie = readCookie(request, ACCESS_JWT_COOKIE)
+  if (cookie === null) {
+    return null
+  }
+  if (!SAFE_METHODS.has(request.method) && !isSameOrigin(request)) {
+    return null
+  }
+  return cookie
+}
+
+/**
+ * Access identity of the request, or null when there is no JWT or it does
  * not verify. Resources that are public treat both cases as anonymous.
  */
-export const readAccessIdentity = async (
+export const readAccessIdentity = (
   env: CloudflareBindings,
   request: Request,
   jwks?: JwksResolver,
+): Promise<AccessIdentity | null> => identifyAccessRequest(request, accessConfigFromEnv(env), jwks)
+
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
+
+/** A request addressed to this machine, as the dev server sees every request. */
+export const isLocalRequest = (request: Request): boolean =>
+  LOCAL_HOSTNAMES.has(new URL(request.url).hostname)
+
+/** readAccessIdentity with the Access config passed directly. */
+export const identifyAccessRequest = async (
+  request: Request,
+  config: AccessConfig,
+  jwks?: JwksResolver,
 ): Promise<AccessIdentity | null> => {
-  const token = request.headers.get(ACCESS_JWT_HEADER)
-  if (token === null || token.length === 0) {
+  // The dev server has no Access in front of it, so there is no JWT to check.
+  // Both conditions are needed: only `vite` (serve) sets localEmail
+  // (vite.config.ts), and Miniflare also hands the route tests a 127.0.0.1 URL.
+  if (config.localEmail !== undefined && isLocalRequest(request)) {
+    return { email: config.localEmail, payload: { email: config.localEmail } }
+  }
+  const token = readAccessJwt(request)
+  if (token === null) {
     return null
   }
-  return verifyAccessJwt(token, accessConfigFromEnv(env), jwks)
+  return verifyAccessJwt(token, config, jwks)
 }
 
 /** Like readAccessIdentity, but throws 401 `unauthenticated` instead of returning null. */
