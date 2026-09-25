@@ -5,12 +5,18 @@ import { accessTokens, createDb, users } from '../../db/schema'
 import { updateProfileRequestSchema } from '../../shared/schemas'
 import {
   type AccessTokenCreated,
+  type AccessTokenStatus,
   AVATAR_CONTENT_TYPES,
   AVATAR_MAX_BYTES,
   type AvatarContentType,
   type UpdateAvatarResponse,
 } from '../../shared/types'
-import { generateAccessToken, hashAccessToken, requireAccessUser } from '../lib/auth'
+import {
+  accessTokenHint,
+  generateAccessToken,
+  hashAccessToken,
+  requireAccessUser,
+} from '../lib/auth'
 import { ApiError, badRequest, conflict, notFound, payloadTooLarge, readJson } from '../lib/errors'
 import { newId, now, toIsoString } from '../lib/ids'
 import { avatarPath, toUserWithEmail } from '../lib/serialize'
@@ -68,6 +74,29 @@ settingsRoutes.put('/settings/avatar', async (c) => {
   return c.json(response)
 })
 
+settingsRoutes.get('/settings/tokens', async (c) => {
+  const user = await requireAccessUser(c.env, c.req.raw)
+  const db = createDb(c.env.DB)
+
+  const active = await db.query.accessTokens.findFirst({
+    where: and(eq(accessTokens.userId, user.id), isNull(accessTokens.revokedAt)),
+    orderBy: (row, { desc }) => desc(row.issuedAt),
+  })
+
+  const response: AccessTokenStatus = {
+    active:
+      active === undefined
+        ? null
+        : {
+            id: active.id,
+            issued_at: toIsoString(active.issuedAt),
+            revoked_at: null,
+            hint: active.tokenHint,
+          },
+  }
+  return c.json(response)
+})
+
 settingsRoutes.post('/settings/tokens', async (c) => {
   const user = await requireAccessUser(c.env, c.req.raw)
   const db = createDb(c.env.DB)
@@ -78,6 +107,7 @@ settingsRoutes.post('/settings/tokens', async (c) => {
     id: newId(),
     userId: user.id,
     tokenHash: await hashAccessToken(token),
+    tokenHint: accessTokenHint(token),
     issuedAt,
     revokedAt: null,
   }
@@ -96,6 +126,7 @@ settingsRoutes.post('/settings/tokens', async (c) => {
     id: row.id,
     issued_at: toIsoString(row.issuedAt),
     revoked_at: null,
+    hint: row.tokenHint,
     token,
   }
   return c.json(response, 201)

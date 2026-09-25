@@ -15,6 +15,7 @@ import type { z } from 'zod'
 import type {
   accessTokenCreatedSchema,
   accessTokenSchema,
+  accessTokenStatusSchema,
   adminCreateUserRequestSchema,
   adminUpdateUserRequestSchema,
   createJobRequestSchema,
@@ -141,6 +142,9 @@ export type AccessToken = z.output<typeof accessTokenSchema>
 /** Only the response right after issuing carries the plaintext token. */
 export type AccessTokenCreated = z.output<typeof accessTokenCreatedSchema>
 
+/** `GET /api/settings/tokens`: `active` is null when the user has no current token. */
+export type AccessTokenStatus = z.output<typeof accessTokenStatusSchema>
+
 // ---------------------------------------------------------------------------
 // §2 Setup — GET /api/setup, POST /api/setup
 // ---------------------------------------------------------------------------
@@ -176,6 +180,7 @@ export type AdminUpdateUserRequest = z.input<typeof adminUpdateUserRequestSchema
 // §5 Settings
 // PATCH  /api/settings/profile  UpdateProfileRequest -> UserWithEmail
 // PUT    /api/settings/avatar   multipart `file` -> UpdateAvatarResponse
+// GET    /api/settings/tokens   -> AccessTokenStatus
 // POST   /api/settings/tokens   -> 201 AccessTokenCreated
 // DELETE /api/settings/tokens   -> 204
 // ---------------------------------------------------------------------------
