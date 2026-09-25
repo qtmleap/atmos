@@ -56,7 +56,7 @@ export const projects = sqliteTable(
   {
     id: text('id').primaryKey(),
     name: text('name').notNull(),
-    visibility: text('visibility', { enum: ['public', 'private'] }).notNull(),
+    visibility: text('visibility', { enum: ['public', 'internal', 'private'] }).notNull(),
     ownerId: text('owner_id')
       .notNull()
       .references(() => users.id),
@@ -64,7 +64,7 @@ export const projects = sqliteTable(
   },
   (t) => [
     index('projects_owner_id_idx').on(t.ownerId),
-    check('projects_visibility_check', sql`${t.visibility} IN ('public', 'private')`),
+    check('projects_visibility_check', sql`${t.visibility} IN ('public', 'internal', 'private')`),
   ],
 )
 

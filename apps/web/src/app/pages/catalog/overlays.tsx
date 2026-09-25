@@ -268,9 +268,16 @@ export default function OverlaysCatalog() {
           </div>
           <Separator />
           <div className="grid gap-2">
+            <p className="leading-none font-medium">メンバー限定</p>
+            <p className="leading-[22px] text-muted-foreground">
+              ログインしているメンバーなら誰でも閲覧できます。
+            </p>
+          </div>
+          <Separator />
+          <div className="grid gap-2">
             <p className="leading-none font-medium">非公開</p>
             <p className="leading-[22px] text-muted-foreground">
-              ログインしたチームメンバーのみ閲覧できます。
+              所有者と管理者だけが閲覧できます。
             </p>
           </div>
           <p className="text-xs text-muted-foreground">SDKでの作成時は、既定で非公開です。</p>

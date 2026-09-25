@@ -168,8 +168,10 @@ function MetricChartImpl({ lines, height, live }: MetricChartProps) {
           <Tooltip
             formatter={(value, name) => [tooltipValue(value), String(name)]}
             labelFormatter={(label) => `step ${formatStep(Number(label))}`}
+            cursor={{ stroke: 'var(--muted-foreground)', strokeDasharray: '3 3' }}
             contentStyle={{
               background: 'var(--popover)',
+              color: 'var(--popover-foreground)',
               border: '1px solid var(--border)',
               borderRadius: 'var(--radius-md)',
               fontSize: 12,

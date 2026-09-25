@@ -1,6 +1,14 @@
-import { CheckIcon, CircleCheckIcon, CircleXIcon, GlobeIcon, LockIcon } from 'lucide-react'
+import {
+  CheckIcon,
+  CircleCheckIcon,
+  CircleXIcon,
+  GlobeIcon,
+  LockIcon,
+  UsersIcon,
+} from 'lucide-react'
 import type * as React from 'react'
 import { cn } from '@/app/lib/utils'
+import type { Visibility as VisibilityKind } from '@/shared/types'
 
 /** A 6px dot in the current colour; pulses unless reduced motion is set. */
 function StatusDot({
@@ -61,13 +69,13 @@ function Status({
   )
 }
 
-/** Public or private, as a muted globe or lock plus text (12px). */
+/** Public, internal or private, as a muted globe, users or lock icon plus text (12px). */
 function Visibility({
-  isPublic,
+  visibility,
   className,
   children,
   ...props
-}: React.ComponentProps<'span'> & { isPublic: boolean }) {
+}: React.ComponentProps<'span'> & { visibility: VisibilityKind }) {
   return (
     <span
       data-slot="visibility"
@@ -77,7 +85,9 @@ function Visibility({
       )}
       {...props}
     >
-      {isPublic ? <GlobeIcon aria-hidden="true" /> : <LockIcon aria-hidden="true" />}
+      {visibility === 'public' ? <GlobeIcon aria-hidden="true" /> : null}
+      {visibility === 'internal' ? <UsersIcon aria-hidden="true" /> : null}
+      {visibility === 'private' ? <LockIcon aria-hidden="true" /> : null}
       {children}
     </span>
   )

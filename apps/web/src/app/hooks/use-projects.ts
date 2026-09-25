@@ -24,7 +24,7 @@ export interface ProjectFilters {
 }
 
 export const isVisibilityFilter = (value: string): value is VisibilityFilter =>
-  value === ALL || value === 'public' || value === 'private'
+  value === ALL || value === 'public' || value === 'internal' || value === 'private'
 
 /** Distinct owners of the loaded projects, in order of first appearance. */
 export const ownersOf = (projects: readonly Project[]): ProjectOwner[] => {

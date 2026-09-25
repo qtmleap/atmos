@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from '../../components/ui/avatar'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { Status, Visibility } from '../../components/ui/status'
+import { VISIBILITY_LABELS } from '../../lib/format'
 import { cn } from '../../lib/utils'
 
 function DataRow({
@@ -46,18 +47,25 @@ const projects = [
   {
     name: '音声合成 v4',
     id: 'prj_7e2a90c1',
-    isPublic: false,
+    visibility: 'private',
     owner: '田中 美咲',
     created: '2026-09-18',
   },
   {
     name: 'shogi-nnue',
     id: 'prj_9b3d10f4',
-    isPublic: true,
+    visibility: 'public',
     owner: '佐藤 悠斗',
     created: '2026-09-12',
   },
-]
+  {
+    name: '画像生成 / アニメ調 LoRA',
+    id: 'prj_6b80d9c7',
+    visibility: 'internal',
+    owner: '高橋 蓮',
+    created: '2026-09-23',
+  },
+] as const
 
 export function ProjectRows() {
   return (
@@ -68,8 +76,8 @@ export function ProjectRows() {
             <RowTitle>{project.name}</RowTitle>
             <RowMeta mono>{project.id}</RowMeta>
           </div>
-          <Visibility isPublic={project.isPublic}>
-            {project.isPublic ? '公開' : '非公開'}
+          <Visibility visibility={project.visibility}>
+            {VISIBILITY_LABELS[project.visibility]}
           </Visibility>
           <div className="flex items-center gap-3">
             <Avatar size="sm" aria-hidden="true">

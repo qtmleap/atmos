@@ -104,10 +104,11 @@ export default function DataDisplayCatalog() {
           <Status status="failed">失敗</Status>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Visibility isPublic>公開</Visibility>
-          <Visibility isPublic={false}>非公開</Visibility>
+          <Visibility visibility="public">公開</Visibility>
+          <Visibility visibility="internal">メンバー限定</Visibility>
+          <Visibility visibility="private">非公開</Visibility>
           <span className="text-xs text-muted-foreground">
-            公開：誰でも閲覧可能 / 非公開：ログインが必要
+            公開：誰でも閲覧可能 / メンバー限定：ログインが必要 / 非公開：所有者と管理者のみ
           </span>
         </div>
       </Specimen>

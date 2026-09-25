@@ -1,0 +1,5 @@
+# Copy this file to `.dev.vars` for local development (that file is gitignored).
+# Every value here is a dummy.
+INIT_ADMIN_KEY=local-dev-init-admin-key
+ACCESS_TEAM_DOMAIN=example.cloudflareaccess.com
+ACCESS_AUD=local-dev-access-aud

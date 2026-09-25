@@ -13,7 +13,7 @@
 </head>
 <body>
 <div class="app-shell">
-  <header class="app-header"><a class="app-logo" href="/" aria-label="atmos ホーム">atmos</a><div class="app-account"><span class="small muted">初回セットアップ</span></div></header>
+  <header class="app-header"><a class="app-logo" href="/" aria-label="atmos ホーム">atmos</a><div class="app-account"><button class="btn btn-ghost btn-icon" type="button" aria-label="表示テーマ: システム" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu-1"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg></button><div class="dropdown" id="theme-menu-1" role="menu" aria-label="表示テーマ" hidden><button class="dropdown-item" role="menuitem" data-preference="system" aria-current="true" aria-label="表示テーマ: システム（選択中）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>システム<span class="shortcut"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m20 6-11 11-5-5"/></svg></span></button><button class="dropdown-item" role="menuitem" data-preference="light"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>ライト</button><button class="dropdown-item" role="menuitem" data-preference="dark"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>ダーク</button></div><span class="small muted">初回セットアップ</span></div></header>
   <main class="setup-content">
     <header class="page-header"><div class="row"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/></svg><span class="small muted">最初の管理者を登録</span></div><h1>atmos へようこそ</h1><p class="description">実験を記録する準備をはじめましょう。<br>初回セットアップは、一度だけ実行できます。</p></header>
     <section class="setup-section" aria-labelledby="identity-title"><div class="between"><h3 id="identity-title">Cloudflare Access の認証情報</h3><span class="badge badge-secondary">認証済み</span></div><div class="row"><span class="avatar" aria-hidden="true">田</span><div class="stack-sm"><p>misaki.tanaka@example.com</p><p class="small muted">このメールアドレスを最初の管理者として登録します。</p></div></div></section>
@@ -29,5 +29,6 @@
     </form>
   </main>
 </div>
+<script src="../_shared/theme-toggle.js"></script>
 </body>
 </html>

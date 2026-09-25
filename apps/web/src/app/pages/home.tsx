@@ -51,6 +51,7 @@ export default function HomePage() {
         >
           <NativeSelectOption value={ALL}>すべての公開範囲</NativeSelectOption>
           <NativeSelectOption value="public">公開</NativeSelectOption>
+          <NativeSelectOption value="internal">メンバー限定</NativeSelectOption>
           <NativeSelectOption value="private">非公開</NativeSelectOption>
         </NativeSelect>
         <NativeSelect
@@ -103,8 +104,8 @@ export default function HomePage() {
 
       <p className="pt-3 text-xs text-muted-foreground">
         {user === null
-          ? '公開プロジェクトのみ表示しています。サインインすると、閲覧できる非公開プロジェクトも表示されます。'
-          : 'ログイン中のため、公開・非公開の両方のプロジェクトを表示しています。'}
+          ? '公開プロジェクトのみ表示しています。サインインすると、閲覧できるメンバー限定・非公開のプロジェクトも表示されます。'
+          : 'ログイン中のため、公開・メンバー限定のプロジェクトに加え、閲覧できる非公開のプロジェクトも表示しています。'}
       </p>
     </div>
   )

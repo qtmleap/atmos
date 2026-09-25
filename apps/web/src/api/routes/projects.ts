@@ -1,11 +1,18 @@
 // Projects endpoints (docs/SPEC.md §6).
-import { and, desc, eq, or } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { createDb, type ProjectRow, projects, type UserRow, users } from '../../db/schema'
 import { createProjectRequestSchema } from '../../shared/schemas'
 import type { Project } from '../../shared/types'
-import { assertCanViewProject, requireBearerUser, resolveViewer } from '../lib/auth'
-import { notFound, readJson } from '../lib/errors'
+import {
+  assertCanViewProject,
+  projectVisibilityCondition,
+  readBearerToken,
+  requireAccessUser,
+  requireBearerUser,
+  resolveViewer,
+} from '../lib/auth'
+import { conflict, notFound, readJson } from '../lib/errors'
 import { newId, now, toIsoString } from '../lib/ids'
 import {
   decodeKeysetCursor,
@@ -28,15 +35,13 @@ const toProject = (
   created_at: toIsoString(project.createdAt),
 })
 
-// GET /api/projects — public projects to everyone, private ones only to their owner.
+// GET /api/projects — public projects to everyone, internal ones to any
+// signed-in registered user, private ones only to their owner and admins.
 projectsRoutes.get('/', async (c) => {
   const db = createDb(c.env.DB)
   const { limit, cursor } = parsePagination(c.req.query())
   const viewer = await resolveViewer(c.env, c.req.raw)
-  const visibilityCondition =
-    viewer === null
-      ? eq(projects.visibility, 'public')
-      : or(eq(projects.visibility, 'public'), eq(projects.ownerId, viewer.id))
+  const visibilityCondition = projectVisibilityCondition(viewer)
   const cursorCondition =
     cursor === undefined
       ? undefined
@@ -78,9 +83,19 @@ projectsRoutes.get('/:project_id', async (c) => {
   return c.json(toProject(row.project, row.owner))
 })
 
-// POST /api/projects — get-or-create keyed on (token owner, name), for `wb.init()`.
+// POST /api/projects — two credentials, two semantics:
+//   - Bearer access token (`wb.init()`): get-or-create keyed on (token owner,
+//     name); 200 for the existing project, 201 for a newly created one.
+//   - Cloudflare Access, no Bearer (the web UI's "new project" form): create
+//     only; 409 `conflict` when the signed-in owner already has a project by
+//     this name, 201 on success.
+// Neither credential present (nor valid) is 401 `unauthenticated`, from
+// requireBearerUser / requireAccessUser.
 projectsRoutes.post('/', async (c) => {
-  const user = await requireBearerUser(c.env, c.req.raw)
+  const viaBearer = readBearerToken(c.req.raw) !== null
+  const user = viaBearer
+    ? await requireBearerUser(c.env, c.req.raw)
+    : await requireAccessUser(c.env, c.req.raw)
   const body = await readJson(c.req.raw, createProjectRequestSchema)
   const db = createDb(c.env.DB)
   // Same-owner duplicates are possible in principle (name is not unique); the
@@ -90,6 +105,9 @@ projectsRoutes.post('/', async (c) => {
     orderBy: (row, { asc: ascending }) => ascending(row.createdAt),
   })
   if (existing !== undefined) {
+    if (!viaBearer) {
+      throw conflict('a project with this name already exists')
+    }
     return c.json(toProject(existing, user), 200)
   }
   const created: ProjectRow = {
