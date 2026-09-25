@@ -49,7 +49,10 @@ const accepts = (schema: Parses, input: unknown): boolean => schema.safeParse(in
 
 describe('pagination (SPEC §0.4)', () => {
   test('limit defaults to 20 and coerces query strings', () => {
-    expect(limitSchema.safeParse(undefined)).toEqual({ success: true, data: 20 })
+    expect(limitSchema.safeParse(undefined)).toEqual({
+      success: true,
+      data: 20,
+    })
     expect(PAGINATION_DEFAULT_LIMIT).toBe(20)
     expect(limitSchema.safeParse('7')).toEqual({ success: true, data: 7 })
   })
@@ -64,8 +67,17 @@ describe('pagination (SPEC §0.4)', () => {
   })
 
   test('cursor is optional but may not be empty; extra keys are ignored', () => {
-    expect(paginationQuerySchema.safeParse({})).toEqual({ success: true, data: { limit: 20 } })
-    expect(paginationQuerySchema.safeParse({ limit: '5', cursor: 'abc', other: 'x' })).toEqual({
+    expect(paginationQuerySchema.safeParse({})).toEqual({
+      success: true,
+      data: { limit: 20 },
+    })
+    expect(
+      paginationQuerySchema.safeParse({
+        limit: '5',
+        cursor: 'abc',
+        other: 'x',
+      }),
+    ).toEqual({
       success: true,
       data: { limit: 5, cursor: 'abc' },
     })
@@ -97,7 +109,10 @@ describe('pagination (SPEC §0.4)', () => {
   })
 
   test('logs use before/after over the serial id with the shared limit', () => {
-    expect(listLogsQuerySchema.safeParse({})).toEqual({ success: true, data: { limit: 20 } })
+    expect(listLogsQuerySchema.safeParse({})).toEqual({
+      success: true,
+      data: { limit: 20 },
+    })
     expect(accepts(listLogsQuerySchema, { before: '17', limit: '100' })).toBe(true)
     expect(accepts(listLogsQuerySchema, { after: '' })).toBe(false)
     expect(accepts(listLogsQuerySchema, { limit: '0' })).toBe(false)
@@ -134,7 +149,11 @@ describe('enumerations (SPEC §1)', () => {
       expect(accepts(errorResponseSchema, { error: { code, message: 'm' } })).toBe(true)
     }
     expect(accepts(errorResponseSchema, { error: { code: 'teapot', message: 'm' } })).toBe(false)
-    expect(accepts(errorResponseSchema, { error: { code: 'not_found', message: '' } })).toBe(false)
+    expect(
+      accepts(errorResponseSchema, {
+        error: { code: 'not_found', message: '' },
+      }),
+    ).toBe(false)
   })
 })
 
@@ -152,9 +171,19 @@ describe('handle (SPEC §5)', () => {
     const base = { init_admin_key: 'k', display_name: 'D' }
     expect(accepts(setupRequestSchema, { ...base, handle: 'ok-handle' })).toBe(true)
     expect(accepts(setupRequestSchema, { ...base, handle: 'a' })).toBe(false)
-    expect(accepts(setupRequestSchema, { ...base, init_admin_key: '', handle: 'ok' })).toBe(false)
+    expect(
+      accepts(setupRequestSchema, {
+        ...base,
+        init_admin_key: '',
+        handle: 'ok',
+      }),
+    ).toBe(false)
 
-    const create = { cf_access_email: 'a@example.com', display_name: 'D', role: 'user' }
+    const create = {
+      cf_access_email: 'a@example.com',
+      display_name: 'D',
+      role: 'user',
+    }
     expect(accepts(adminCreateUserRequestSchema, { ...create, handle: 'ok-handle' })).toBe(true)
     expect(accepts(adminCreateUserRequestSchema, { ...create, handle: '!!' })).toBe(false)
     expect(
@@ -184,10 +213,19 @@ describe('request bodies (SPEC §6-§10)', () => {
     expect(accepts(createProjectRequestSchema, { name: 'p', visibility: 'hidden' })).toBe(false)
   })
 
-  test('create job defaults config to {} and rejects an empty name', () => {
-    expect(createJobRequestSchema.safeParse({})).toEqual({ success: true, data: { config: {} } })
+  test('create job leaves name/config/id absent when omitted and rejects an empty name', () => {
+    expect(createJobRequestSchema.safeParse({})).toEqual({
+      success: true,
+      data: {},
+    })
     expect(accepts(createJobRequestSchema, { name: '' })).toBe(false)
     expect(accepts(createJobRequestSchema, { config: [] })).toBe(false)
+    expect(
+      accepts(createJobRequestSchema, {
+        id: '00000000-0000-4000-8000-000000000000',
+      }),
+    ).toBe(true)
+    expect(accepts(createJobRequestSchema, { id: 'not-a-uuid' })).toBe(false)
   })
 
   test('metrics ingest requires the array and validates each item', () => {
@@ -195,15 +233,26 @@ describe('request bodies (SPEC §6-§10)', () => {
     expect(accepts(ingestMetricsRequestSchema, { metrics: [] })).toBe(true)
     expect(
       accepts(ingestMetricsRequestSchema, {
-        metrics: [{ step: 1, key: 'loss', value: 0.5, logged_at: '2026-09-24T00:00:00.000Z' }],
+        metrics: [
+          {
+            step: 1,
+            key: 'loss',
+            value: 0.5,
+            logged_at: '2026-09-24T00:00:00.000Z',
+          },
+        ],
       }),
     ).toBe(true)
     expect(
-      accepts(ingestMetricsRequestSchema, { metrics: [{ step: 1.5, key: 'k', value: 0 }] }),
+      accepts(ingestMetricsRequestSchema, {
+        metrics: [{ step: 1.5, key: 'k', value: 0 }],
+      }),
     ).toBe(false)
-    expect(accepts(ingestMetricsRequestSchema, { metrics: [{ step: 1, key: '', value: 0 }] })).toBe(
-      false,
-    )
+    expect(
+      accepts(ingestMetricsRequestSchema, {
+        metrics: [{ step: 1, key: '', value: 0 }],
+      }),
+    ).toBe(false)
     expect(
       accepts(ingestMetricsRequestSchema, {
         metrics: [{ step: 1, key: 'k', value: 0, logged_at: 'not a date' }],
@@ -212,16 +261,25 @@ describe('request bodies (SPEC §6-§10)', () => {
   })
 
   test('logs ingest defaults a missing array to [] and validates each item', () => {
-    expect(ingestLogsRequestSchema.safeParse({})).toEqual({ success: true, data: { logs: [] } })
-    expect(accepts(ingestLogsRequestSchema, { logs: [{ stream: 'stdout', message: 'x' }] })).toBe(
-      true,
-    )
-    expect(accepts(ingestLogsRequestSchema, { logs: [{ stream: 'bogus', message: 'x' }] })).toBe(
-      false,
-    )
-    expect(accepts(ingestLogsRequestSchema, { logs: [{ stream: 'stdout', message: '' }] })).toBe(
-      false,
-    )
+    expect(ingestLogsRequestSchema.safeParse({})).toEqual({
+      success: true,
+      data: { logs: [] },
+    })
+    expect(
+      accepts(ingestLogsRequestSchema, {
+        logs: [{ stream: 'stdout', message: 'x' }],
+      }),
+    ).toBe(true)
+    expect(
+      accepts(ingestLogsRequestSchema, {
+        logs: [{ stream: 'bogus', message: 'x' }],
+      }),
+    ).toBe(false)
+    expect(
+      accepts(ingestLogsRequestSchema, {
+        logs: [{ stream: 'stdout', message: '' }],
+      }),
+    ).toBe(false)
     expect(
       accepts(ingestLogsRequestSchema, {
         logs: [{ stream: 'stdout', message: 'x', logged_at: '2026-09-24' }],
@@ -230,12 +288,30 @@ describe('request bodies (SPEC §6-§10)', () => {
   })
 
   test('media upload fields coerce step from the multipart string', () => {
-    expect(uploadMediaFieldsSchema.safeParse({ kind: 'image', step: '3', label: 'l' })).toEqual({
+    expect(
+      uploadMediaFieldsSchema.safeParse({
+        kind: 'image',
+        step: '3',
+        label: 'l',
+      }),
+    ).toEqual({
       success: true,
       data: { kind: 'image', step: 3, label: 'l' },
     })
-    expect(accepts(uploadMediaFieldsSchema, { kind: 'image', step: '3.5', label: 'l' })).toBe(false)
-    expect(accepts(uploadMediaFieldsSchema, { kind: 'image', step: '3', label: null })).toBe(false)
+    expect(
+      accepts(uploadMediaFieldsSchema, {
+        kind: 'image',
+        step: '3.5',
+        label: 'l',
+      }),
+    ).toBe(false)
+    expect(
+      accepts(uploadMediaFieldsSchema, {
+        kind: 'image',
+        step: '3',
+        label: null,
+      }),
+    ).toBe(false)
   })
 })
 

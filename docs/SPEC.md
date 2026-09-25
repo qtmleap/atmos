@@ -14,6 +14,7 @@ PLAN.mdの5節には無いが、5節の用途説明・6節のUI要件を満た�
 - `DELETE /api/projects/:project_id` — 6節のプロジェクト設定UIでプロジェクトを削除するため追加
 - `PATCH /api/projects/:project_id/jobs/:job_id` — 6節のjob詳細ページでjob名を編集するため追加
 - `DELETE /api/projects/:project_id/jobs/:job_id` — 6節のjob詳細ページでjobを削除するため追加
+- `POST /api/projects/:project_id/jobs`の`id`（省略可能） — wandbの`wandb.init(id=..., resume="allow")`相当の再開に対応するため追加。同じ`id`のjobが同じprojectに既にあれば新規作成せずそのjobへ書き足す
 
 ## 0. 共通事項
 
@@ -401,7 +402,7 @@ Response: `204 No Content`（プロジェクト配下のjob・metrics・logs・m
 
 ## 7. Jobs
 
-### `POST /api/projects/:project_id/jobs`
+### `POST /api/projects/:project_id/jobs`（`id`は追加分）
 
 認証: Bearer Token（`wb.init()`に対応）
 
@@ -409,12 +410,22 @@ Response: `204 No Content`（プロジェクト配下のjob・metrics・logs・m
 interface CreateJobRequest {
   name?: string
   config?: Record<string, unknown>
+  id?: string   // 省略可能。指定すると再開（wandbのresume="allow"相当）に使われる
 }
 ```
 
-Response `201`: `Job`（`status: "running"`, `started_at`はサーバー側の受信時刻）
+`id`の有無・一致で動作が分かれる:
+- `id`を指定しない、または誰も使っていない`id`を指定した — 新規作成
+- `id`を指定し、同じprojectに同じ`id`のjobが既にある — 再開。`status`を`"running"`に、`finished_at`を`null`に戻す（`started_at`は元のまま変えない）。`name`・`config`はリクエストにあれば上書きし、無ければ既存の値を保つ。既に`running`だった場合は状態はそのまま。`running`ではない状態から戻した場合のみ、その旨の`status`ライブメッセージ（`status: "running"`, `finished_at: null`）を配信する（§11）
+- `id`を指定し、別のprojectに同じ`id`のjobが既にある — `409 conflict`（`id`はproject横断で一意に使う）
 
-エラー: `404 not_found` — `project_id`が存在しない、またはトークンの持ち主がこのプロジェクトへの書き込み権限を持たない
+Response:
+- `200`: `Job` — 既存のjobを再開した
+- `201`: `Job`（`status: "running"`, `started_at`はサーバー側の受信時刻） — 新規作成した
+
+エラー:
+- `404 not_found` — `project_id`が存在しない、またはトークンの持ち主がこのプロジェクトへの書き込み権限を持たない
+- `409 conflict` — `id`が別のprojectのjobに使われている
 
 ### `GET /api/projects/:project_id/jobs`
 

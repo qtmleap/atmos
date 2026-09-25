@@ -106,6 +106,7 @@ def init(
     *,
     name: str | None = None,
     config: Mapping[str, Any] | None = None,
+    job_id: str | None = None,
     visibility: Visibility = "private",
     api_url: str | None = None,
     token: str | None = None,
@@ -124,7 +125,12 @@ def init(
        既存projectを再利用した場合、`visibility`は無視され公開範囲は変わらない。
        指定した`visibility`と既存projectの公開範囲が異なる場合は警告ログを出す
        （変更したい場合はWebの設定から行う）。
-    2. `POST /api/projects/:project_id/jobs` でjobを作成する。
+    2. `POST /api/projects/:project_id/jobs` でjobを作成する。`job_id`を渡すと、
+       同じprojectに同じidのjobが既にあれば新規作成せずそのjobを再開する
+       （wandbの`wandb.init(id=..., resume="allow")`相当）。再開時は`status`が
+       `running`に、`finished_at`が`None`に戻り、`name`/`config`はこの呼び出しで
+       渡した値があれば上書きされる（`started_at`は元のまま）。再開したかどうかは
+       `logging.getLogger("atmos")`にinfoログで出す。
     3. できあがった`Run`を返す。以降の`log()`等はバックグラウンドスレッドで
        バッチ送信される。
 
@@ -206,6 +212,8 @@ def init(
             job_body["name"] = name
         if config is not None:
             job_body["config"] = dict(config)
+        if job_id is not None:
+            job_body["id"] = job_id
 
         job_response = _post_with_retry(
             client,
@@ -215,6 +223,11 @@ def init(
             label="create job",
         )
         job = job_response.json()
+        if job_response.status_code == 200:
+            logger.info(
+                "atmos: 既存のjob %r を再開しました（新規作成はしていません）",
+                job["id"],
+            )
 
         return Run(
             client=client,
