@@ -136,7 +136,9 @@ describe('access tokens', () => {
 describe('authorization', () => {
   const owner = user({ id: 'owner' })
   const other = user({ id: 'other' })
+  const admin = user({ id: 'admin', role: 'admin' })
   const publicProject = { visibility: 'public' as const, ownerId: 'owner' }
+  const internalProject = { visibility: 'internal' as const, ownerId: 'owner' }
   const privateProject = { visibility: 'private' as const, ownerId: 'owner' }
 
   test('public projects are visible to everyone', () => {
@@ -144,17 +146,27 @@ describe('authorization', () => {
     expect(canViewProject(publicProject, other)).toBe(true)
   })
 
-  test('private projects are visible to the owner only', () => {
+  test('internal projects are visible to any signed-in registered user, not to anonymous viewers', () => {
+    expect(canViewProject(internalProject, null)).toBe(false)
+    expect(canViewProject(internalProject, other)).toBe(true)
+    expect(canViewProject(internalProject, owner)).toBe(true)
+  })
+
+  test('private projects are visible to the owner and admins only', () => {
     expect(canViewProject(privateProject, owner)).toBe(true)
     expect(canViewProject(privateProject, other)).toBe(false)
     expect(canViewProject(privateProject, null)).toBe(false)
+    expect(canViewProject(privateProject, admin)).toBe(true)
   })
 
-  test('assertCanViewProject: 401 for anonymous, 403 for non-owner', () => {
+  test('assertCanViewProject: 401 for anonymous, 403 for non-owner/non-admin', () => {
     expect(statusOf(() => assertCanViewProject(privateProject, null))).toBe(401)
     expect(statusOf(() => assertCanViewProject(privateProject, other))).toBe(403)
     expect(statusOf(() => assertCanViewProject(privateProject, owner))).toBeNull()
+    expect(statusOf(() => assertCanViewProject(privateProject, admin))).toBeNull()
     expect(statusOf(() => assertCanViewProject(publicProject, null))).toBeNull()
+    expect(statusOf(() => assertCanViewProject(internalProject, null))).toBe(401)
+    expect(statusOf(() => assertCanViewProject(internalProject, other))).toBeNull()
   })
 
   test('only the owner writes', () => {

@@ -17,6 +17,15 @@ screens:
         versions:
           astra: {type: html, path: designs/components/foundations.html}
         actual: {type: url, url: "http://localhost:12155/catalog/foundations"}
+  - id: component-foundations-dark
+    name: 基礎（ダーク）
+    category: コンポーネント
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/components/foundations-dark.html}
   - id: component-controls
     name: 操作部品
     category: コンポーネント
@@ -77,6 +86,15 @@ screens:
         versions:
           astra: {type: html, path: designs/components/feedback.html}
         actual: {type: url, url: "http://localhost:12155/catalog/feedback"}
+  - id: component-theme-dark
+    name: ダークモード（見本）
+    category: コンポーネント
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/components/theme-dark.html}
   - id: page-projects
     name: プロジェクト一覧
     category: ページ
@@ -87,6 +105,16 @@ screens:
         versions:
           astra: {type: html, path: designs/pages/projects.html}
         actual: {type: url, url: "http://localhost:12155/"}
+  - id: page-projects-new
+    name: 新規プロジェクト
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/projects-new.html}
+        actual: {type: url, url: "http://localhost:12155/?new=1"}
   - id: page-project-jobs
     name: ジョブ一覧
     category: ページ

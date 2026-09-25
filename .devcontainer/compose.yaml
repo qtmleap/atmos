@@ -21,7 +21,7 @@ services:
   # MCP 側は 127.0.0.1:12355 を見に行き、向き先を変える手段が無いので、
   # network_mode でアプリと同じネットワーク名前空間に入れて PORT を合わせる。
   mock-diff:
-    image: ghcr.io/qtmleap/mock-diff-viewer:0.3.2
+    image: ghcr.io/qtmleap/mock-diff-viewer:0.3.4
     network_mode: "service:app"
     volumes:
       # docs/mock-diff だけを渡す。mock-diff.yaml のパスはここを根に書き、
