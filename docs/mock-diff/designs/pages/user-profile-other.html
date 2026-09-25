@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>佐藤 悠斗 · atmos</title>
+  <link rel="stylesheet" href="../_shared/atmos.css">
+  <style>
+    .page-content { max-width: 1600px; margin: 0 auto; padding: 32px 32px 24px; }
+    .profile-heading { display: flex; align-items: center; gap: 20px; padding-block: 32px; border-bottom: 1px solid var(--border); }
+    .profile-heading h1 { font-size: 24px; line-height: 32px; }
+    .avatar-profile { width: 64px; height: 64px; font-size: 24px; }
+    .section-heading { display: flex; justify-content: space-between; align-items: center; padding-block: 28px 20px; }
+    .project-row-profile { grid-template-columns: minmax(0, 1fr) 100px 130px 16px; min-height: 72px; }
+    .project-row-profile .visibility { justify-self: start; align-self: center; }
+    .project-row-profile:hover { text-decoration: none; }
+    .project-row-profile:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+    .list-footer { padding-top: 16px; }
+    @media (max-width: 700px) { .page-content { padding-inline: 16px; } .profile-heading { flex-wrap: wrap; } .project-row-profile { grid-template-columns: minmax(0, 1fr) 80px 16px; } .project-row-profile time { display: none; } }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header">
+  <a class="app-logo" href="projects.html" aria-label="atmos ホーム">atmos</a>
+  <nav class="app-nav" aria-label="メインナビゲーション"><a href="projects.html">プロジェクト</a><a href="/users" aria-current="page">メンバー</a></nav>
+  <div class="app-account"><button class="btn btn-ghost btn-icon" type="button" aria-label="表示テーマ: システム" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu-1"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg></button><div class="dropdown" id="theme-menu-1" role="menu" aria-label="表示テーマ" hidden><button class="dropdown-item" role="menuitem" data-preference="system" aria-current="true" aria-label="表示テーマ: システム（選択中）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>システム<span class="shortcut"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m20 6-11 11-5-5"/></svg></span></button><button class="dropdown-item" role="menuitem" data-preference="light"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>ライト</button><button class="dropdown-item" role="menuitem" data-preference="dark"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>ダーク</button></div><span class="small">田中 美咲</span><span class="avatar" role="img" aria-label="田中 美咲のアバター">田</span><button class="btn btn-ghost btn-icon" type="button" aria-label="ユーザーメニュー" aria-haspopup="menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>
+</header>
+  <main class="page-content">
+    <nav class="breadcrumb" aria-label="パンくず"><ol><li><a href="/users">メンバー</a><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></li><li><span aria-current="page">佐藤 悠斗</span></li></ol></nav>
+    <header class="profile-heading"><span class="avatar avatar-profile" role="img" aria-label="佐藤 悠斗のアバター">佐</span><div class="stack-sm"><h1>佐藤 悠斗</h1><p class="muted mono">@yuto_s</p></div></header>
+    <section aria-labelledby="owned-projects">
+      <div class="section-heading"><div class="stack-sm"><h2 id="owned-projects">所有するプロジェクト</h2><p class="description">佐藤 悠斗さんが所有するプロジェクトです。</p></div><span class="small muted">4件表示</span></div>
+      <div class="data-list">
+        <a class="data-row project-row-profile" href="/projects/prj_yuto_diarization"><div class="stack-sm"><p class="data-row-title">音声認識 / 話者分離</p><p class="data-row-meta">作成日 2026年9月15日</p></div><span class="badge badge-outline visibility">メンバー限定</span><time class="small muted" datetime="2026-09-15">2026-09-15</time><svg class="icon muted" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
+        <a class="data-row project-row-profile" href="/projects/prj_yuto_prosody"><div class="stack-sm"><p class="data-row-title">音声合成 / 韻律予測</p><p class="data-row-meta">作成日 2026年9月4日</p></div><span class="badge badge-outline visibility">メンバー限定</span><time class="small muted" datetime="2026-09-04">2026-09-04</time><svg class="icon muted" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
+        <a class="data-row project-row-profile" href="/projects/prj_bigvgan"><div class="stack-sm"><p class="data-row-title">ボコーダ / BigVGAN</p><p class="data-row-meta">作成日 2026年8月28日</p></div><span class="badge badge-outline visibility">公開</span><time class="small muted" datetime="2026-08-28">2026-08-28</time><svg class="icon muted" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
+        <a class="data-row project-row-profile" href="/projects/prj_yuto_codec"><div class="stack-sm"><p class="data-row-title">音声符号化 / ニューラルコーデック</p><p class="data-row-meta">作成日 2026年8月18日</p></div><span class="badge badge-outline visibility">公開</span><time class="small muted" datetime="2026-08-18">2026-08-18</time><svg class="icon muted" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
+      </div>
+      <nav class="pagination list-footer" aria-label="プロジェクトのページ送り"><span>4件表示 · すべて表示しました</span><ul class="pagination-content"><li><button class="btn btn-ghost" type="button" disabled>前へ</button></li><li><button class="btn btn-outline" type="button" disabled>次へ</button></li></ul></nav>
+      <p class="small muted list-footer">公開・メンバー限定のプロジェクトを表示しています。</p>
+    </section>
+  </main>
+</div>
+<script src="../_shared/theme-toggle.js"></script>
+</body>
+</html>

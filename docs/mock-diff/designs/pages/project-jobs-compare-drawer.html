@@ -90,6 +90,8 @@
     @container (min-width: 72rem) { .compare-main.size-m .metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     .compare-main.size-m .chart-svg { height: 248px; }
     .compare-main.size-l .metric-grid { grid-template-columns: minmax(0, 1fr); }
+    .compare-main:not(.size-l) .metric-grid:has(> :nth-child(2):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .compare-main .metric-grid:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
     .compare-main.size-l .chart-svg { height: 360px; }
   </style>
 </head>

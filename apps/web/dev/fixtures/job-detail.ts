@@ -1,13 +1,18 @@
 // One job and what hangs off it: GET .../jobs/:job_id, .../metrics, .../logs,
 // .../media, .../media/:media_id and POST .../finish.
 //
-// Two jobs are drawn in full by the mocks, both named vits-baseline-042:
-//   - designs/pages/job-detail.html         running, id job_vits_baseline_042
-//   - designs/pages/job-detail-failed.html  failed,  id job_vits_baseline_042_failed
-// Both started 2026-09-24 06:00:00 UTC and last reported step 48,000 of
-// 200,000 at 09:42:18 (train/loss 0.1824, val/loss 0.2108, lr 1.20e-4,
-// grad_norm 1.842); the failed one ended at 09:42:24 on a CUDA OOM.
-// Their metric series are the mock's polylines read back into values.
+// Four jobs are drawn in full by the mocks, all named vits-baseline-042 and
+// started 2026-09-24 06:00:00 UTC:
+//   - designs/pages/job-detail.html           running,  id job_vits_baseline_042
+//   - designs/pages/job-detail-failed.html    failed,   id job_vits_baseline_042_failed
+//   - designs/pages/job-detail-finished.html  finished, id job_vits_baseline_042_finished
+//   - designs/pages/job-detail-waiting.html   running,  id job_vits_baseline_042_waiting
+// The running and failed ones last reported step 48,000 of 200,000 at
+// 09:42:18 (train/loss 0.1824, val/loss 0.2108, lr 1.20e-4, grad_norm 1.842);
+// the failed one ended at 09:42:24 on a CUDA OOM. The finished one ran the
+// same curves out to step 200,000 and ended at 21:30:00. The waiting one has
+// reported nothing yet. The metric series are the mock's polylines read back
+// into values.
 //
 // The list jobs of jobs.ts also open, with series from compare-series.ts and
 // no logs or media.
@@ -18,34 +23,40 @@ import {
   type Job,
   type LogLine,
   type MediaAsset,
-  type MediaKind,
   type Metric,
   type Page,
   type UpdateJobRequest,
 } from '../../src/shared/types'
 import { COMPARE_SERIES, type SeriesPoints } from './compare-series'
+import { FAILED_LOGS, FINISHED_LOGS, type LogSpec, RUNNING_LOGS, toLogLines } from './job-logs'
+import { baselineMedia, mediaFile } from './job-media'
 import { deleteJobFixture, isJobDeleted, LIST_JOBS, setJobName, withJobOverrides } from './jobs'
 import { ME } from './me'
 import { VITS_PROJECT_ID } from './projects'
 import {
   afterSerial,
   apiError,
-  binary,
   type FixtureHandler,
   json,
   noContent,
   notFound,
   paginate,
   readLimit,
+  type Scenario,
 } from './respond'
 
 export const RUNNING_JOB_ID = 'job_vits_baseline_042'
 export const FAILED_JOB_ID = 'job_vits_baseline_042_failed'
+export const FINISHED_JOB_ID = 'job_vits_baseline_042_finished'
+export const WAITING_JOB_ID = 'job_vits_baseline_042_waiting'
 
 const STARTED_AT = '2026-09-24T06:00:00Z'
 const LAST_RECEIVED_AT = '2026-09-24T09:42:18Z'
 const FAILED_AT = '2026-09-24T09:42:24Z'
 const LAST_STEP = 48000
+const FINISHED_AT = '2026-09-24T21:30:00Z'
+const FINISHED_LAST_METRIC_AT = '2026-09-24T21:29:18.092Z'
+const FINISHED_STEP = 200000
 
 /** The eight rows of the mock's config table, in its order. */
 const CONFIG = {
@@ -59,20 +70,22 @@ const CONFIG = {
   fp16: true,
 }
 
-const baselineJob = (id: string, failed: boolean): Job => ({
+const baselineJob = (id: string, status: Job['status'], finishedAt: string | null): Job => ({
   id,
   project_id: VITS_PROJECT_ID,
   name: 'vits-baseline-042',
-  status: failed ? 'failed' : 'running',
+  status,
   config: CONFIG,
   created_by: ME.id,
   started_at: STARTED_AT,
-  finished_at: failed ? FAILED_AT : null,
+  finished_at: finishedAt,
 })
 
 const DETAIL_JOBS: readonly Job[] = [
-  baselineJob(RUNNING_JOB_ID, false),
-  baselineJob(FAILED_JOB_ID, true),
+  baselineJob(RUNNING_JOB_ID, 'running', null),
+  baselineJob(FAILED_JOB_ID, 'failed', FAILED_AT),
+  baselineJob(FINISHED_JOB_ID, 'finished', FINISHED_AT),
+  baselineJob(WAITING_JOB_ID, 'running', null),
 ]
 
 const withoutListFields = ({ last_step: _step, ...rest }: (typeof LIST_JOBS)[number]): Job => rest
@@ -110,8 +123,9 @@ const readPolyline = ({ points, x, maxStep, y, value }: Polyline): SeriesPoints 
     return [step, value[0] + ratio * (value[1] - value[0])] as const
   })
 
-// job-detail.html: loss charts span y 144..24 for 0.1..1.0, lr 144..24 for
-// 0..3e-4, grad_norm 144..24 for 0..6; x spans step 0..48,000.
+// Traced from job-detail.html's earlier axes: loss charts span y 144..24 for
+// 0.1..1.0, lr 144..24 for 0..3e-4, grad_norm 144..24 for 0..6; x spans step
+// 0..48,000.
 const TRAIN_LOSS = readPolyline({
   points:
     '44,35 61,48 78,43 94,64 110,60 127,82 144,78 160,94 177,90 193,102 210,98 226,111 243,107 259,118 276,114 292,124 309,119 325,127 342,124 358,130 375,126 391,132 408,130 424,134 440,133',
@@ -180,6 +194,21 @@ const BASELINE_SERIES: Readonly<Record<string, SeriesPoints>> = {
   grad_norm: resample(GRAD_NORM, 500, LAST_STEP, 1.842),
 }
 
+/** `series` with every step stretched by `factor`, keeping the values. */
+const stretch = (
+  series: Readonly<Record<string, SeriesPoints>>,
+  factor: number,
+): Record<string, SeriesPoints> =>
+  Object.fromEntries(
+    Object.entries(series).map(([key, points]) => [
+      key,
+      points.map(([step, value]) => [step * factor, value] as const),
+    ]),
+  )
+
+/** The baseline curves drawn over 200,000 steps, as the finished mock does. */
+const FINISHED_SERIES = stretch(BASELINE_SERIES, FINISHED_STEP / LAST_STEP)
+
 /** Receive time of `step` on a run that reached `lastStep` at `lastAt`. */
 const loggedAt = (startedAt: string, lastAt: string, lastStep: number, step: number): string => {
   const start = dayjs(startedAt)
@@ -214,200 +243,100 @@ const toMetrics = (
     }))
 }
 
-const metricsOf = (job: Job): Metric[] => {
-  if (job.id === RUNNING_JOB_ID || job.id === FAILED_JOB_ID) {
-    return toMetrics(job.id, BASELINE_SERIES, STARTED_AT, LAST_RECEIVED_AT)
+/** `?scenario=value-head`: every job also logs a value head's loss and sign accuracy. */
+export const VALUE_HEAD_SCENARIO = 'value-head'
+
+/** Deterministic wobble in -1..1, so reloads draw the same curve. */
+const wobble = (step: number, seed: number): number =>
+  Math.sin(step * 0.00037 + seed * 1.7) * 0.6 + Math.sin(step * 0.0011 + seed) * 0.4
+
+/**
+ * train/value (falls from 0.42 toward 0.11) and train/value_sign (rises from
+ * 0.55 toward 0.86), on the steps `base` was logged at.
+ */
+const valueHeadSeries = (base: SeriesPoints): Record<string, SeriesPoints> => {
+  const lastStep = base.reduce((max, [step]) => Math.max(max, step), 1)
+  const progress = (step: number): number => 1 - Math.exp((-3 * step) / lastStep)
+  return {
+    'train/value': base.map(
+      ([step]) =>
+        [
+          step,
+          Number((0.42 - 0.31 * progress(step) + 0.012 * wobble(step, 1)).toPrecision(4)),
+        ] as const,
+    ),
+    'train/value_sign': base.map(
+      ([step]) =>
+        [
+          step,
+          Number((0.55 + 0.31 * progress(step) + 0.01 * wobble(step, 2)).toPrecision(4)),
+        ] as const,
+    ),
   }
-  const series = job.name === null ? undefined : COMPARE_SERIES[job.name]
-  const lastAt = job.finished_at === null ? '2026-09-24T14:32:00Z' : job.finished_at
-  return series === undefined ? [] : toMetrics(job.id, series, job.started_at, lastAt)
+}
+
+const seriesOf = (job: Job): Readonly<Record<string, SeriesPoints>> | undefined => {
+  if (job.id === RUNNING_JOB_ID || job.id === FAILED_JOB_ID) {
+    return BASELINE_SERIES
+  }
+  if (job.id === FINISHED_JOB_ID) {
+    return FINISHED_SERIES
+  }
+  return job.name === null ? undefined : COMPARE_SERIES[job.name]
+}
+
+const lastMetricAt = (job: Job): string => {
+  if (job.id === RUNNING_JOB_ID || job.id === FAILED_JOB_ID) {
+    return LAST_RECEIVED_AT
+  }
+  if (job.id === FINISHED_JOB_ID) {
+    return FINISHED_LAST_METRIC_AT
+  }
+  return job.finished_at === null ? '2026-09-24T14:32:00Z' : job.finished_at
+}
+
+const metricsOf = (job: Job, scenario: Scenario): Metric[] => {
+  const series = seriesOf(job)
+  if (series === undefined) {
+    return []
+  }
+  const base = series['train/loss']
+  const withValueHead =
+    scenario === VALUE_HEAD_SCENARIO && base !== undefined
+      ? { ...series, ...valueHeadSeries(base) }
+      : series
+  return toMetrics(job.id, withValueHead, job.started_at, lastMetricAt(job))
 }
 
 // ---------------------------------------------------------------------------
 // Logs
 // ---------------------------------------------------------------------------
 
-type LogSpec = readonly [time: string, stream: LogLine['stream'], message: string]
+const logSpecsOf = (jobId: string): readonly LogSpec[] => {
+  switch (jobId) {
+    case RUNNING_JOB_ID:
+      return RUNNING_LOGS
+    case FAILED_JOB_ID:
+      return FAILED_LOGS
+    case FINISHED_JOB_ID:
+      return FINISHED_LOGS
+    default:
+      return []
+  }
+}
 
-const RUNNING_LOGS: readonly LogSpec[] = [
-  ['09:42:00.125', 'stdout', '[eval] validation started: 128 samples'],
-  ['09:42:08.731', 'stdout', '[eval] step=48000 val/loss=0.2108'],
-  ['09:42:12.306', 'stdout', '[media] uploaded mel/generated, sample/generated'],
-  ['09:42:18.092', 'stdout', '[train] step=48000 loss=0.1824 lr=0.0001200 grad_norm=1.842'],
-]
-
-const FAILED_LOGS: readonly LogSpec[] = [
-  ...RUNNING_LOGS,
-  ['09:42:23.804', 'stdout', '[train] epoch=156 step=48100 batch_size=32'],
-  ['09:42:24.016', 'stderr', 'Traceback (most recent call last):'],
-  ['09:42:24.016', 'stderr', '  File "/workspace/vits/train.py", line 287, in train_and_evaluate'],
-  ['09:42:24.016', 'stderr', '    loss_gen_all.backward()'],
-  [
-    '09:42:24.017',
-    'stderr',
-    '  File "/opt/venv/lib/python3.11/site-packages/torch/_tensor.py", line 581, in backward',
-  ],
-  [
-    '09:42:24.017',
-    'stderr',
-    '    torch.autograd.backward(self, gradient, retain_graph, create_graph)',
-  ],
-  [
-    '09:42:24.018',
-    'stderr',
-    'torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 256.00 MiB.',
-  ],
-  [
-    '09:42:24.018',
-    'stderr',
-    'GPU 0 has a total capacity of 23.69 GiB of which 112.25 MiB is free.',
-  ],
-  [
-    '09:42:24.018',
-    'stderr',
-    'Including non-PyTorch memory, this process has 23.58 GiB memory in use.',
-  ],
-  ['09:42:24.124', 'stdout', '[atmos] run finished: status=failed'],
-]
-
-const toLogLines = (jobId: string, specs: readonly LogSpec[]): LogLine[] =>
-  specs.map(([time, stream, message], index) => ({
-    id: String(index + 1),
-    job_id: jobId,
-    stream,
-    message,
-    logged_at: `2026-09-24T${time}Z`,
-  }))
-
-const logsOf = (job: Job): LogLine[] =>
-  job.id === RUNNING_JOB_ID
-    ? toLogLines(job.id, RUNNING_LOGS)
-    : job.id === FAILED_JOB_ID
-      ? toLogLines(job.id, FAILED_LOGS)
-      : []
+const logsOf = (job: Job): LogLine[] => toLogLines(job.id, logSpecsOf(job.id))
 
 // ---------------------------------------------------------------------------
 // Media
 // ---------------------------------------------------------------------------
 
-// The mock's thumbnails are inline SVG; the same drawings are served as the
-// image files, with its light-theme CSS variables written out.
-const MUTED = 'oklch(0.97 0 0)'
-const CHART_1 = 'oklch(0.646 0.222 41.116)'
-const CHART_2 = 'oklch(0.6 0.118 184.704)'
-const CHART_3 = 'oklch(0.398 0.07 227.392)'
-
-const svg = (body: string): string =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 120" width="560" height="240"><rect width="280" height="120" fill="${MUTED}"/>${body}</svg>`
-
-const IMAGES: Readonly<Record<string, string>> = {
-  'mel/generated': svg(
-    `<g stroke="${CHART_3}" stroke-width="8" opacity=".6"><path d="M16 95V70M30 100V50M44 100V30M58 105V55M72 100V22M86 96V42M100 105V55M114 103V30M128 106V46M142 105V20M156 100V35M170 100V50M184 104V60M198 103V40M212 99V53M226 100V30M240 105V60M254 100V80"/></g><g stroke="${CHART_1}" stroke-width="3" fill="none"><path d="M14 87 44 80 74 85 104 77 134 80 164 73 194 78 224 70 258 84M14 70 44 63 74 67 104 58 134 63 164 55 194 61 224 52 258 67"/></g>`,
-  ),
-  'mel/reference': svg(
-    `<g stroke="${CHART_3}" stroke-width="8" opacity=".6"><path d="M16 95V75M30 100V55M44 100V34M58 105V50M72 100V25M86 96V39M100 105V50M114 103V35M128 106V40M142 105V25M156 100V33M170 100V52M184 104V55M198 103V43M212 99V50M226 100V36M240 105V63M254 100V76"/></g><g stroke="${CHART_2}" stroke-width="3" fill="none"><path d="M14 86 44 81 74 83 104 78 134 79 164 74 194 77 224 72 258 82M14 69 44 64 74 65 104 60 134 61 164 56 194 59 224 54 258 65"/></g>`,
-  ),
-  alignment: svg(
-    `<g fill="${CHART_3}"><rect x="20" y="90" width="30" height="10"/><rect x="48" y="80" width="25" height="10"/><rect x="70" y="70" width="40" height="10"/><rect x="108" y="60" width="25" height="10"/><rect x="130" y="50" width="40" height="10"/><rect x="168" y="40" width="30" height="10"/><rect x="195" y="30" width="36" height="10"/><rect x="229" y="20" width="30" height="10"/></g>`,
-  ),
-}
-
-const SAMPLE_RATE = 22050
-/** "0:00 / 0:08" */
-const AUDIO_SECONDS = 8
-
-/** A silent 16-bit mono WAV of the mock's length, so the player shows 0:08. */
-const silentWav = (): Uint8Array => {
-  const dataBytes = SAMPLE_RATE * AUDIO_SECONDS * 2
-  const buffer = new ArrayBuffer(44 + dataBytes)
-  const view = new DataView(buffer)
-  const ascii = (offset: number, text: string) => {
-    for (const [index, char] of [...text].entries()) {
-      view.setUint8(offset + index, char.charCodeAt(0))
-    }
-  }
-  ascii(0, 'RIFF')
-  view.setUint32(4, 36 + dataBytes, true)
-  ascii(8, 'WAVE')
-  ascii(12, 'fmt ')
-  view.setUint32(16, 16, true)
-  view.setUint16(20, 1, true)
-  view.setUint16(22, 1, true)
-  view.setUint32(24, SAMPLE_RATE, true)
-  view.setUint32(28, SAMPLE_RATE * 2, true)
-  view.setUint16(32, 2, true)
-  view.setUint16(34, 16, true)
-  ascii(36, 'data')
-  view.setUint32(40, dataBytes, true)
-  return new Uint8Array(buffer)
-}
-
-const WAV = silentWav()
-
-const mediaUrl = (jobId: string, mediaId: string): string =>
-  `/api/projects/${VITS_PROJECT_ID}/jobs/${jobId}/media/${mediaId}`
-
-const asset = (
-  jobId: string,
-  id: string,
-  kind: MediaKind,
-  label: string,
-  contentType: string,
-  size: number,
-  at: string,
-): MediaAsset => ({
-  id,
-  job_id: jobId,
-  step: LAST_STEP,
-  kind,
-  label,
-  content_type: contentType,
-  size,
-  url: mediaUrl(jobId, id),
-  logged_at: at,
-})
-
 const mediaOf = (job: Job): MediaAsset[] =>
-  job.id === RUNNING_JOB_ID || job.id === FAILED_JOB_ID
-    ? [
-        asset(
-          job.id,
-          'med_mel_generated',
-          'image',
-          'mel/generated',
-          'image/png',
-          48213,
-          '2026-09-24T09:42:12.306Z',
-        ),
-        asset(
-          job.id,
-          'med_mel_reference',
-          'image',
-          'mel/reference',
-          'image/png',
-          47890,
-          '2026-09-24T09:42:12.306Z',
-        ),
-        asset(
-          job.id,
-          'med_alignment',
-          'image',
-          'alignment',
-          'image/png',
-          21504,
-          '2026-09-24T09:42:12.306Z',
-        ),
-        asset(
-          job.id,
-          'med_sample_generated',
-          'audio',
-          'sample/generated',
-          'audio/wav',
-          WAV.byteLength,
-          '2026-09-24T09:42:12.306Z',
-        ),
-      ]
-    : []
+  job.id === FINISHED_JOB_ID
+    ? baselineMedia(job.id, FINISHED_STEP, '2026-09-24T21:29:12.306Z')
+    : job.id === RUNNING_JOB_ID || job.id === FAILED_JOB_ID
+      ? baselineMedia(job.id, LAST_STEP, '2026-09-24T09:42:12.306Z')
+      : []
 
 // ---------------------------------------------------------------------------
 // Handlers
@@ -424,11 +353,18 @@ const withJob =
 
 export const getJob: FixtureHandler = withJob((job) => json(job))
 
+/** `?scenario=no-metrics`: no job has logged a metric (project-jobs-compare-no-metrics.html). */
+export const NO_METRICS_SCENARIO = 'no-metrics'
+
 /** `cursor` is the last id received (serial ids, `id > cursor`), like the real endpoint. */
-export const listMetrics: FixtureHandler = withJob((job, { url }) => {
+export const listMetrics: FixtureHandler = withJob((job, { url, scenario }) => {
+  if (scenario === NO_METRICS_SCENARIO) {
+    const empty: Page<Metric> = { items: [], next_cursor: null }
+    return json(empty)
+  }
   const key = url.searchParams.get('key')
   const sinceStep = url.searchParams.get('since_step')
-  const rows = afterSerial(metricsOf(job), url.searchParams.get('cursor')).filter(
+  const rows = afterSerial(metricsOf(job, scenario), url.searchParams.get('cursor')).filter(
     (row) =>
       (key === null || row.key === key) && (sinceStep === null || row.step >= Number(sinceStep)),
   )
@@ -466,11 +402,7 @@ export const getMediaFile: FixtureHandler = withJob((job, { params }) => {
   if (found === undefined) {
     return notFound(`media ${params.media_id}`)
   }
-  if (found.kind === 'audio') {
-    return binary('audio/wav', WAV)
-  }
-  const drawing = IMAGES[found.label]
-  return drawing === undefined ? notFound(`media ${found.id}`) : binary('image/svg+xml', drawing)
+  return mediaFile(found)
 })
 
 const isFinishJobRequest = (value: unknown): value is FinishJobRequest =>
@@ -495,8 +427,8 @@ const isUpdateJobRequest = (value: unknown): value is UpdateJobRequest =>
   (value.name === null || (typeof value.name === 'string' && value.name !== ''))
 
 /**
- * Persists into jobs.ts's EDITED_NAMES overlay: the job detail page re-reads
- * the job after saving.
+ * Persists into jobs.ts's EDITED_NAMES overlay, like createProject persists
+ * into CREATED: the job detail page re-reads the job after saving.
  */
 export const updateJob: FixtureHandler = withJob(async (job, { json: body }) => {
   const request = await body()

@@ -6,7 +6,7 @@ const valueClass = (entry: ConfigEntry): string =>
   entry.kind === 'null' ? 'text-muted-foreground' : entry.kind === 'number' ? 'tabular-nums' : ''
 
 /**
- * The sidebar's settings table: key on the left, value right-aligned, 11px
+ * The settings sheet's table: key on the left, value right-aligned, 11px
  * mono rows of 40px ruled below. Nested values are shown as one-line JSON.
  */
 export function ConfigTable({ config }: { config: Record<string, unknown> }) {

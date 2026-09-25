@@ -3,8 +3,9 @@
 //
 // The mock's list is its own cast (伊藤 陽菜, 渡辺 湊 ... with e-mail
 // addresses), not the members of users.html, so the rows are kept here
-// rather than derived from users.ts. It says "248人" / "1 / 31ページ"; the
-// wire type has no total, so only a next page is signalled.
+// rather than derived from users.ts. The wire type has no total, so the
+// first page just signals that a next one exists. The signed-in user is the
+// only admin, so demoting them answers 409 like the real API.
 import {
   type AdminCreateUserRequest,
   type AdminUpdateUserRequest,
@@ -32,10 +33,10 @@ const account = (
   cf_access_email: email,
 })
 
-/** The eight rows of admin.html, in its order ("1–8人を表示"). */
+/** The eight rows of admin.html, in its order. */
 const LISTED: readonly UserWithEmail[] = [
   ME,
-  account('yuto_s', '佐藤 悠斗', 'yuto.sato@example.com', 'admin', '2026-08-02T09:00:00Z'),
+  account('yuto_s', '佐藤 悠斗', 'yuto.sato@example.com', 'user', '2026-08-02T09:00:00Z'),
   account('aoi_ml', '鈴木 葵', 'aoi.suzuki@example.com', 'user', '2026-08-03T09:00:00Z'),
   account('ren_t', '高橋 蓮', 'ren.takahashi@example.com', 'user', '2026-08-04T09:00:00Z'),
   account('hina_ito', '伊藤 陽菜', 'hina.ito@example.com', 'user', '2026-08-05T09:00:00Z'),
@@ -46,10 +47,10 @@ const LISTED: readonly UserWithEmail[] = [
 
 /** Past the first page; not drawn in the mock. */
 const MORE: readonly UserWithEmail[] = [
-  account('daiki_k', '小林 大輝', 'daiki.kobayashi@example.com', 'admin', '2026-08-09T09:00:00Z'),
+  account('daiki_k', '小林 大輝', 'daiki.kobayashi@example.com', 'user', '2026-08-09T09:00:00Z'),
   account('mio_kato', '加藤 美緒', 'mio.kato@example.com', 'user', '2026-08-10T09:00:00Z'),
   account('kaito_y', '吉田 海斗', 'kaito.yoshida@example.com', 'user', '2026-08-11T09:00:00Z'),
-  account('rio_y', '山田 莉緒', 'rio.yamada@example.com', 'admin', '2026-08-12T09:00:00Z'),
+  account('rio_y', '山田 莉緒', 'rio.yamada@example.com', 'user', '2026-08-12T09:00:00Z'),
 ]
 
 const ACCOUNTS: readonly UserWithEmail[] = [...LISTED, ...MORE]
@@ -109,6 +110,10 @@ export const updateAdminUser: FixtureHandler = async ({ params, json: body }) =>
   const request = await body()
   if (!isUpdateRequest(request)) {
     return apiError(400, 'validation_error', 'role must be admin or user')
+  }
+  const admins = ACCOUNTS.filter((row) => row.role === 'admin')
+  if (request.role === 'user' && target.role === 'admin' && admins.length <= 1) {
+    return apiError(409, 'conflict', 'cannot demote the last admin')
   }
   return json(request.role === undefined ? target : { ...target, role: request.role })
 }

@@ -1,16 +1,27 @@
-import { useMemo } from 'react'
-import {
-  arrangeMetricCharts,
-  formatMetricShort,
-  formatStep,
-  type MetricChartSpec,
-  type MetricSeries,
-  seriesColor,
-} from '../../lib/metrics'
+// The metrics tab of job-detail.tsx: a single job's own metric charts, with
+// the same drag-to-zoom, log axes, name filter, display size and smoothing
+// as the project comparison view (components/project/compare-chart.tsx),
+// scoped to this job's metric names instead of other jobs
+// (lib/job-metric-view.ts `jobChartGroups`). State lives in the URL
+// (hooks/use-chart-view.ts); only which groups are collapsed is local.
+import { RotateCcwIcon } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { useChartInteraction } from '../../hooks/use-chart-interaction'
+import { useChartView } from '../../hooks/use-chart-view'
+import type { ChartRun } from '../../hooks/use-compare-chart'
+import type { ScaleKind } from '../../lib/chart-scale'
+import { CHART_HEIGHT_CLASS, chartGridColsClass } from '../../lib/chart-size'
+import { type JobChart, type JobChartLine, jobChartGroups } from '../../lib/job-metric-view'
+import { ENDED_NOTES, type JobPhase } from '../../lib/job-phase'
+import { formatMetricShort, formatStep, METRIC_LABELS, type MetricSeries } from '../../lib/metrics'
+import { ChartControls } from '../project/chart-controls'
+import { ChartSvg } from '../project/chart-svg'
+import { MetricGroupSection } from '../project/metric-group'
+import { Button } from '../ui/button'
 import { Skeleton } from '../ui/skeleton'
 import { formatUtcClock } from './format-utc'
 import { LiveIndicator } from './live-indicator'
-import { ChartLegend, type ChartLine, MetricChart } from './metric-chart'
+import { ChartLegend, type ChartLine, jobLineColor } from './metric-chart'
 import { WidgetHeader } from './widget-header'
 
 /** The 18px mono latest value on the right of a single-series header. */
@@ -22,57 +33,105 @@ export function MetricValue({ value }: { value: number }) {
   )
 }
 
+const toChartRuns = (lines: readonly JobChartLine[]): ChartRun[] =>
+  lines.map((line) => ({
+    jobId: line.key,
+    label: line.key,
+    color: line.color,
+    dashed: line.dashed,
+    raw: line.raw,
+    smoothed: line.smoothed,
+  }))
+
+const toLegendLines = (lines: readonly JobChartLine[]): ChartLine[] =>
+  lines.map((line) => ({ key: line.key, color: line.color, dashed: line.dashed }))
+
 export interface MetricFigureProps {
-  spec: MetricChartSpec
-  height: number
-  /** Subtitle under the title; defaults to the latest step. */
+  chart: JobChart
+  heightClassName: string
+  /** Above 0 draws each line's raw points dim under its smoothed line. */
+  smooth: number
+  /** Subtitle under the title; a pair defaults to its own, a single series has none. */
   subtitle?: string
-  /** The pair chart's right-hand note: live while running, "更新終了" after. */
+  /** The pair chart's right-hand note: live while running, `endedNote` after. */
   live: boolean
+  /** The note of an ended run's pair chart. */
+  endedNote?: string
   /** When the pair's latest point was received, for its footnote. */
   lastReceivedAt: string | null
 }
 
-const toLines = (spec: MetricChartSpec): ChartLine[] =>
-  spec.series.length > 1
-    ? spec.series.map((series, index) => ({ series, color: index, dashed: index === 1 }))
-    : spec.series.map((series) => ({ series, color: seriesColor(series.key), dashed: false }))
-
 /** One chart with its header, legend and (for a pair) footnote. */
-export function MetricFigure({ spec, height, subtitle, live, lastReceivedAt }: MetricFigureProps) {
-  const lines = useMemo(() => toLines(spec), [spec])
-  const first = spec.series[0]
+export function MetricFigure({
+  chart,
+  heightClassName,
+  smooth,
+  subtitle,
+  live,
+  endedNote = ENDED_NOTES.failed,
+  lastReceivedAt,
+}: MetricFigureProps) {
+  const runs = useMemo(() => toChartRuns(chart.lines), [chart.lines])
+  const interaction = useChartInteraction(runs, chart.xDomain, chart.yDomain)
+  const first = chart.spec.series[0]
   if (first === undefined) {
     return null
   }
-  const pair = spec.series.length > 1
+  const pair = chart.spec.series.length > 1
   return (
     <figure className="min-w-0">
       <WidgetHeader
         as="figcaption"
-        title={spec.title}
-        mono={spec.mono}
-        subtitle={
-          subtitle === undefined
-            ? pair
-              ? '学習と検証 · 全期間'
-              : `ステップ ${formatStep(first.latest.step)}`
-            : subtitle
-        }
+        title={chart.spec.title}
+        mono={chart.spec.mono}
+        subtitle={subtitle === undefined && pair ? '学習と検証 · 全期間' : subtitle}
         aside={
-          pair ? (
-            live ? (
-              <LiveIndicator>ライブ更新中</LiveIndicator>
+          <div className="flex items-center gap-2">
+            {pair ? (
+              live ? (
+                <LiveIndicator>ライブ更新中</LiveIndicator>
+              ) : (
+                <span className="text-xs text-muted-foreground">{endedNote}</span>
+              )
             ) : (
-              <span className="text-xs text-muted-foreground">更新終了</span>
-            )
-          ) : (
-            <MetricValue value={first.latest.value} />
-          )
+              <MetricValue value={first.latest.value} />
+            )}
+            {interaction.zoomed ? (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                type="button"
+                aria-label="ズームを戻す"
+                onClick={interaction.onZoomReset}
+                className="text-muted-foreground"
+              >
+                <RotateCcwIcon />
+              </Button>
+            ) : null}
+          </div>
         }
       />
-      <MetricChart lines={lines} height={height} live={pair} />
-      <ChartLegend lines={lines} />
+      <ChartSvg
+        metricKey={chart.spec.title}
+        sizeRef={interaction.sizeRef}
+        box={interaction.box}
+        xDomain={interaction.xDomain}
+        yDomain={interaction.yDomain}
+        runs={interaction.runs}
+        hover={interaction.hover}
+        highlightedJobId={null}
+        drag={interaction.drag}
+        smooth={smooth}
+        heightClassName={heightClassName}
+        colorOf={jobLineColor}
+        markLatest={pair && live}
+        onPointerDown={interaction.svgHandlers.onPointerDown}
+        onPointerMove={interaction.svgHandlers.onPointerMove}
+        onPointerUp={interaction.svgHandlers.onPointerUp}
+        onPointerLeave={interaction.svgHandlers.onPointerLeave}
+        onDoubleClick={interaction.svgHandlers.onDoubleClick}
+      />
+      <ChartLegend lines={toLegendLines(chart.lines)} />
       {pair ? (
         <p className="mt-2 text-xs text-muted-foreground">
           {lastReceivedAt === null ? '' : `最終受信 ${formatUtcClock(lastReceivedAt)} · `}step{' '}
@@ -104,7 +163,7 @@ export function MetricFigureLoading({ title, height }: { title: string; height: 
 }
 
 /** A key nothing has been logged for yet. */
-export function MetricFigureEmpty({ title, height }: { title: string; height: number }) {
+export function MetricFigureEmpty({ title, height }: { title: string; height?: number }) {
   return (
     <div className="min-w-0">
       <WidgetHeader
@@ -114,7 +173,7 @@ export function MetricFigureEmpty({ title, height }: { title: string; height: nu
       />
       <div
         className="grid place-content-center gap-2 text-center text-muted-foreground"
-        style={{ minHeight: height }}
+        style={height === undefined ? { aspectRatio: '460 / 180' } : { minHeight: height }}
       >
         <h3>データはまだありません</h3>
         <p className="text-xs">このキーの最初のメトリクスを待っています。</p>
@@ -128,23 +187,40 @@ export interface MetricChartsProps {
   loading: boolean
   error: string | null
   onRetry: () => void
-  running: boolean
+  phase: JobPhase
   lastReceivedAt: string | null
 }
 
-/** Chart height on the run page (the catalog uses the 180px default). */
-export const PAGE_CHART_HEIGHT = 144
+/** The keys the SDK examples log, drawn empty while a run waits for its first report. */
+const WAITING_KEYS = Object.keys(METRIC_LABELS)
 
-/** The metrics tab: charts two abreast in the arranged order. */
+/** The metrics tab: filterable, zoomable charts grouped by `/`-prefix (lib/job-metric-view.ts), two abreast by default. */
 export function MetricCharts({
   series,
   loading,
   error,
   onRetry,
-  running,
+  phase,
   lastReceivedAt,
 }: MetricChartsProps) {
-  const specs = useMemo(() => arrangeMetricCharts(series), [series])
+  const chartView = useChartView()
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const xKind: ScaleKind = chartView.logX ? 'log' : 'linear'
+  const yKind: ScaleKind = chartView.logY ? 'log' : 'linear'
+  const groups = useMemo(
+    () => jobChartGroups(series, { filter: chartView.run, smooth: chartView.smooth, xKind, yKind }),
+    [series, chartView.run, chartView.smooth, xKind, yKind],
+  )
+
+  if (series.length === 0 && phase === 'waiting' && !loading) {
+    return (
+      <div className="grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2">
+        {WAITING_KEYS.map((key) => (
+          <MetricFigureEmpty key={key} title={key} />
+        ))}
+      </div>
+    )
+  }
   if (series.length === 0) {
     return (
       <p className="py-8 text-xs text-muted-foreground">
@@ -152,8 +228,24 @@ export function MetricCharts({
       </p>
     )
   }
+  const live = phase === 'running' || phase === 'waiting'
+  const endedNote = phase === 'finished' ? ENDED_NOTES.finished : ENDED_NOTES.failed
+
   return (
-    <div>
+    <div className="@container">
+      <ChartControls
+        searchLabel="メトリクス名で絞り込み"
+        run={chartView.run}
+        onRunChange={chartView.setRun}
+        smooth={chartView.smooth}
+        onSmoothChange={chartView.setSmooth}
+        logX={chartView.logX}
+        onLogXChange={chartView.setLogX}
+        logY={chartView.logY}
+        onLogYChange={chartView.setLogY}
+        size={chartView.size}
+        onSizeChange={chartView.setSize}
+      />
       {error === null ? null : (
         <p role="alert" className="pb-3 text-xs text-destructive">
           {error}{' '}
@@ -162,17 +254,37 @@ export function MetricCharts({
           </button>
         </p>
       )}
-      <div className="grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2">
-        {specs.map((spec) => (
-          <MetricFigure
-            key={spec.id}
-            spec={spec}
-            height={PAGE_CHART_HEIGHT}
-            live={running}
-            lastReceivedAt={lastReceivedAt}
-          />
-        ))}
-      </div>
+      {groups.length === 0 ? (
+        <p className="py-10 text-center text-xs text-muted-foreground">
+          一致するメトリクスはありません。
+        </p>
+      ) : (
+        groups.map((group) => (
+          <MetricGroupSection
+            key={group.id}
+            title={group.title}
+            mono={group.mono}
+            count={group.charts.length}
+            collapsed={collapsed[group.id] === true}
+            onToggle={() =>
+              setCollapsed((current) => ({ ...current, [group.id]: current[group.id] !== true }))
+            }
+            gridClassName={chartGridColsClass(chartView.size, group.charts.length)}
+          >
+            {group.charts.map((chart) => (
+              <MetricFigure
+                key={chart.id}
+                chart={chart}
+                smooth={chartView.smooth}
+                heightClassName={CHART_HEIGHT_CLASS[chartView.size]}
+                live={live}
+                endedNote={endedNote}
+                lastReceivedAt={lastReceivedAt}
+              />
+            ))}
+          </MetricGroupSection>
+        ))
+      )}
     </div>
   )
 }
