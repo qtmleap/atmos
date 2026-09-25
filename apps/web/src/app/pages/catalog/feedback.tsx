@@ -7,7 +7,9 @@ import {
   GlobeIcon,
   ImageIcon,
   InfoIcon,
+  KeyRoundIcon,
   PlayIcon,
+  PlusIcon,
 } from 'lucide-react'
 import type * as React from 'react'
 import { Alert, AlertBody, AlertDescription, AlertTitle } from '../../components/ui/alert'
@@ -22,8 +24,13 @@ const empties = [
     caption: 'ログイン済み / プロジェクトなし',
     icon: <FolderIcon aria-hidden="true" />,
     title: 'プロジェクトはまだありません',
-    text: 'アクセストークンを発行し、SDKから最初のジョブを開始してください。',
-    action: <Button>アクセストークンを管理</Button>,
+    text: 'プロジェクトを作成し、SDK から最初のジョブを送信してください。',
+    action: (
+      <Button>
+        <PlusIcon aria-hidden="true" />
+        新規プロジェクト
+      </Button>
+    ),
   },
   {
     caption: '未ログイン / 公開プロジェクトなし',
@@ -36,8 +43,13 @@ const empties = [
     caption: 'プロジェクト内 / ジョブなし',
     icon: <PlayIcon aria-hidden="true" />,
     title: 'ジョブはまだありません',
-    text: 'SDKで「音声合成 v4」のジョブを開始すると、ここに表示されます。',
-    action: null,
+    text: 'SDK でこのプロジェクトのジョブを開始すると、ここに表示されます。',
+    action: (
+      <Button variant="outline">
+        <KeyRoundIcon aria-hidden="true" />
+        アクセストークンを設定
+      </Button>
+    ),
   },
   {
     caption: 'ジョブ内 / メディアなし',
@@ -83,7 +95,7 @@ export default function FeedbackCatalog() {
       <Specimen
         title="空状態"
         codes={['.empty-state']}
-        note="箱ではなく余白で区画。作成操作はSDKで行う前提です。"
+        note="箱ではなく余白で区画。次の行動を一つだけ置きます。"
         className="grid grid-cols-2 gap-6"
       >
         {empties.map((item) => (

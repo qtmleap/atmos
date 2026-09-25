@@ -1,16 +1,20 @@
 import { describe, expect, test } from 'bun:test'
 import { exportJWK, generateKeyPair, SignJWT } from 'jose'
 import {
+  ACCESS_JWT_COOKIE,
   ACCESS_JWT_HEADER,
   accessCertsUrl,
   assertCanViewProject,
+  canManageProject,
   canViewProject,
   canWriteProject,
   generateAccessToken,
   hashAccessToken,
+  identifyAccessRequest,
   isAdmin,
   localJwks,
   readBearerToken,
+  readCookie,
   requireAdmin,
   verifyAccessJwt,
 } from '../../src/api/lib/auth'
@@ -108,6 +112,83 @@ describe('verifyAccessJwt', async () => {
   })
 })
 
+describe('identifyAccessRequest', async () => {
+  const access = await createFakeAccess()
+  const jwks = localJwks(access.jwks)
+  const emailOf = async (request: Request) => {
+    const identity = await identifyAccessRequest(request, config, jwks)
+    return identity === null ? null : identity.email
+  }
+
+  test('reads the header Access adds on protected paths', async () => {
+    const token = await access.sign({ email: 'alice@example.com' })
+    const request = new Request('https://atmos.test/api/me', {
+      headers: { [ACCESS_JWT_HEADER]: token },
+    })
+    expect(await emailOf(request)).toBe('alice@example.com')
+  })
+
+  test('falls back to the CF_Authorization cookie outside Access', async () => {
+    const token = await access.sign({ email: 'alice@example.com' })
+    const request = new Request('https://atmos.test/api/projects', {
+      headers: { Cookie: `theme=dark; ${ACCESS_JWT_COOKIE}=${token}` },
+    })
+    expect(await emailOf(request)).toBe('alice@example.com')
+  })
+
+  test('the cookie is verified like the header', async () => {
+    const token = await access.sign({ email: 'alice@example.com', aud: 'other-app' })
+    const request = new Request('https://atmos.test/api/projects', {
+      headers: { Cookie: `${ACCESS_JWT_COOKIE}=${token}` },
+    })
+    expect(await emailOf(request)).toBeNull()
+  })
+
+  test('a write authenticated by the cookie must come from the same origin', async () => {
+    const token = await access.sign({ email: 'alice@example.com' })
+    const post = (headers: Record<string, string>) =>
+      new Request('https://atmos.test/api/projects', {
+        method: 'POST',
+        headers: { Cookie: `${ACCESS_JWT_COOKIE}=${token}`, ...headers },
+      })
+    expect(await emailOf(post({ Origin: 'https://atmos.test' }))).toBe('alice@example.com')
+    expect(await emailOf(post({ 'Sec-Fetch-Site': 'same-origin' }))).toBe('alice@example.com')
+    expect(await emailOf(post({ Origin: 'https://evil.example.com' }))).toBeNull()
+    expect(await emailOf(post({ 'Sec-Fetch-Site': 'cross-site' }))).toBeNull()
+    expect(await emailOf(post({}))).toBeNull()
+  })
+
+  test('no header and no cookie is anonymous', async () => {
+    expect(await emailOf(new Request('https://atmos.test/api/projects'))).toBeNull()
+  })
+
+  test('with localEmail set, a localhost request is signed in without a JWT', async () => {
+    const local = { ...config, localEmail: 'local@example.com' }
+    const localEmailOf = async (url: string) => {
+      const identity = await identifyAccessRequest(new Request(url), local, jwks)
+      return identity === null ? null : identity.email
+    }
+    for (const origin of ['http://localhost:12155', 'http://127.0.0.1:8787', 'http://[::1]']) {
+      expect(await localEmailOf(`${origin}/api/me`)).toBe('local@example.com')
+      // Without localEmail (every deployed Worker) localhost gets no pass.
+      expect(await emailOf(new Request(`${origin}/api/me`))).toBeNull()
+    }
+    expect(await localEmailOf('https://localhost.example.com/api/me')).toBeNull()
+  })
+})
+
+describe('readCookie', () => {
+  test('finds one cookie among several', () => {
+    const request = new Request('http://x/', {
+      headers: { Cookie: 'a=1; CF_Authorization=t.o.k; b=2' },
+    })
+    expect(readCookie(request, 'CF_Authorization')).toBe('t.o.k')
+    expect(readCookie(request, 'b')).toBe('2')
+    expect(readCookie(request, 'missing')).toBeNull()
+    expect(readCookie(new Request('http://x/'), 'a')).toBeNull()
+  })
+})
+
 describe('access tokens', () => {
   test('generateAccessToken yields atmos_ + 32 random bytes in base62', () => {
     const token = generateAccessToken()
@@ -172,6 +253,15 @@ describe('authorization', () => {
   test('only the owner writes', () => {
     expect(canWriteProject(publicProject, owner)).toBe(true)
     expect(canWriteProject(publicProject, other)).toBe(false)
+  })
+
+  test('the owner or an admin manages (edits/deletes), regardless of visibility', () => {
+    expect(canManageProject(publicProject, owner)).toBe(true)
+    expect(canManageProject(publicProject, admin)).toBe(true)
+    expect(canManageProject(publicProject, other)).toBe(false)
+    expect(canManageProject(privateProject, owner)).toBe(true)
+    expect(canManageProject(privateProject, admin)).toBe(true)
+    expect(canManageProject(privateProject, other)).toBe(false)
   })
 
   test('admin checks', () => {

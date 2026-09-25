@@ -3,11 +3,13 @@
 // (project-jobs-compare.html; `&drawer=jobs` opens the picker,
 // project-jobs-compare-drawer.html). Every state is in the URL (lib/job-filter.ts).
 import { useSearch } from '@tanstack/react-router'
+import { AccessErrorPage } from '../components/common/error-page'
 import { ListFooter } from '../components/common/list-footer'
 import { LoadingRows } from '../components/common/loading-rows'
 import { CompareLayout } from '../components/project/compare-layout'
 import { JobDrawer } from '../components/project/job-drawer'
 import { JobTable } from '../components/project/job-table'
+import { JobsEmptyState } from '../components/project/jobs-empty-state'
 import { JobsFootnote } from '../components/project/jobs-footnote'
 import { JobsToolbar } from '../components/project/jobs-toolbar'
 import { ProjectActions } from '../components/project/project-actions'
@@ -17,8 +19,14 @@ import { useCompareMetrics } from '../hooks/use-compare-metrics'
 import { useNow } from '../hooks/use-now'
 import { type ProjectHeading, useProjectHeading, useProjectJobs } from '../hooks/use-project-jobs'
 import { useRequiredParam } from '../hooks/use-required-param'
+import { accessErrorKind } from '../lib/access-error'
 import { parseJobsView } from '../lib/job-filter'
 import { projectLinkState } from '../lib/project-link'
+
+/** Page width and padding shared with the other pages (docs/mock-diff/designs/pages). */
+const PAGE_CLASS = 'mx-auto max-w-[1600px] px-8 pt-4 pb-6'
+/** The comparison uses the whole window for its charts (project-jobs-compare.html). */
+const COMPARE_PAGE_CLASS = 'px-8 pt-4 pb-6'
 
 const SORT_NOTE = '開始時刻が新しい順 · 日時は UTC'
 
@@ -34,6 +42,9 @@ function JobsListView({ projectId, project }: ViewProps) {
   const { filter, setFilter, query, setQuery, jobs, visible, now } = useProjectJobs(projectId)
   const linkState = project === null ? null : projectLinkState(project)
   const empty = !jobs.initial && jobs.items.length === 0 && jobs.error === null
+  if (empty && filter === 'all') {
+    return <JobsEmptyState projectName={headingName({ projectId, project })} />
+  }
   return (
     <>
       <JobsToolbar
@@ -46,9 +57,7 @@ function JobsListView({ projectId, project }: ViewProps) {
       {jobs.initial ? <LoadingRows /> : null}
       {empty ? (
         <p className="py-10 text-center text-xs text-muted-foreground">
-          {filter === 'all'
-            ? 'このプロジェクトにはまだジョブがありません。'
-            : '該当する状態のジョブはありません。'}
+          該当する状態のジョブはありません。
         </p>
       ) : null}
       {!jobs.initial && jobs.items.length > 0 && visible.length === 0 ? (
@@ -135,8 +144,16 @@ export default function ProjectJobsPage() {
   const search = useSearch({ strict: false })
   const view = parseJobsView(search.view)
   const heading = useProjectHeading(projectId)
+  const denied = accessErrorKind(heading.status)
+  if (denied !== null) {
+    return (
+      <div className={PAGE_CLASS}>
+        <AccessErrorPage kind={denied} subject="project" projectId={projectId} />
+      </div>
+    )
+  }
   return (
-    <div className="mx-auto max-w-[1600px] px-8 pt-4 pb-6">
+    <div className={view === 'compare' ? COMPARE_PAGE_CLASS : PAGE_CLASS}>
       <ProjectHeader
         projectId={projectId}
         project={heading.project}

@@ -43,14 +43,17 @@
 
 ### 3.1 ブラウザアクセス（人間）
 
-- Cloudflare Access Applicationは以下のようにポリシーを分ける:
-  - `/admin/*`（ユーザー管理）、`/settings/*`（アクセストークン発行・失効、プロフィール編集）、`/setup` → ログイン必須ポリシー
-  - `/api/projects/*` 配下の読み取り系（GET）→ **Bypassではなく「Everyone」を許可するAllowポリシー**にする。Bypassにすると`Cf-Access-Jwt-Assertion`ヘッダー自体が付与されずログイン状態を判定できないため、認証は強制しないが既存セッションがあればJWTは引き続き付与される設定にする。
-- Worker側は `Cf-Access-Jwt-Assertion` ヘッダーの有無・内容で「ログイン済みかどうか」「どのメールアドレスか」を判定し、`projects.visibility`が`private`のリソース（プロジェクト/job/メトリクス/メディア）はヘッダー必須・権限なしなら403、`public`ならヘッダー不要で常に閲覧可、というロジックをリソース単位で一貫して適用する。
+- Cloudflare Access Application が保護するのは次のパスだけで、ポリシーは許可したメンバーだけを通すものが一つだけある。
+  - 画面: `/setup`、`/settings`、`/admin`
+  - API: `/api/setup`、`/api/me`、`/api/settings`、`/api/admin`、`/api/users`
+- `/api/projects/*` は Access の対象外に置く。Everyone を許可する Allow ポリシーも付けない。Allow ポリシーは誰でも通すものでもログイン画面は出すため、SDK からの送信が止まってしまう。
+- Access の対象外のパスには `Cf-Access-Jwt-Assertion` ヘッダーが付かない。そこで Worker は、ヘッダーが無ければ `CF_Authorization` Cookie を読み、ヘッダーと同じ検証（署名、AUD、発行元、有効期限）をかけてログイン状態とメールアドレスを判定する。Cookie はホスト全体に付くので、保護されたパスで一度ログインしていれば `/api/projects/*` でも本人と分かる。
+- Cookie は別サイトからの要求にも付くため、Cookie だけで本人確認した書き込み（GET、HEAD、OPTIONS 以外）は、`Sec-Fetch-Site: same-origin` か、要求先と一致する `Origin` があるときだけ受け付ける。
+- `projects.visibility` が `private` のリソース（プロジェクト、job、メトリクス、メディア）は所有者と管理者だけ、`internal` は登録済みのログインユーザー全員、`public` はログイン不要で閲覧できる。権限が無ければ 403、ログインしていなければ 401 を返す。この判定をリソース単位で一貫して適用する。
 
 ### 3.2 SDKからのデータ送信
 
-- `/api/projects/*` 配下のPOST（run作成・メトリクス送信・メディアアップロード・run終了）はCloudflare Accessの認証を通さず、Bearerトークン（アクセストークン）のみで認証する。同じパスのGETに適用する「Everyone」ポリシーはメソッドを問わず素通しするため、POSTがAccessでブロックされることはない。
+- `/api/projects/*` 配下のPOST（run作成・メトリクス送信・メディアアップロード・run終了）は Cloudflare Access の対象外なので、Bearerトークン（アクセストークン）だけで認証する。
 - トークンは `/settings/tokens` 画面（Access保護下）でユーザー自身がIssue/Revoke可能。
 - v1は1ユーザー1トークンのシンプル運用（複数トークンのスキーマ自体は将来拡張余地として残す）。
 

@@ -4,7 +4,14 @@
 // a clip behind them.
 import { PauseIcon, PlayIcon, Volume2Icon } from 'lucide-react'
 import type { LogLine, MediaAsset } from '@/shared/types'
-import { AudioInfo, AudioRow, AudioTime, AudioWave } from '../../components/job/audio-list'
+import {
+  AudioCell,
+  AudioGrid,
+  AudioHead,
+  AudioInfo,
+  AudioTime,
+  AudioWave,
+} from '../../components/job/audio-list'
 import { ConfigPairs } from '../../components/job/config-table'
 import {
   Gallery,
@@ -26,12 +33,12 @@ import { Button } from '../../components/ui/button'
 import { EmptyState, EmptyStateDescription } from '../../components/ui/empty-state'
 import { Label } from '../../components/ui/label'
 import { Separator } from '../../components/ui/separator'
-import { Skeleton } from '../../components/ui/skeleton'
 import { Switch } from '../../components/ui/switch'
 import { niceDomain } from '../../lib/chart-scale'
 import type { JobChart, JobChartLine } from '../../lib/job-metric-view'
 import { type MetricChartSpec, type MetricSeries, seriesColor } from '../../lib/metrics'
 import { CatalogPage, SampleCaption, Specimen } from './catalog-section'
+import { SAMPLE_PEAKS_GENERATED, SAMPLE_PEAKS_REFERENCE } from './sample-waves'
 
 // ---------------------------------------------------------------------------
 // Sample data: the mock's SVG polylines read back into values.
@@ -318,62 +325,66 @@ export default function RunWidgetsCatalog() {
       </Specimen>
       <Specimen
         title="音声プレイヤー"
-        codes={['.audio-row / .audio-wave']}
-        note="停止・再生中・読み込み中。波形と時間は静止見本で、音声データは埋め込みません。"
+        codes={['.audio-grid / .audio-cell / .audio-wave']}
+        note="停止・再生中・波形の読み込み中。波形は音声から描き、再生済みの部分を濃く塗る。波形を押すとその位置へ移る。"
       >
         <WidgetHeader
           title="音声"
           aside={<span className="text-xs text-muted-foreground">step 48,000</span>}
         />
-        <AudioRow>
-          <Button variant="outline" size="icon" aria-label="sample/generatedを再生（見本）">
-            <PlayIcon />
-          </Button>
-          <AudioInfo label="sample/generated" note="step 48,000 · audio/wav" />
-          <div className="min-w-0 flex-1">
-            <AudioWave />
-          </div>
-          <AudioTime>0:00 / 0:08</AudioTime>
-          <Button variant="ghost" size="icon" aria-label="sample/generatedの音量">
-            <Volume2Icon />
-          </Button>
-        </AudioRow>
-        <AudioRow>
-          <Button
-            variant="outline"
-            size="icon"
-            data-preview="focus"
-            aria-label="sample/referenceを一時停止（見本）"
-          >
-            <PauseIcon />
-          </Button>
-          <AudioInfo label="sample/reference" note="step 48,000 · 再生中" />
-          <div className="min-w-0 flex-1">
-            <RangeInput
-              min={0}
-              max={8}
-              step={0.1}
-              value={3}
-              readOnly
-              aria-label="sample/referenceの再生位置"
-              aria-valuetext="8秒中3秒（静止見本）"
+        <AudioGrid>
+          <AudioCell>
+            <AudioHead>
+              <Button variant="outline" size="icon" aria-label="sample/generatedを再生（見本）">
+                <PlayIcon />
+              </Button>
+              <AudioInfo label="sample/generated" note="step 48,000 · audio/wav" />
+              <AudioTime>0:00 / 0:08</AudioTime>
+              <Button variant="ghost" size="icon" aria-label="sample/generatedの音量">
+                <Volume2Icon />
+              </Button>
+            </AudioHead>
+            <AudioWave
+              label="sample/generated"
+              peaks={SAMPLE_PEAKS_GENERATED}
+              position={0}
+              duration={8}
             />
-          </div>
-          <AudioTime>0:03 / 0:08</AudioTime>
-          <Button variant="ghost" size="icon" aria-label="sample/referenceの音量">
-            <Volume2Icon />
-          </Button>
-        </AudioRow>
-        <AudioRow busy>
-          <Button variant="outline" size="icon" disabled aria-label="音声を読み込み中">
-            <PlayIcon />
-          </Button>
-          <AudioInfo label="sample/speaker_02" note="step 48,000 · 読み込み中" />
-          <div className="min-w-0 flex-1">
-            <Skeleton className="h-4" />
-          </div>
-          <AudioTime>— / —</AudioTime>
-        </AudioRow>
+          </AudioCell>
+          <AudioCell>
+            <AudioHead>
+              <Button
+                variant="outline"
+                size="icon"
+                data-preview="focus"
+                aria-label="sample/referenceを一時停止（見本）"
+              >
+                <PauseIcon />
+              </Button>
+              <AudioInfo label="sample/reference" note="step 48,000 · 再生中" />
+              <AudioTime>0:03 / 0:08</AudioTime>
+              <Button variant="ghost" size="icon" aria-label="sample/referenceの音量">
+                <Volume2Icon />
+              </Button>
+            </AudioHead>
+            <AudioWave
+              label="sample/reference"
+              peaks={SAMPLE_PEAKS_REFERENCE}
+              position={3}
+              duration={8}
+            />
+          </AudioCell>
+          <AudioCell busy>
+            <AudioHead>
+              <Button variant="outline" size="icon" disabled aria-label="sample/speaker_02を再生">
+                <PlayIcon />
+              </Button>
+              <AudioInfo label="sample/speaker_02" note="step 48,000 · 波形を読み込み中" />
+              <AudioTime>— / —</AudioTime>
+            </AudioHead>
+            <AudioWave label="sample/speaker_02" peaks={null} position={0} duration={Number.NaN} />
+          </AudioCell>
+        </AudioGrid>
       </Specimen>
       <Specimen
         title="ログビューア"

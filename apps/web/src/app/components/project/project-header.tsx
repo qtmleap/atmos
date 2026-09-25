@@ -18,28 +18,42 @@ export interface ProjectHeaderProps {
   actions?: React.ReactNode
 }
 
+export interface ProjectBreadcrumbProps {
+  /** Last crumb: the project name, or its id when the name is not known. */
+  current: string
+  /** Set the last crumb in monospace (an id rather than a name). */
+  mono: boolean
+}
+
+/** "プロジェクト / name" above every page under /projects/:projectId. */
+export function ProjectBreadcrumb({ current, mono }: ProjectBreadcrumbProps) {
+  return (
+    <nav aria-label="パンくず">
+      <ol className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <li className="inline-flex items-center gap-2">
+          <Link to="/" className="hover:underline hover:underline-offset-4">
+            プロジェクト
+          </Link>
+          <ChevronRightIcon aria-hidden="true" className="size-4" />
+        </li>
+        <li className="inline-flex items-center gap-2">
+          <span
+            aria-current="page"
+            className={mono ? 'font-mono text-foreground' : 'text-foreground'}
+          >
+            {current}
+          </span>
+        </li>
+      </ol>
+    </nav>
+  )
+}
+
 export function ProjectHeader({ projectId, project, description, actions }: ProjectHeaderProps) {
   const name = project === null ? projectId : project.name
   return (
     <>
-      <nav aria-label="パンくず">
-        <ol className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <li className="inline-flex items-center gap-2">
-            <Link to="/" className="hover:underline hover:underline-offset-4">
-              プロジェクト
-            </Link>
-            <ChevronRightIcon aria-hidden="true" className="size-4" />
-          </li>
-          <li className="inline-flex items-center gap-2">
-            <span
-              aria-current="page"
-              className={project === null ? 'font-mono' : 'text-foreground'}
-            >
-              {name}
-            </span>
-          </li>
-        </ol>
-      </nav>
+      <ProjectBreadcrumb current={name} mono={project === null} />
       <header className="grid gap-4 border-b py-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">

@@ -1,4 +1,5 @@
 import { Link, useLocation } from '@tanstack/react-router'
+import { AccessErrorPage } from '../components/common/error-page'
 import { JobActions } from '../components/job/job-actions'
 import { JobHeader } from '../components/job/job-header'
 import { JobSections } from '../components/job/job-sections'
@@ -9,10 +10,13 @@ import { Skeleton } from '../components/ui/skeleton'
 import { useActionFlags } from '../hooks/use-action-flags'
 import { useJobDetail } from '../hooks/use-job-detail'
 import { useRequiredParam } from '../hooks/use-required-param'
+import { accessErrorKind } from '../lib/access-error'
 import { readProjectLinkState } from '../lib/project-link'
 
 /** Same width cap as the other pages (docs/mock-diff/designs/pages/job-detail.html). */
 const PAGE_CLASS = 'mx-auto max-w-[1600px] px-8 py-6'
+/** The error pages sit under a breadcrumb like the project pages. */
+const ERROR_PAGE_CLASS = 'mx-auto max-w-[1600px] px-8 pt-4 pb-6'
 
 export default function JobDetailPage() {
   const projectId = useRequiredParam('projectId')
@@ -23,6 +27,14 @@ export default function JobDetailPage() {
   const flags = useActionFlags<'settings'>()
 
   if (job.job === null) {
+    const denied = accessErrorKind(job.errorStatus)
+    if (denied !== null) {
+      return (
+        <div className={ERROR_PAGE_CLASS}>
+          <AccessErrorPage kind={denied} subject="job" projectId={projectId} />
+        </div>
+      )
+    }
     if (job.error !== null) {
       return (
         <div className={PAGE_CLASS}>

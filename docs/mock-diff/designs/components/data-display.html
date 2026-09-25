@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>データ表示 · atmos</title><link rel="stylesheet" href="../_shared/atmos.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>データ表示 · atmos</title><link rel="stylesheet" href="../_shared/atmos.css"><script>(() => { const forced = new URLSearchParams(location.search).get("colorScheme"); if (forced === "light" || forced === "dark") { document.documentElement.classList.toggle("dark", forced === "dark"); return; } const mq = matchMedia("(prefers-color-scheme: dark)"); const apply = () => document.documentElement.classList.toggle("dark", mq.matches); apply(); mq.addEventListener("change", apply); })()</script></head>
 <body><main class="catalog">
   <header class="catalog-masthead"><span class="app-logo">atmos</span><nav class="catalog-nav" aria-label="コンポーネントカタログ"><a href="foundations.html">基礎</a><a href="controls.html">コントロール</a><a href="data-display.html" aria-current="page">データ表示</a><a href="navigation.html">ナビゲーション</a><a href="overlays.html">オーバーレイ</a><a href="run-widgets.html">ジョブ部品</a><a href="feedback.html">フィードバック</a></nav></header>
   <div class="catalog-heading"><p class="eyebrow">COMPONENTS / 03</p><h1>データ表示</h1><p class="description">プロジェクト・ジョブ・メンバーを罫線区切りの行で表示。装飾より情報の読みやすさを優先します。</p></div>

@@ -20,7 +20,6 @@
     .list-footer { padding-top: 12px; }
     @media (max-width: 700px) { .page-content { padding: 20px 16px; } .list-toolbar { flex-wrap: wrap; } .list-search { width: 100%; } .list-note { margin-left: 0; } }
     .new-project-overlay { position: fixed; inset: 0; z-index: 10; }
-    .new-project-dialog { max-width: 460px; }
   </style>
 </head>
 <body>
@@ -66,7 +65,7 @@
   <div class="dialog new-project-dialog" role="dialog" aria-labelledby="new-project-title" aria-describedby="new-project-description">
     <button class="btn btn-ghost btn-icon dialog-close" aria-label="新規プロジェクトを閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12"/></svg></button>
     <h3 class="dialog-title" id="new-project-title">新規プロジェクト</h3>
-    <p class="dialog-description" id="new-project-description">SDKからジョブを送信する先になります。公開範囲はあとから変更できます。</p>
+    <p class="dialog-description" id="new-project-description">SDKからジョブを送信する先になります。</p>
     <div class="dialog-content stack">
       <div class="form-field">
         <label class="label" for="new-project-name">プロジェクト名 <span class="muted">（必須）</span></label>

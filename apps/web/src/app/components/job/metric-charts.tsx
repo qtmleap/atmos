@@ -12,7 +12,8 @@ import type { ChartRun } from '../../hooks/use-compare-chart'
 import type { ScaleKind } from '../../lib/chart-scale'
 import { CHART_HEIGHT_CLASS, chartGridColsClass } from '../../lib/chart-size'
 import { type JobChart, type JobChartLine, jobChartGroups } from '../../lib/job-metric-view'
-import { formatMetricShort, formatStep, type MetricSeries } from '../../lib/metrics'
+import { ENDED_NOTES, type JobPhase } from '../../lib/job-phase'
+import { formatMetricShort, formatStep, METRIC_LABELS, type MetricSeries } from '../../lib/metrics'
 import { ChartControls } from '../project/chart-controls'
 import { ChartSvg } from '../project/chart-svg'
 import { MetricGroupSection } from '../project/metric-group'
@@ -52,8 +53,10 @@ export interface MetricFigureProps {
   smooth: number
   /** Subtitle under the title; a pair defaults to its own, a single series has none. */
   subtitle?: string
-  /** The pair chart's right-hand note: live while running, "更新終了" after. */
+  /** The pair chart's right-hand note: live while running, `endedNote` after. */
   live: boolean
+  /** The note of an ended run's pair chart. */
+  endedNote?: string
   /** When the pair's latest point was received, for its footnote. */
   lastReceivedAt: string | null
 }
@@ -65,6 +68,7 @@ export function MetricFigure({
   smooth,
   subtitle,
   live,
+  endedNote = ENDED_NOTES.failed,
   lastReceivedAt,
 }: MetricFigureProps) {
   const runs = useMemo(() => toChartRuns(chart.lines), [chart.lines])
@@ -87,7 +91,7 @@ export function MetricFigure({
               live ? (
                 <LiveIndicator>ライブ更新中</LiveIndicator>
               ) : (
-                <span className="text-xs text-muted-foreground">更新終了</span>
+                <span className="text-xs text-muted-foreground">{endedNote}</span>
               )
             ) : (
               <MetricValue value={first.latest.value} />
@@ -183,9 +187,12 @@ export interface MetricChartsProps {
   loading: boolean
   error: string | null
   onRetry: () => void
-  running: boolean
+  phase: JobPhase
   lastReceivedAt: string | null
 }
+
+/** The keys the SDK examples log, drawn empty while a run waits for its first report. */
+const WAITING_KEYS = Object.keys(METRIC_LABELS)
 
 /** The metrics tab: filterable, zoomable charts grouped by `/`-prefix (lib/job-metric-view.ts), two abreast by default. */
 export function MetricCharts({
@@ -193,7 +200,7 @@ export function MetricCharts({
   loading,
   error,
   onRetry,
-  running,
+  phase,
   lastReceivedAt,
 }: MetricChartsProps) {
   const chartView = useChartView()
@@ -205,6 +212,15 @@ export function MetricCharts({
     [series, chartView.run, chartView.smooth, xKind, yKind],
   )
 
+  if (series.length === 0 && phase === 'waiting' && !loading) {
+    return (
+      <div className="grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2">
+        {WAITING_KEYS.map((key) => (
+          <MetricFigureEmpty key={key} title={key} />
+        ))}
+      </div>
+    )
+  }
   if (series.length === 0) {
     return (
       <p className="py-8 text-xs text-muted-foreground">
@@ -212,6 +228,8 @@ export function MetricCharts({
       </p>
     )
   }
+  const live = phase === 'running' || phase === 'waiting'
+  const endedNote = phase === 'finished' ? ENDED_NOTES.finished : ENDED_NOTES.failed
 
   return (
     <div className="@container">
@@ -259,7 +277,8 @@ export function MetricCharts({
                 chart={chart}
                 smooth={chartView.smooth}
                 heightClassName={CHART_HEIGHT_CLASS[chartView.size]}
-                live={running}
+                live={live}
+                endedNote={endedNote}
                 lastReceivedAt={lastReceivedAt}
               />
             ))}

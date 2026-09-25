@@ -73,7 +73,7 @@ export interface SpecimenProps {
   title: string
   /** Class names the mock lists under the title, one line each. */
   codes: string[]
-  note: string
+  note?: string
   className?: string
   children: React.ReactNode
 }
@@ -92,7 +92,9 @@ export function Specimen({ title, codes, note, className, children }: SpecimenPr
             {code}
           </code>
         ))}
-        <p className="text-xs leading-5 text-muted-foreground">{note}</p>
+        {note === undefined ? null : (
+          <p className="text-xs leading-5 text-muted-foreground">{note}</p>
+        )}
       </div>
       <div className={cn('min-w-0', className)}>{children}</div>
     </section>

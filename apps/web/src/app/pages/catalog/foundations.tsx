@@ -80,7 +80,7 @@ export default function FoundationsCatalog() {
       slug="foundations"
       eyebrow="COMPONENTS / 01"
       title="基礎トークン"
-      description="new-york / neutral。色・文字・余白の共通ルール。ライト表示、ダーク用トークンも共通CSSに定義。"
+      description="new-york / neutral。色・文字・余白の共通ルール。OSの表示設定に合わせて :root と .dark の値を切り替えて描きます。"
       footer={['atmos · コンポーネント層', '01 / 04 · 基礎']}
     >
       <Specimen

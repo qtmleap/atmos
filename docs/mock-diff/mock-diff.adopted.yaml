@@ -9,7 +9,6 @@ adopted:
   page-projects: astra
   page-project-jobs: astra
   page-job-detail: astra
-  page-job-detail-settings: astra
   page-job-detail-failed: astra
   page-users: astra
   page-user-profile: astra
@@ -25,10 +24,26 @@ adopted:
   page-project-jobs-compare: astra
   page-project-jobs-compare-drawer: astra
   page-projects-new: astra
-  component-theme-dark: astra
+  page-settings-tokens-reissue: astra
+  page-settings-tokens-active: astra
+  page-projects-signed-out: astra
+  page-projects-empty: astra
+  page-project-jobs-empty: astra
+  page-project-jobs-compare-unselected: astra
+  page-project-jobs-compare-no-metrics: astra
+  page-job-detail-finished: astra
+  page-job-detail-waiting: astra
+  page-user-profile-other: astra
+  page-settings-tokens-none: astra
+  page-settings-tokens-revoked: astra
+  page-signin-required: astra
+  page-forbidden: astra
+  page-not-found: astra
   page-project-settings: astra
   page-project-delete: astra
   page-project-jobs-menu: astra
   page-job-detail-menu: astra
+  page-job-detail-settings: astra
   page-job-rename: astra
   page-job-delete: astra
+  page-project-jobs-compare-expanded: astra
