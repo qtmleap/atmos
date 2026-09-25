@@ -11,10 +11,11 @@ import { useCurrentUser } from '../hooks/use-current-user'
 import { usePagedList } from '../hooks/use-paged-list'
 import { useRequiredParam } from '../hooks/use-required-param'
 import { useUser } from '../hooks/use-user'
+import { profileListNote, profileViewer } from '../lib/visibility-note'
 
 const PROJECTS_PAGE_SIZE = 20
 
-const PAGE = 'mx-auto max-w-[1312px] px-8 pt-8 pb-6'
+const PAGE = 'mx-auto max-w-[1600px] px-8 pt-8 pb-6'
 
 export default function UserProfilePage() {
   const handle = useRequiredParam('handle')
@@ -113,9 +114,7 @@ function UserProfileContent({
         )}
 
         <p className="pt-4 text-xs text-muted-foreground">
-          {signedIn
-            ? 'ログイン中のため、公開・メンバー限定・非公開のすべてのプロジェクトを表示しています。'
-            : '公開プロジェクトのみ表示しています。'}
+          {profileListNote(profileViewer(signedIn, isOwnProfile))}
         </p>
       </section>
     </div>

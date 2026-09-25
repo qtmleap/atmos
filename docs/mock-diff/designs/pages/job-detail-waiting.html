@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vits-baseline-042 · 受信待ち · atmos</title>
+<link rel="stylesheet" href="../_shared/atmos.css">
+<style>
+.job-page { max-width: 1600px; margin:0 auto; padding:24px 32px; }
+.job-page .page-header { padding-block:20px; gap:12px; }
+.job-panel .select-wrap { width:160px; }
+.job-summary { display:grid; grid-template-columns:repeat(4,1fr); margin:0; padding:20px 0; border-bottom:1px solid var(--border); }
+.job-summary > div + div { padding-left:28px; border-left:1px solid var(--border); }
+.job-summary dt { font-size:12px; color:var(--muted-foreground); }
+.job-summary dd { margin:4px 0 0; font:24px/30px var(--font-mono); }
+.job-layout { padding-top:20px; }
+.job-toolbar { min-height:44px; margin-bottom:12px; }
+.job-panel[hidden] { display:none; }
+.job-panel .chart-svg { height:auto; aspect-ratio:460 / 180; }
+.job-panel { container-type:inline-size; }
+.job-panel .metric-grid { gap:16px 28px; }
+@container (min-width:72rem) { .job-panel .metric-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+.job-panel .metric-grid:has(> :nth-child(2):last-child) { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.job-panel .metric-grid:has(> :only-child) { grid-template-columns:minmax(0,1fr); }
+.job-panel .log-line { grid-template-columns:88px 48px minmax(0,1fr); gap:10px; padding:3px 0; font-size:11px; line-height:17px; }
+.job-note { margin-top:14px; font-size:12px; color:var(--muted-foreground); }
+.job-error { margin-top:16px; }
+@media(max-width:900px) { .job-page { padding:20px; } }
+</style>
+</head>
+<body><div class="app-shell">
+<header class="app-header"><a class="app-logo" href="projects.html" aria-label="atmos ホーム">atmos</a><nav class="app-nav" aria-label="ログイン時のナビゲーション"><a href="projects.html" aria-current="page">プロジェクト</a><a href="/users">メンバー</a></nav><div class="app-account"><button class="btn btn-ghost btn-icon" type="button" aria-label="表示テーマ: システム" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu-1"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg></button><div class="dropdown" id="theme-menu-1" role="menu" aria-label="表示テーマ" hidden><button class="dropdown-item" role="menuitem" data-preference="system" aria-current="true" aria-label="表示テーマ: システム（選択中）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>システム<span class="shortcut"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m20 6-11 11-5-5"/></svg></span></button><button class="dropdown-item" role="menuitem" data-preference="light"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>ライト</button><button class="dropdown-item" role="menuitem" data-preference="dark"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>ダーク</button></div><span class="small">田中 美咲</span><span class="avatar" role="img" aria-label="田中 美咲のアバター">田</span><button class="btn btn-ghost btn-icon" aria-label="ユーザーメニュー" aria-haspopup="menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div></header>
+<main class="job-page">
+<nav class="breadcrumb" aria-label="パンくず"><ol><li><a href="projects.html">プロジェクト</a><span aria-hidden="true">/</span></li><li><a href="project-jobs.html">日本語音声合成</a><span aria-hidden="true">/</span></li><li aria-current="page">vits-baseline-042</li></ol></nav>
+<header class="page-header"><div class="between"><div class="row"><h1>vits-baseline-042</h1><span class="status status-running"><span class="status-dot" aria-hidden="true"></span>実行中</span></div><div class="row"><span class="live-indicator"><span class="status-dot" aria-hidden="true"></span>ライブ更新中</span><span class="small muted">最終受信 —</span><button class="btn btn-outline" type="button" aria-haspopup="dialog" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>設定</button><button class="btn btn-ghost btn-icon" type="button" aria-label="ジョブの操作" aria-haspopup="menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div></div><div class="between"><p class="small muted">田中 美咲 が開始 · <time datetime="2026-09-24T06:00:00Z">2026年9月24日 06:00:00 UTC</time> · 経過 00:00:05</p><span class="small muted">VITS / JSUT · 単一話者</span></div></header>
+
+<dl class="job-summary"><div><dt>最終受信ステップ</dt><dd>—</dd></div><div><dt>学習損失 <span class="mono">train/loss</span></dt><dd>—</dd></div><div><dt>検証損失 <span class="mono">val/loss</span></dt><dd>—</dd></div><div><dt>学習率 <span class="mono">lr</span></dt><dd>—</dd></div></dl>
+<div class="job-layout"><div class="grow">
+<div class="between job-toolbar"><div class="tabs-list" role="tablist" aria-label="ジョブの詳細"><button class="tabs-trigger" id="tab-metrics" role="tab" aria-selected="true" aria-controls="panel-metrics" tabindex="0">メトリクス</button><button class="tabs-trigger" id="tab-media" role="tab" aria-selected="false" aria-controls="panel-media" tabindex="-1">画像・音声</button><button class="tabs-trigger" id="tab-logs" role="tab" aria-selected="false" aria-controls="panel-logs" tabindex="-1">ログ</button></div><span class="small muted">受信待ち</span></div>
+<section class="job-panel" id="panel-metrics" role="tabpanel" aria-labelledby="tab-metrics" tabindex="0"><div class="metric-grid"><div class="metric-chart"><div class="widget-header"><h3 class="mono">train/loss</h3><span class="small muted">未受信</span></div><div class="chart-empty"><h3>データはまだありません</h3><p class="small">このキーの最初のメトリクスを待っています。</p></div></div><div class="metric-chart"><div class="widget-header"><h3 class="mono">val/loss</h3><span class="small muted">未受信</span></div><div class="chart-empty"><h3>データはまだありません</h3><p class="small">このキーの最初のメトリクスを待っています。</p></div></div><div class="metric-chart"><div class="widget-header"><h3 class="mono">lr</h3><span class="small muted">未受信</span></div><div class="chart-empty"><h3>データはまだありません</h3><p class="small">このキーの最初のメトリクスを待っています。</p></div></div><div class="metric-chart"><div class="widget-header"><h3 class="mono">grad_norm</h3><span class="small muted">未受信</span></div><div class="chart-empty"><h3>データはまだありません</h3><p class="small">このキーの最初のメトリクスを待っています。</p></div></div></div></section>
+<section class="job-panel" id="panel-media" role="tabpanel" aria-labelledby="tab-media" tabindex="0" hidden><div class="widget-header"><h2>画像ギャラリー</h2><span class="small muted">未受信</span></div><div class="empty-state"><h3>画像はまだありません</h3></div><div class="widget-header"><h2>音声サンプル</h2><span class="small muted">未受信</span></div><div class="empty-state"><h3>音声はまだありません</h3></div></section>
+<section class="job-panel" id="panel-logs" role="tabpanel" aria-labelledby="tab-logs" tabindex="0" hidden><div class="widget-header"><div class="row"><h2>実行ログ</h2><label class="sr-only" for="log-stream">出力ストリーム</label><div class="select-wrap"><select class="select" id="log-stream"><option value="all">すべての出力</option><option value="stdout">標準出力のみ</option><option value="stderr">標準エラーのみ</option></select><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></div><span class="small muted">未受信 · UTC</span></div><div class="log-viewer" role="region" aria-label="実行ログ・時刻はUTC" tabindex="0"><div class="empty-state"><h3>ログはまだありません</h3><p class="description">SDKから送信されたログをここに表示します。</p></div></div><p class="job-note">最終受信 — · stdout / stderr</p></section>
+</div></div>
+</main></div>
+<script>
+const tabs = [...document.querySelectorAll('[role="tab"]')];
+function selectTab(tab) {
+  tabs.forEach(item => {
+    const selected = item === tab;
+    item.setAttribute('aria-selected', String(selected));
+    item.tabIndex = selected ? 0 : -1;
+    document.getElementById(item.getAttribute('aria-controls')).hidden = !selected;
+  });
+}
+tabs.forEach((tab, index) => {
+  tab.addEventListener('click', () => selectTab(tab));
+  tab.addEventListener('keydown', event => {
+    let next;
+    if (event.key === 'ArrowRight') next = tabs[(index + 1) % tabs.length];
+    if (event.key === 'ArrowLeft') next = tabs[(index + tabs.length - 1) % tabs.length];
+    if (event.key === 'Home') next = tabs[0];
+    if (event.key === 'End') next = tabs[tabs.length - 1];
+    if (next) { event.preventDefault(); selectTab(next); next.focus(); }
+  });
+});
+document.getElementById('log-stream').addEventListener('change', event => {
+  document.querySelectorAll('.log-line').forEach(line => {
+    line.style.display = event.target.value === 'all' || line.dataset.stream === event.target.value ? '' : 'none';
+  });
+});
+</script>
+<script src="../_shared/theme-toggle.js"></script>
+</body></html>

@@ -170,27 +170,8 @@ export default function NavigationCatalog() {
           trail={['プロジェクト', '音声合成 v4', 'vits-baseline-042']}
         />
       </Specimen>
-      <Specimen
-        title="タブ"
-        codes={['.tabs / .tabs-list', '.tabs-trigger']}
-        note="選択・通常・フォーカス・無効。静止見本のためタブ切り替えは未実装。"
-        className="grid gap-4"
-      >
-        <StaticTabs
-          caption="メトリクス選択中 / 画像はフォーカスの見本"
-          label="ジョブ詳細（静止見本）"
-          value="metrics"
-          focus="images"
-          disabled={[]}
-          panel="選択中タブの領域。チャート本体はこのカタログの対象外です。"
-        />
-        <StaticTabs
-          caption="設定選択中 / データ取得中の画像・音声は無効"
-          label="読み込み中のジョブ詳細（静止見本）"
-          value="config"
-          disabled={['images', 'audio']}
-          panel="config はジョブに記録された値を読み取り専用で表示します。"
-        />
+      <Specimen title="タブ" codes={['.tabs / .tabs-list', '.tabs-trigger']} className="grid gap-4">
+        <StaticTabs label="ジョブの詳細" value="metrics" />
       </Specimen>
       <Specimen
         title="ページ見出し"

@@ -17,7 +17,7 @@ import { getMe } from './me'
 import { createProject, deleteProject, getProject, listProjects, updateProject } from './projects'
 import { apiError, type FixtureHandler, type FixtureRequest, type FixtureResponse } from './respond'
 import { getTokenStatus, issueToken, revokeToken, updateAvatar, updateProfile } from './settings'
-import { postSetup } from './setup'
+import { getSetup, postSetup } from './setup'
 import { getUser, getUserAvatar, listUserProjects, listUsers } from './users'
 
 export type { FixtureRequest, FixtureResponse } from './respond'
@@ -32,16 +32,29 @@ const JOB = '/api/projects/:project_id/jobs/:job_id'
 
 export const ROUTES: readonly Route[] = [
   { method: 'GET', pattern: '/api/me', handler: getMe },
+  { method: 'GET', pattern: '/api/setup', handler: getSetup },
   { method: 'POST', pattern: '/api/setup', handler: postSetup },
 
   { method: 'GET', pattern: '/api/admin/users', handler: listAdminUsers },
   { method: 'POST', pattern: '/api/admin/users', handler: createAdminUser },
-  { method: 'PATCH', pattern: '/api/admin/users/:user_id', handler: updateAdminUser },
+  {
+    method: 'PATCH',
+    pattern: '/api/admin/users/:user_id',
+    handler: updateAdminUser,
+  },
 
   { method: 'GET', pattern: '/api/users', handler: listUsers },
   { method: 'GET', pattern: '/api/users/:handle', handler: getUser },
-  { method: 'GET', pattern: '/api/users/:handle/projects', handler: listUserProjects },
-  { method: 'GET', pattern: '/api/users/:handle/avatar', handler: getUserAvatar },
+  {
+    method: 'GET',
+    pattern: '/api/users/:handle/projects',
+    handler: listUserProjects,
+  },
+  {
+    method: 'GET',
+    pattern: '/api/users/:handle/avatar',
+    handler: getUserAvatar,
+  },
 
   { method: 'PATCH', pattern: '/api/settings/profile', handler: updateProfile },
   { method: 'PUT', pattern: '/api/settings/avatar', handler: updateAvatar },
@@ -54,7 +67,11 @@ export const ROUTES: readonly Route[] = [
   { method: 'GET', pattern: '/api/projects/:project_id', handler: getProject },
   { method: 'PATCH', pattern: '/api/projects/:project_id', handler: updateProject },
   { method: 'DELETE', pattern: '/api/projects/:project_id', handler: deleteProject },
-  { method: 'GET', pattern: '/api/projects/:project_id/jobs', handler: listJobs },
+  {
+    method: 'GET',
+    pattern: '/api/projects/:project_id/jobs',
+    handler: listJobs,
+  },
   { method: 'GET', pattern: JOB, handler: getJob },
   { method: 'PATCH', pattern: JOB, handler: updateJob },
   { method: 'DELETE', pattern: JOB, handler: deleteJob },

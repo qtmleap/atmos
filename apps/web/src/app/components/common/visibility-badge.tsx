@@ -4,8 +4,9 @@ import { Badge } from '../ui/badge'
 import { Visibility } from '../ui/status'
 
 /**
- * Public or private as an outlined badge (the mock's `.badge.badge-outline.visibility`):
- * a globe or lock plus the label, or the label alone with `plain`.
+ * A project's visibility tier as an outlined badge (the mock's
+ * `.badge.badge-outline.visibility`): a globe, people or lock icon plus the
+ * label, or the label alone with `plain`.
  */
 export function VisibilityBadge({
   visibility,

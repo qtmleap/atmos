@@ -2,7 +2,8 @@
 // the same visibility choice as the new-project dialog. Presentational;
 // hooks/use-project-actions.ts owns the form, the open state (?edit=1) and
 // the PATCH.
-import { VISIBILITIES, type Visibility } from '@/shared/types'
+import { VISIBILITIES } from '@/shared/types'
+import { isVisibility } from '../../hooks/use-create-project'
 import { VISIBILITY_DESCRIPTIONS, VISIBILITY_LABELS } from '../../lib/format'
 import type { EditProjectFormInput } from '../../lib/manage'
 import { FormDescription, FormField, FormMessage } from '../settings/form-field'
@@ -18,9 +19,6 @@ import {
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group'
-
-const isVisibility = (value: string): value is Visibility =>
-  VISIBILITIES.some((visibility) => visibility === value)
 
 export interface EditProjectDialogProps {
   open: boolean

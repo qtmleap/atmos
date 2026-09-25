@@ -1,7 +1,7 @@
 // Members: GET /api/users (designs/pages/users.html), GET /api/users/:handle
 // and GET /api/users/:handle/projects (designs/pages/user-profile.html).
 import type { Project, User } from '../../src/shared/types'
-import { ME } from './me'
+import { isSignedOut, ME } from './me'
 import { type FixtureHandler, json, notFound, paginate } from './respond'
 
 const member = (handle: string, displayName: string, createdAt: string): User => ({
@@ -53,15 +53,24 @@ export const ownerOf = (handle: string): Project['owner'] => {
   return { id: user.id, handle: user.handle, display_name: user.display_name }
 }
 
-const owned = (id: string, name: string, visibility: Project['visibility'], date: string) => ({
-  id,
-  name,
-  visibility,
-  owner: ownerOf(ME.handle),
-  created_at: `${date}T09:00:00Z`,
-})
+const ownedBy =
+  (handle: string) =>
+  (id: string, name: string, visibility: Project['visibility'], date: string): Project => ({
+    id,
+    name,
+    visibility,
+    owner: ownerOf(handle),
+    created_at: `${date}T09:00:00Z`,
+  })
 
-/** The five rows of user-profile.html ("すべて表示しました": no next page). */
+const owned = ownedBy(ME.handle)
+const yuto = ownedBy('yuto_s')
+
+/**
+ * The five rows of user-profile.html ("すべて表示しました": no next page), and
+ * the four of user-profile-other.html: 佐藤 悠斗 seen by another member, so
+ * his private projects are left out.
+ */
 const PROFILE_PROJECTS: Readonly<Record<string, readonly Project[]>> = {
   [ME.handle]: [
     owned('prj_tts_ja_model', '音声合成 / 日本語モデル', 'private', '2026-09-18'),
@@ -69,6 +78,12 @@ const PROFILE_PROJECTS: Readonly<Record<string, readonly Project[]>> = {
     owned('prj_lm_ja_finetune', '言語モデル / 日本語ファインチューニング', 'private', '2026-09-08'),
     owned('prj_asr_speaker_adapt', '音声認識 / 話者適応', 'public', '2026-08-26'),
     owned('prj_embedding_eval', '埋め込みモデル / 検索精度評価', 'private', '2026-08-10'),
+  ],
+  yuto_s: [
+    yuto('prj_yuto_diarization', '音声認識 / 話者分離', 'internal', '2026-09-15'),
+    yuto('prj_yuto_prosody', '音声合成 / 韻律予測', 'internal', '2026-09-04'),
+    yuto('prj_bigvgan', 'ボコーダ / BigVGAN', 'public', '2026-08-28'),
+    yuto('prj_yuto_codec', '音声符号化 / ニューラルコーデック', 'public', '2026-08-18'),
   ],
 }
 
@@ -79,13 +94,20 @@ export const getUser: FixtureHandler = ({ params }) => {
   return user === undefined ? notFound(`user @${params.handle}`) : json(user)
 }
 
-export const listUserProjects: FixtureHandler = ({ params, url }) => {
+/** Scenario `signed-out` keeps the public projects only. */
+export const listUserProjects: FixtureHandler = ({ params, url, scenario }) => {
   const handle = String(params.handle)
   if (findMember(handle) === undefined) {
     return notFound(`user @${handle}`)
   }
-  const projects = PROFILE_PROJECTS[handle]
-  return json(paginate(projects === undefined ? [] : projects, url))
+  const rows = PROFILE_PROJECTS[handle]
+  const projects = rows === undefined ? [] : rows
+  return json(
+    paginate(
+      isSignedOut(scenario) ? projects.filter((row) => row.visibility === 'public') : projects,
+      url,
+    ),
+  )
 }
 
 /** No member has an avatar image in the mocks; the UI falls back to the initial. */

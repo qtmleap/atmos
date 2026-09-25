@@ -1,9 +1,15 @@
+import { useId, useMemo } from 'react'
 import type { JobMedia } from '../../hooks/use-job-media'
+import { useMediaStep } from '../../hooks/use-media-step'
 import { describeAudio } from '../../lib/config'
+import { assetsAtStep } from '../../lib/media'
 import { formatStep } from '../../lib/metrics'
 import { ListFooter } from '../common/list-footer'
+import { Button } from '../ui/button'
+import { EmptyState } from '../ui/empty-state'
 import { AudioList } from './audio-list'
 import { ImageGallery } from './image-gallery'
+import { StepSlider } from './step-slider'
 import { WidgetHeader } from './widget-header'
 
 export interface MediaPanelProps {
@@ -11,12 +17,6 @@ export interface MediaPanelProps {
   audio: JobMedia
   config: Record<string, unknown>
 }
-
-const latestStepOf = (media: JobMedia): number | null =>
-  media.items.reduce<number | null>(
-    (max, asset) => (max === null || asset.step > max ? asset.step : max),
-    null,
-  )
 
 /** Paging footer of one media list, only when there is something to page or an error. */
 function MediaFooter({ media, noun }: { media: JobMedia; noun: string }) {
@@ -36,12 +36,39 @@ function MediaFooter({ media, noun }: { media: JobMedia; noun: string }) {
   )
 }
 
-/** The "画像・音声" tab: the image gallery, then the audio samples. */
+/**
+ * The "画像・音声" tab: one step slider over the image gallery and the audio
+ * samples, both showing what was logged at that step.
+ */
 export function MediaPanel({ images, audio, config }: MediaPanelProps) {
-  const audioStep = latestStepOf(audio)
+  const { steps, step, latest, choose, followLatest } = useMediaStep(images.items, audio.items)
+  const sliderId = useId()
+  const shownImages = useMemo(
+    () => (step === undefined ? [] : assetsAtStep(images.items, step)),
+    [images.items, step],
+  )
+  const shownAudio = useMemo(
+    () => (step === undefined ? [] : assetsAtStep(audio.items, step)),
+    [audio.items, step],
+  )
   const audioNote = describeAudio(config)
   return (
     <div>
+      <StepSlider
+        id={sliderId}
+        label="ステップ"
+        steps={steps}
+        value={step === undefined ? null : step}
+        onChange={choose}
+        readout={step === undefined ? '—' : formatStep(step)}
+      />
+      {step !== undefined && step !== latest ? (
+        <div className="flex justify-end pb-3">
+          <Button variant="secondary" onClick={followLatest}>
+            最新のステップへ
+          </Button>
+        </div>
+      ) : null}
       {images.initial ? (
         <p className="py-8 text-xs text-muted-foreground">画像を読み込んでいます。</p>
       ) : images.items.length === 0 && images.error === null ? (
@@ -51,11 +78,13 @@ export function MediaPanel({ images, audio, config }: MediaPanelProps) {
             title="画像ギャラリー"
             aside={<span className="text-xs text-muted-foreground">未受信</span>}
           />
-          <p className="py-8 text-xs text-muted-foreground">画像はまだ記録されていません。</p>
+          <EmptyState>
+            <h3>画像はまだありません</h3>
+          </EmptyState>
         </>
       ) : (
         <>
-          <ImageGallery images={images.items} />
+          <ImageGallery images={shownImages} step={step} />
           <MediaFooter media={images} noun="画像" />
         </>
       )}
@@ -64,21 +93,27 @@ export function MediaPanel({ images, audio, config }: MediaPanelProps) {
         title="音声サンプル"
         aside={
           <span className="text-xs text-muted-foreground">
-            {audioNote === null
-              ? audioStep === null
-                ? '未受信'
-                : `ステップ ${formatStep(audioStep)}`
-              : audioNote}
+            {audio.items.length === 0 || step === undefined
+              ? '未受信'
+              : audioNote === null
+                ? `ステップ ${formatStep(step)}`
+                : audioNote}
           </span>
         }
       />
       {audio.initial ? (
         <p className="py-8 text-xs text-muted-foreground">音声を読み込んでいます。</p>
       ) : audio.items.length === 0 && audio.error === null ? (
-        <p className="py-8 text-xs text-muted-foreground">音声はまだ記録されていません。</p>
+        <EmptyState>
+          <h3>音声はまだありません</h3>
+        </EmptyState>
       ) : (
         <>
-          <AudioList clips={audio.items} />
+          {shownAudio.length === 0 ? (
+            <p className="py-8 text-xs text-muted-foreground">このステップの音声はありません。</p>
+          ) : (
+            <AudioList clips={shownAudio} />
+          )}
           <MediaFooter media={audio} noun="音声" />
         </>
       )}

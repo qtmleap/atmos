@@ -16,7 +16,7 @@ import type { Job } from '@/shared/types'
 import { useChartView } from '../../hooks/use-chart-view'
 import { metricCharts } from '../../hooks/use-compare-chart'
 import type { CompareMetrics } from '../../hooks/use-compare-metrics'
-import { CHART_GRID_COLS_CLASS, CHART_HEIGHT_CLASS } from '../../lib/chart-size'
+import { CHART_HEIGHT_CLASS, chartGridColsClass } from '../../lib/chart-size'
 import { selectedJobRows } from '../../lib/compare-selection'
 import { jobDisplayName } from '../../lib/format'
 import { COMPARE_MAX_JOBS, filterChartJobs } from '../../lib/job-filter'
@@ -153,6 +153,7 @@ export function CompareLayout({
           ) : (
             groups.map((group) => {
               const key = groupStateKey(group)
+              const shown = group.keys.filter((metricKey) => chartsByKey.has(metricKey)).length
               return (
                 <MetricGroupSection
                   key={key}
@@ -161,7 +162,7 @@ export function CompareLayout({
                   onToggle={() =>
                     setCollapsed((current) => ({ ...current, [key]: current[key] !== true }))
                   }
-                  gridClassName={CHART_GRID_COLS_CLASS[chartView.size]}
+                  gridClassName={chartGridColsClass(chartView.size, shown)}
                 >
                   {group.keys.flatMap((metricKey) => {
                     const chart = chartsByKey.get(metricKey)

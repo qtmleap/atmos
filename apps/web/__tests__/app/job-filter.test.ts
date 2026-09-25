@@ -2,8 +2,13 @@ import { describe, expect, test } from 'bun:test'
 import {
   COMPARE_MAX_JOBS,
   defaultCompareSelection,
+  filterChartJobs,
   filterJobs,
+  jobsSearchSchema,
+  parseChartSize,
   parseCompareSelection,
+  parseLogScale,
+  parseSmoothing,
   serializeCompareSelection,
 } from '../../src/app/lib/job-filter'
 import { job } from './fixtures'
@@ -63,5 +68,81 @@ describe('filterJobs', () => {
     expect(filterJobs(rows, 'all', 'J3').map((row) => row.id)).toEqual(['j3'])
     expect(filterJobs(rows, 'all', 'NEW').map((row) => row.id)).toEqual(['j1'])
     expect(filterJobs(rows, 'failed', 'j').map((row) => row.id)).toEqual(['j2'])
+  })
+})
+
+describe('filterChartJobs', () => {
+  test('matches the displayed name, case-insensitively and trimmed', () => {
+    expect(filterChartJobs(rows, ' NEW ').map((row) => row.id)).toEqual(['j1'])
+    expect(filterChartJobs(rows, '名前なし').map((row) => row.id)).toEqual(['j4'])
+  })
+
+  test('an empty (or blank) filter keeps every job, in order', () => {
+    expect(filterChartJobs(rows, '').map((row) => row.id)).toEqual(['j1', 'j2', 'j3', 'j4'])
+    expect(filterChartJobs(rows, '   ').map((row) => row.id)).toEqual(['j1', 'j2', 'j3', 'j4'])
+  })
+
+  test('no match drops every job', () => {
+    expect(filterChartJobs(rows, 'ghost')).toEqual([])
+  })
+})
+
+describe('chart control parsers', () => {
+  test('parseChartSize: absent means medium, otherwise the value passes through', () => {
+    expect(parseChartSize(undefined)).toBe('m')
+    expect(parseChartSize('s')).toBe('s')
+    expect(parseChartSize('l')).toBe('l')
+  })
+
+  test('parseSmoothing: absent means no smoothing', () => {
+    expect(parseSmoothing(undefined)).toBe(0)
+    expect(parseSmoothing(0.6)).toBe(0.6)
+  })
+
+  test('parseLogScale: only 1 means log, undefined means linear', () => {
+    expect(parseLogScale(1)).toBe(true)
+    expect(parseLogScale(undefined)).toBe(false)
+  })
+})
+
+describe('jobsSearchSchema', () => {
+  test('parses the new chart params', () => {
+    const parsed = jobsSearchSchema.parse({
+      run: 'train',
+      smooth: 0.6,
+      logx: 1,
+      logy: 1,
+      size: 's',
+      chart: 'train/loss',
+    })
+    expect(parsed.run).toBe('train')
+    expect(parsed.smooth).toBe(0.6)
+    expect(parsed.logx).toBe(1)
+    expect(parsed.logy).toBe(1)
+    expect(parsed.size).toBe('s')
+    expect(parsed.chart).toBe('train/loss')
+  })
+
+  test('out-of-range or unknown values fall back to undefined, not an error', () => {
+    const parsed = jobsSearchSchema.parse({
+      smooth: 1.5,
+      logx: 0,
+      size: 'xl',
+      run: '',
+    })
+    expect(parsed.smooth).toBeUndefined()
+    expect(parsed.logx).toBeUndefined()
+    expect(parsed.size).toBeUndefined()
+    expect(parsed.run).toBeUndefined()
+  })
+
+  test('absent params stay absent', () => {
+    const parsed = jobsSearchSchema.parse({})
+    expect(parsed.run).toBeUndefined()
+    expect(parsed.smooth).toBeUndefined()
+    expect(parsed.logx).toBeUndefined()
+    expect(parsed.logy).toBeUndefined()
+    expect(parsed.size).toBeUndefined()
+    expect(parsed.chart).toBeUndefined()
   })
 })

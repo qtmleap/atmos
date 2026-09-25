@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { cleanup, screen } from '@testing-library/react'
 import {
-  countRoles,
   filterAdminUsers,
   isRole,
   isRoleFilter,
@@ -37,7 +36,7 @@ describe('isRoleFilter', () => {
   })
 })
 
-describe('filterAdminUsers / countRoles', () => {
+describe('filterAdminUsers', () => {
   const rows = [
     admin(),
     userWithEmail({
@@ -67,10 +66,6 @@ describe('filterAdminUsers / countRoles', () => {
   test('narrows by role', () => {
     expect(filterAdminUsers(rows, '', 'admin').map((row) => row.id)).toEqual([admin().id])
     expect(filterAdminUsers(rows, '', 'user')).toHaveLength(2)
-  })
-
-  test('counts each role', () => {
-    expect(countRoles(rows)).toEqual({ admin: 1, user: 2 })
   })
 })
 
@@ -122,8 +117,7 @@ describe('AdminPage', () => {
     await renderRoute('/admin')
     expect(await screen.findByText('鈴木 葵')).toBeInTheDocument()
     expect(screen.getByText('（自分）')).toBeInTheDocument()
-    expect(screen.getByText('2人')).toBeInTheDocument()
-    expect(screen.getByText('管理者 1人 · メンバー 1人')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '次へ' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'ユーザーを作成' })).toBeInTheDocument()
   })
 })
