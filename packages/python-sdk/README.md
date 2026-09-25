@@ -5,7 +5,7 @@ wandb代替の実験管理ツール「atmos」用の軽量Python SDK。`docs/PLA
 ## インストール
 
 GitHub から入れる。PyPI の `atmos` は別物なので、`uv add atmos` とだけ書くと違うパッケージが入る。
-リポジトリは非公開のため、読み取り権限のある GitHub アカウントで認証しておく（`gh auth login` 済みなら git の認証もそれで通る）。
+リポジトリは公開されているため追加の認証は不要。
 
 タグを指定して git から入れる:
 
@@ -51,6 +51,21 @@ with wb.init(project="my-project") as run:
     train()  # ここで例外が飛んでもfinish("failed")が呼ばれてから伝播する
 ```
 
+## 再開（resume）
+
+`job_id`にidを渡すと、同じprojectに同じidのjobが既にあればそれを再開する
+（新規作成しない）。プロセスが落ちて学習を再開するときなどに使う
+（wandbの`wandb.init(id=..., resume="allow")`相当）。
+
+```python
+run = wb.init(project="my-project", job_id="my-run-id", config={"lr": 1e-3})
+```
+
+再開すると、jobの`status`は`running`に、`finished_at`は`None`に戻る
+（`started_at`は元のまま変わらない）。この呼び出しで`name`/`config`を渡せば
+その値で上書きし、渡さなければ既存の値をそのまま保つ。再開したかどうかは
+`logging.getLogger("atmos")`にinfoログで出る。
+
 ## 接続先の指定
 
 `api_url`・`token`は`wb.init()`の引数（`api_url=`/`token=`）を優先し、未指定なら環境変数
@@ -63,12 +78,13 @@ export ATMOS_TOKEN="xxxxx"  # /settings/tokens で発行したアクセストー
 
 ## 公開API
 
-- `atmos.init(project, *, name=None, config=None, visibility="private", api_url=None, token=None, flush_interval=5.0, batch_size=100, max_retries=5, retry_initial_delay=0.5, retry_max_delay=30.0) -> Run`
+- `atmos.init(project, *, name=None, config=None, job_id=None, visibility="private", api_url=None, token=None, flush_interval=5.0, batch_size=100, max_retries=5, retry_initial_delay=0.5, retry_max_delay=30.0) -> Run`
   - `project`のget-or-create（`POST /api/projects`）→ job作成（`POST /api/projects/:project_id/jobs`）を行い`Run`を返す。
   - `visibility`は`"public"`・`"internal"`・`"private"`のいずれか。projectを新規作成するときの公開範囲で、
     同名のprojectが既にあればそちらを使い、公開範囲は変更しない。それ以外の値は`ValueError`。
     既存projectの公開範囲が指定した`visibility`と異なる場合は警告ログを出す
     （変更したい場合はWebの設定から行う）。
+  - `job_id`を渡すと、同じprojectに同じidのjobが既にあれば新規作成せず再開する（上述「再開（resume）」）。
   - `max_retries`/`retry_initial_delay`/`retry_max_delay`で一時的な失敗への再試行の
     回数・待ち時間の上限を変更できる（詳細は後述）。
 - `Run.log(metrics: dict[str, float], step: int) -> None`

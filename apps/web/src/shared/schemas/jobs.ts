@@ -1,6 +1,6 @@
 // docs/SPEC.md §1 Job and §7 Jobs.
 //
-// POST   /api/projects/:project_id/jobs                 createJobRequestSchema -> 201 jobSchema
+// POST   /api/projects/:project_id/jobs                 createJobRequestSchema -> 200 jobSchema (resumed) | 201 jobSchema (created)
 // GET    /api/projects/:project_id/jobs                 listJobsQuerySchema -> pageSchema(jobSchema)
 // GET    /api/projects/:project_id/jobs/:job_id         -> jobSchema
 // PATCH  /api/projects/:project_id/jobs/:job_id         updateJobRequestSchema -> jobSchema
@@ -34,7 +34,10 @@ export const jobSchema = z.object({
 
 export const createJobRequestSchema = z.object({
   name: z.string().nonempty().optional(),
-  config: jobConfigSchema.default({}),
+  /** Omitted means "unchanged" on resume, and defaults to `{}` on a fresh create (src/api/routes/jobs.ts). */
+  config: jobConfigSchema.optional(),
+  /** Present to resume: same project + same id reopens that job instead of creating a new one. */
+  id: uuidSchema.optional(),
 })
 
 export const listJobsQuerySchema = paginationQuerySchema.extend({

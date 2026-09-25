@@ -213,7 +213,7 @@ export type UpdateProjectRequest = z.input<typeof updateProjectRequestSchema>
 
 // ---------------------------------------------------------------------------
 // §7 Jobs
-// POST   /api/projects/:project_id/jobs                 CreateJobRequest -> 201 Job
+// POST   /api/projects/:project_id/jobs                 CreateJobRequest -> 200 Job (resumed) | 201 Job (created)
 // GET    /api/projects/:project_id/jobs                 ListJobsQuery -> Page<Job>
 // GET    /api/projects/:project_id/jobs/:job_id         -> Job
 // PATCH  /api/projects/:project_id/jobs/:job_id         UpdateJobRequest -> Job
