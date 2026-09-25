@@ -37,7 +37,7 @@ local_protocol = "http"
 # [secrets] only declares the name, so `wrangler types` emits it and local dev
 # warns when it is missing. For local development, copy .dev.vars.example to
 # .dev.vars.
-# One Access application covers both staging and production, so they share the AUD.
+# Staging and production each have their own Access application, so their AUD differ.
 [vars]
 ACCESS_TEAM_DOMAIN = "tkgstrator.cloudflareaccess.com"
 ACCESS_AUD = "221a1ecd2ba473cf872e19aff65636eac11b3028b3907c6b473639979d10fbbc"
@@ -92,7 +92,7 @@ head_sampling_rate = 1
 
 [env.staging.vars]
 ACCESS_TEAM_DOMAIN = "tkgstrator.cloudflareaccess.com"
-ACCESS_AUD = "221a1ecd2ba473cf872e19aff65636eac11b3028b3907c6b473639979d10fbbc"
+ACCESS_AUD = "969098e2ab197a55960effa8eefeed95a21d37de98860413b8f702f86e9b8574"
 
 [env.staging.secrets]
 required = ["INIT_ADMIN_KEY"]
