@@ -78,6 +78,76 @@ def test_init_omits_optional_job_fields_when_not_given() -> None:
     run._client.close()
 
 
+def test_init_sends_job_id_when_given() -> None:
+    transport = _prepared_transport()
+
+    run = atmos.init(
+        project="my-project",
+        job_id="resumed-job",
+        api_url="http://testserver",
+        token="secret-token",
+        transport=transport,
+    )
+
+    job_request = transport.requests[1]
+    assert job_request.json == {"id": "resumed-job"}
+
+    run._flusher.stop()
+    run._client.close()
+
+
+def test_init_logs_when_the_job_is_resumed(caplog: pytest.LogCaptureFixture) -> None:
+    transport = RecordingTransport()
+    transport.respond(
+        "POST",
+        "/api/projects",
+        httpx.Response(
+            200,
+            json={"id": "project-1", "name": "my-project", "visibility": "private"},
+        ),
+    )
+    transport.respond(
+        "POST",
+        "/api/projects/project-1/jobs",
+        httpx.Response(
+            200,
+            json={"id": "job-1", "project_id": "project-1", "status": "running"},
+        ),
+    )
+
+    with caplog.at_level(logging.INFO, logger="atmos"):
+        run = atmos.init(
+            project="my-project",
+            job_id="job-1",
+            api_url="http://testserver",
+            token="secret-token",
+            transport=transport,
+        )
+
+    assert any("job-1" in r.getMessage() for r in caplog.records)
+    run._flusher.stop()
+    run._client.close()
+
+
+def test_init_does_not_log_when_the_job_is_newly_created(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    transport = _prepared_transport()
+
+    with caplog.at_level(logging.INFO, logger="atmos"):
+        run = atmos.init(
+            project="my-project",
+            job_id="job-1",
+            api_url="http://testserver",
+            token="secret-token",
+            transport=transport,
+        )
+
+    assert not any("再開しました" in r.getMessage() for r in caplog.records)
+    run._flusher.stop()
+    run._client.close()
+
+
 def test_init_prefers_explicit_args_over_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ATMOS_API_URL", "http://env-should-not-be-used")
     monkeypatch.setenv("ATMOS_TOKEN", "env-token")
