@@ -30,12 +30,10 @@
 		);
 	};
 
-	const selectPreference = (trigger, menu, item) => {
-		const preference = item.dataset.preference;
-
+	const syncDisplay = (trigger, menu, preference) => {
 		menu.querySelectorAll(".dropdown-item").forEach((candidate) => {
 			const shortcut = candidate.querySelector(".shortcut");
-			if (candidate === item) {
+			if (candidate.dataset.preference === preference) {
 				candidate.setAttribute("aria-current", "true");
 				candidate.setAttribute(
 					"aria-label",
@@ -56,7 +54,14 @@
 
 		trigger.querySelector("svg").innerHTML = ICONS[preference];
 		trigger.setAttribute("aria-label", `表示テーマ: ${LABELS[preference]}`);
+	};
 
+	const selectPreference = (trigger, menu, item) => {
+		const preference = item.dataset.preference;
+
+		syncDisplay(trigger, menu, preference);
+
+		document.documentElement.dataset.themePreference = preference;
 		applyPreference(preference);
 
 		closeMenu(trigger, menu);
@@ -70,6 +75,11 @@
 				trigger.getAttribute("aria-controls"),
 			);
 			if (!menu) return;
+
+			const forcedPreference = document.documentElement.dataset.themePreference;
+			if (forcedPreference === "light" || forcedPreference === "dark") {
+				syncDisplay(trigger, menu, forcedPreference);
+			}
 
 			trigger.addEventListener("click", () => {
 				if (menu.hidden) openMenu(trigger, menu);
