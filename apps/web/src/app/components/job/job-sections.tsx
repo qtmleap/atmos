@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Job } from '@/shared/types'
 import type { JobDetail } from '../../hooks/use-job-detail'
+import { jobPhase, TOOLBAR_NOTES } from '../../lib/job-phase'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import { LogViewer } from './log-viewer'
 import { MediaPanel } from './media-panel'
@@ -30,7 +31,7 @@ export interface JobSectionsProps {
 export function JobSections({ detail, job }: JobSectionsProps) {
   const [section, setSection] = useState<Section>(() => defaultSection(job))
   const { metrics, images, audio, logs, lastReceivedAt } = detail
-  const running = job.status === 'running'
+  const phase = jobPhase(job.status, lastReceivedAt)
   return (
     <Tabs value={section} onValueChange={(value) => isSection(value) && setSection(value)}>
       {/* Tabs already puts 8px below; 4px more makes the mock's 12px. */}
@@ -42,9 +43,7 @@ export function JobSections({ detail, job }: JobSectionsProps) {
             </TabsTrigger>
           ))}
         </TabsList>
-        <span className="text-xs text-muted-foreground">
-          {running ? '横軸：ステップ · 全期間' : '終了時点のデータ'}
-        </span>
+        <span className="text-xs text-muted-foreground">{TOOLBAR_NOTES[phase]}</span>
       </div>
       <TabsContent value="metrics">
         <MetricCharts
@@ -52,7 +51,7 @@ export function JobSections({ detail, job }: JobSectionsProps) {
           loading={metrics.loading}
           error={metrics.error}
           onRetry={metrics.retry}
-          running={running}
+          phase={phase}
           lastReceivedAt={lastReceivedAt}
         />
       </TabsContent>
@@ -62,7 +61,7 @@ export function JobSections({ detail, job }: JobSectionsProps) {
       <TabsContent value="logs">
         <LogViewer
           logs={logs}
-          running={running}
+          phase={phase}
           finishedAt={job.finished_at}
           lastReceivedAt={lastReceivedAt}
         />
