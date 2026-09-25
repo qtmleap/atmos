@@ -117,9 +117,9 @@ describe('summaryStats', () => {
       metric(3, 'lr', 1, 1e-4),
     ])
     expect(summaryStats(series, 3)).toEqual([
-      { key: 'train/loss', label: '学習損失', value: 0.5 },
-      { key: 'lr', label: '学習率', value: 1e-4 },
-      { key: 'grad_norm', label: '勾配ノルム', value: 2 },
+      { key: 'train/loss', value: 0.5 },
+      { key: 'lr', value: 1e-4 },
+      { key: 'grad_norm', value: 2 },
     ])
   })
 
