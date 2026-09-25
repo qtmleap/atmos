@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>基礎トークン · atmos</title><link rel="stylesheet" href="../_shared/atmos.css"><script>(() => { const forced = new URLSearchParams(location.search).get("colorScheme"); if (forced === "light" || forced === "dark") { document.documentElement.classList.toggle("dark", forced === "dark"); return; } const mq = matchMedia("(prefers-color-scheme: dark)"); const apply = () => document.documentElement.classList.toggle("dark", mq.matches); apply(); mq.addEventListener("change", apply); })()</script></head>
+<body><main class="catalog">
+  <header class="catalog-masthead"><span class="app-logo">atmos</span><nav class="catalog-nav" aria-label="コンポーネントカタログ"><a href="foundations.html" aria-current="page">基礎</a><a href="controls.html">コントロール</a><a href="data-display.html">データ表示</a><a href="navigation.html">ナビゲーション</a><a href="overlays.html">オーバーレイ</a><a href="run-widgets.html">ジョブ部品</a><a href="feedback.html">フィードバック</a></nav></header>
+  <div class="catalog-heading"><p class="eyebrow">COMPONENTS / 01</p><h1>基礎トークン</h1><p class="description">new-york / neutral。色・文字・余白の共通ルール。OSの表示設定に合わせて :root と .dark の値を切り替えて描きます。</p></div>
+  <section class="specimen"><div class="specimen-label"><h2>色</h2><code>:root / .dark</code><p>意味に基づくCSS変数。面を増やさず、文字と罫線で情報の階層をつくります。</p></div><div class="specimen-body swatch-grid">
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--background)"></div><code>--background</code><span class="muted">ページ背景</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--foreground)"></div><code>--foreground</code><span class="muted">本文</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--primary)"></div><code>--primary</code><span class="muted">主要アクション</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--primary-foreground)"></div><code>--primary-foreground</code><span class="muted">主要アクション上の文字</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--secondary)"></div><code>--secondary</code><span class="muted">補助アクション</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--secondary-foreground)"></div><code>--secondary-foreground</code><span class="muted">補助アクション上の文字</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--muted)"></div><code>--muted</code><span class="muted">控えめな背景</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--muted-foreground)"></div><code>--muted-foreground</code><span class="muted">補足・時刻</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--accent)"></div><code>--accent</code><span class="muted">ホバー背景</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--accent-foreground)"></div><code>--accent-foreground</code><span class="muted">ホバー時の文字</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--border)"></div><code>--border</code><span class="muted">区切り線</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--input)"></div><code>--input</code><span class="muted">入力欄の枠</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--ring)"></div><code>--ring</code><span class="muted">フォーカス</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--destructive)"></div><code>--destructive</code><span class="muted">失敗・破壊的操作</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--destructive-foreground)"></div><code>--destructive-foreground</code><span class="muted">破壊的操作上の文字</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--popover)"></div><code>--popover</code><span class="muted">メニュー背景</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--popover-foreground)"></div><code>--popover-foreground</code><span class="muted">メニュー内の文字</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--card)"></div><code>--card</code><span class="muted">互換用・通常は使用しない</span></div>
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--card-foreground)"></div><code>--card-foreground</code><span class="muted">互換用</span></div>
+  </div></section>
+  <section class="specimen"><div class="specimen-label"><h2>チャート色</h2><code>--chart-1 … --chart-5</code><p>系列名も併記し、色だけに意味を持たせません。</p></div><div class="specimen-body swatch-grid">
+    <div class="swatch"><div class="swatch-color" style="--swatch:var(--chart-1)"></div><code>--chart-1</code><span>train/loss</span></div><div class="swatch"><div class="swatch-color" style="--swatch:var(--chart-2)"></div><code>--chart-2</code><span>val/loss</span></div><div class="swatch"><div class="swatch-color" style="--swatch:var(--chart-3)"></div><code>--chart-3</code><span>lr</span></div><div class="swatch"><div class="swatch-color" style="--swatch:var(--chart-4)"></div><code>--chart-4</code><span>grad_norm</span></div><div class="swatch"><div class="swatch-color" style="--swatch:var(--chart-5)"></div><code>--chart-5</code><span>val/accuracy</span></div>
+  </div></section>
+  <section class="specimen"><div class="specimen-label"><h2>タイポグラフィ</h2><code>--font-sans / --font-mono</code><p>system-ui / ui-monospace。外部フォントなし。</p></div><div class="specimen-body stack">
+    <div class="between"><span style="font-size:30px;line-height:36px;font-weight:600;letter-spacing:-.025em">音声合成 v4</span><code class="small muted">30 / 36 · 600</code></div>
+    <div class="between"><span style="font-size:24px;line-height:32px;font-weight:600">ジョブの詳細</span><code class="small muted">24 / 32 · 600</code></div>
+    <div class="between"><h2>メトリクス</h2><code class="small muted">20 / 28 · 600</code></div>
+    <div class="between"><h3>学習の進捗</h3><code class="small muted">14 / 20 · 600</code></div>
+    <div class="between"><p>田中 美咲が開始したジョブを表示しています。</p><code class="small muted">14 / 21 · 400</code></div>
+    <div class="between"><p class="description">メトリクスは受信後に自動更新されます。</p><code class="small muted">14 / 22 · muted</code></div>
+    <div class="between"><p class="small muted">2026年9月24日 09:42 UTC</p><code class="small muted">12 / 18 · muted</code></div>
+    <div class="between"><code>train/loss　0.1824　step 48,000</code><code class="small muted">14 / 21 · mono</code></div>
+  </div></section>
+  <section class="specimen"><div class="specimen-label"><h2>余白</h2><code>4px 基準</code><p>コントロールは32px。セクション間は罫線と余白で区切ります。</p></div><div class="specimen-body grid-2"><div class="stack">
+    <div class="space-sample"><code>4px</code><span class="space-bar" style="--space:4px"></span><span class="muted">小さな要素間</span></div><div class="space-sample"><code>8px</code><span class="space-bar" style="--space:8px"></span><span class="muted">ラベルと入力</span></div><div class="space-sample"><code>12px</code><span class="space-bar" style="--space:12px"></span><span class="muted">行内の間隔</span></div><div class="space-sample"><code>16px</code><span class="space-bar" style="--space:16px"></span><span class="muted">部品間</span></div>
+  </div><div class="stack"><div class="space-sample"><code>24px</code><span class="space-bar" style="--space:24px"></span><span class="muted">グループ間</span></div><div class="space-sample"><code>32px</code><span class="space-bar" style="--space:32px"></span><span class="muted">ページ余白</span></div><div class="space-sample"><code>40px</code><span class="space-bar" style="--space:40px"></span><span class="muted">説明列との間隔</span></div><div class="space-sample"><code>64px</code><span class="space-bar" style="--space:64px"></span><span class="muted">ヘッダー高さ</span></div></div></div></section>
+  <section class="specimen"><div class="specimen-label"><h2>角丸・罫線</h2><code>--radius: 0.625rem</code><p>装飾用の見本。影・グラデーションは使用しません。</p></div><div class="specimen-body stack"><div class="row"><div class="radius-sample" style="border-radius:var(--radius-sm)">sm · 6px</div><div class="radius-sample" style="border-radius:var(--radius-md)">md · 8px</div><div class="radius-sample" style="border-radius:var(--radius-lg)">lg · 10px</div><div class="radius-sample" style="border-radius:var(--radius-xl)">xl · 14px</div><div class="radius-sample" style="border-radius:999px">full</div></div><p class="small muted">Button / Input: md　Dialog: lg　Avatar / Switch: full</p><hr class="separator"><p class="small muted">区切り線 · 1px solid var(--border)</p></div></section>
+  <footer class="catalog-footer"><span>atmos · コンポーネント層</span><span>01 / 04 · 基礎</span></footer>
+</main></body></html>

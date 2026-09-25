@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>メンバー · atmos</title>
+  <link rel="stylesheet" href="../_shared/atmos.css">
+  <style>
+    .page-content { max-width: 1312px; margin: 0 auto; padding: 16px 32px 24px; }
+    .list-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 20px; }
+    .list-search { position: relative; width: 360px; max-width: 100%; }
+    .list-search > .icon { position: absolute; top: 8px; left: 10px; color: var(--muted-foreground); }
+    .list-search .input { padding-left: 34px; }
+    .member-row-minimal { grid-template-columns: 1fr; min-height: 54px; padding: 6px 8px; }
+    .member-row-minimal:hover { text-decoration: none; }
+    .member-row-minimal:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+    .list-footer { padding-top: 16px; }
+    @media (max-width: 700px) { .page-content { padding-inline: 16px; } .list-toolbar { flex-wrap: wrap; } }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header">
+    <a class="app-logo" href="/" aria-label="atmos ホーム">atmos</a>
+    <nav class="app-nav" aria-label="ログイン時のナビゲーション"><a href="/">プロジェクト</a><a href="/users" aria-current="page">メンバー</a></nav>
+    <div class="app-account"><button class="btn btn-ghost btn-icon" type="button" aria-label="表示テーマ: システム" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu-1"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg></button><div class="dropdown" id="theme-menu-1" role="menu" aria-label="表示テーマ" hidden><button class="dropdown-item" role="menuitem" data-preference="system" aria-current="true" aria-label="表示テーマ: システム（選択中）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>システム<span class="shortcut"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m20 6-11 11-5-5"/></svg></span></button><button class="dropdown-item" role="menuitem" data-preference="light"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>ライト</button><button class="dropdown-item" role="menuitem" data-preference="dark"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>ダーク</button></div><span class="small">田中 美咲</span><span class="avatar" role="img" aria-label="田中 美咲のアバター">田</span><button class="btn btn-ghost btn-icon" type="button" aria-label="ユーザーメニュー" aria-haspopup="menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>
+  </header>
+  <main class="page-content">
+    <header class="page-header"><h1>メンバー</h1><p class="description">チームのメンバーと、それぞれのプロジェクトを見つけましょう。</p></header>
+    <div class="list-toolbar">
+      <div class="list-search"><label class="sr-only" for="member-search">表示名・ハンドルで検索</label><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input class="input" id="member-search" type="search" placeholder="表示名・ハンドルで検索"></div>
+      <span class="small muted">10件表示</span>
+    </div>
+    <div class="data-list" aria-label="チームメンバー">
+      <a class="data-row member-row member-row-minimal" href="/users/misaki_t"><div class="row"><span class="avatar" aria-hidden="true">田</span><div><p class="data-row-title">田中 美咲</p><p class="data-row-meta mono">@misaki_t</p></div></div></a>
+      <a class="data-row member-row member-row-minimal" href="/users/yuto_s"><div class="row"><span class="avatar" aria-hidden="true">佐</span><div><p class="data-row-title">佐藤 悠斗</p><p class="data-row-meta mono">@yuto_s</p></div></div></a>
+      <a class="data-row member-row member-row-minimal" href="/users/aoi_ml"><div class="row"><span class="avatar" aria-hidden="true">鈴</span><div><p class="data-row-title">鈴木 葵</p><p class="data-row-meta mono">@aoi_ml</p></div></div></a>
+      <a class="data-row member-row member-row-minimal" href="/users/ren_t"><div class="row"><span class="avatar" aria-hidden="true">高</span><div><p class="data-row-title">高橋 蓮</p><p class="data-row-meta mono">@ren_t</p></div></div></a>
+      <a class="data-row member-row member-row-minimal" href="/users/rin_ito"><div class="row"><span class="avatar" aria-hidden="true">伊</span><div><p class="data-row-title">伊藤 凛</p><p class="data-row-meta mono">@rin_ito</p></div></div></a>
+      <a class="data-row member-row member-row-minimal" href="/users/haruto_w"><div class="row"><span class="avatar" aria-hidden="true">渡</span><div><p class="data-row-title">渡辺 陽翔</p><p class="data-row-meta mono">@haruto_w</p></div></div></a>
+      <a class="data-row member-row member-row-minimal" href="/users/sakura_y"><div class="row"><span class="avatar" aria-hidden="true">山</span><div><p class="data-row-title">山本 桜</p><p class="data-row-meta mono">@sakura_y</p></div></div></a>
+      <a class="data-row member-row member-row-minimal" href="/users/minato_n"><div class="row"><span class="avatar" aria-hidden="true">中</span><div><p class="data-row-title">中村 湊</p><p class="data-row-meta mono">@minato_n</p></div></div></a>
+      <a class="data-row member-row member-row-minimal" href="/users/yui_k"><div class="row"><span class="avatar" aria-hidden="true">小</span><div><p class="data-row-title">小林 結衣</p><p class="data-row-meta mono">@yui_k</p></div></div></a>
+      <a class="data-row member-row member-row-minimal" href="/users/sota_kato"><div class="row"><span class="avatar" aria-hidden="true">加</span><div><p class="data-row-title">加藤 颯太</p><p class="data-row-meta mono">@sota_kato</p></div></div></a>
+    </div>
+    <nav class="pagination list-footer" aria-label="メンバーのページ送り"><span>10件表示 · 先頭 · 続きあり</span><ul class="pagination-content"><li><button class="btn btn-ghost" type="button" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>前へ</button></li><li><button class="btn btn-outline" type="button">次へ<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></li></ul></nav>
+  </main>
+</div>
+<script src="../_shared/theme-toggle.js"></script>
+</body>
+</html>

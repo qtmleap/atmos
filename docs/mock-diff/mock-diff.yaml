@@ -1,0 +1,237 @@
+# mock diff ビューアの設定。ワークスペースはこのディレクトリ (docs/mock-diff)。
+#
+# 画面を足すときはモックを designs/ に置き、ここに一画面ぶん書き足す。
+# 候補を並べるなら versions に名前を変えて並べ、実装ができたら actual に
+# type: url で開発サーバーを指す。どれを決定稿にしたかはここには書かない
+# (ビューアが mock-diff.adopted.yaml に書く)。
+#
+# 部品カタログは designs/components/、共通の CSS は designs/_shared/atmos.css。
+screens:
+  - id: component-foundations
+    name: 基礎
+    category: コンポーネント
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/components/foundations.html}
+        actual: {type: url, url: "http://localhost:12155/catalog/foundations"}
+  - id: component-foundations-dark
+    name: 基礎（ダーク）
+    category: コンポーネント
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/components/foundations-dark.html}
+  - id: component-controls
+    name: 操作部品
+    category: コンポーネント
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/components/controls.html}
+        actual: {type: url, url: "http://localhost:12155/catalog/controls"}
+  - id: component-data-display
+    name: データ表示
+    category: コンポーネント
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/components/data-display.html}
+        actual: {type: url, url: "http://localhost:12155/catalog/data-display"}
+  - id: component-navigation
+    name: ナビゲーション
+    category: コンポーネント
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/components/navigation.html}
+        actual: {type: url, url: "http://localhost:12155/catalog/navigation"}
+  - id: component-overlays
+    name: 重なる部品
+    category: コンポーネント
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/components/overlays.html}
+        actual: {type: url, url: "http://localhost:12155/catalog/overlays"}
+  - id: component-run-widgets
+    name: run 詳細の部品
+    category: コンポーネント
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/components/run-widgets.html}
+        actual: {type: url, url: "http://localhost:12155/catalog/run-widgets"}
+  - id: component-feedback
+    name: 状態表示
+    category: コンポーネント
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/components/feedback.html}
+        actual: {type: url, url: "http://localhost:12155/catalog/feedback"}
+  - id: component-theme-dark
+    name: ダークモード（見本）
+    category: コンポーネント
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/components/theme-dark.html}
+  - id: page-projects
+    name: プロジェクト一覧
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/projects.html}
+        actual: {type: url, url: "http://localhost:12155/"}
+  - id: page-projects-new
+    name: 新規プロジェクト
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/projects-new.html}
+        actual: {type: url, url: "http://localhost:12155/?new=1"}
+  - id: page-project-jobs
+    name: ジョブ一覧
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/project-jobs.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits"}
+  - id: page-project-jobs-compare
+    name: ジョブ一覧（比較つき）
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/project-jobs-compare.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits?view=compare"}
+  - id: page-project-jobs-compare-drawer
+    name: ジョブ一覧（比較・ジョブを選ぶ）
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/project-jobs-compare-drawer.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits?view=compare&drawer=jobs"}
+  - id: page-job-detail
+    name: ジョブ詳細（実行中）
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/job-detail.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits/jobs/job_vits_baseline_042"}
+  - id: page-job-detail-failed
+    name: ジョブ詳細（失敗）
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/job-detail-failed.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits/jobs/job_vits_baseline_042_failed"}
+  - id: page-users
+    name: メンバー一覧
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/users.html}
+        actual: {type: url, url: "http://localhost:12155/users"}
+  - id: page-user-profile
+    name: プロフィール
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/user-profile.html}
+        actual: {type: url, url: "http://localhost:12155/users/misaki_t"}
+  - id: page-settings-profile
+    name: プロフィール設定
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/settings-profile.html}
+        actual: {type: url, url: "http://localhost:12155/settings/profile"}
+  - id: page-settings-tokens
+    name: アクセストークン
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/settings-tokens.html}
+        actual: {type: url, url: "http://localhost:12155/settings/tokens"}
+  - id: page-admin
+    name: ユーザー管理
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/admin.html}
+        actual: {type: url, url: "http://localhost:12155/admin"}
+  - id: page-setup
+    name: 初回セットアップ
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/setup.html}
+        actual: {type: url, url: "http://localhost:12155/setup"}
+  - id: page-setup-closed
+    name: セットアップ済み
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/setup-closed.html}
+        actual: {type: url, url: "http://localhost:12155/setup?scenario=closed"}
