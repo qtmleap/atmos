@@ -69,10 +69,12 @@ uvx ruff format --check
 
 環境は staging と production の二つ。どちらも `apps/web/wrangler.toml` に定義してある。
 
-| 環境 | Worker | D1 | R2 |
-|---|---|---|---|
-| staging | `atmos-web-staging` | `atmos-staging` | `atmos-assets-staging` |
-| production | `atmos-web` | `atmos` | `atmos-assets` |
+| 環境 | ドメイン | Worker | D1 | R2 |
+|---|---|---|---|---|
+| staging | `atmos-staging.qleap.jp` | `atmos-web-staging` | `atmos-staging` | `atmos-assets-staging` |
+| production | `atmos.qleap.jp` | `atmos-web` | `atmos` | `atmos-assets` |
+
+`*.workers.dev` とプレビュー URL は無効にしてある。Cloudflare Access の外に入口を作らないため。
 
 ### D1 の移行
 
