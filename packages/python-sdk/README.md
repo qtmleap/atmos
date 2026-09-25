@@ -4,9 +4,25 @@ wandb代替の実験管理ツール「atmos」用の軽量Python SDK。`docs/PLA
 
 ## インストール
 
+GitHub から入れる。PyPI の `atmos` は別物なので、`uv add atmos` とだけ書くと違うパッケージが入る。
+リポジトリは非公開のため、読み取り権限のある GitHub アカウントで認証しておく（`gh auth login` 済みなら git の認証もそれで通る）。
+
+タグを指定して git から入れる:
+
 ```
-uv add atmos  # またはgit経由でのインストール（社内配布のみのためPyPIには出さない）
+uv add "atmos @ git+https://github.com/qtmleap/atmos@v0.1.2#subdirectory=packages/python-sdk"
+# pip の場合
+pip install "atmos @ git+https://github.com/qtmleap/atmos@v0.1.2#subdirectory=packages/python-sdk"
 ```
+
+リリースに添付した wheel を落として入れる:
+
+```
+gh release download v0.1.2 -R qtmleap/atmos -p '*.whl'
+pip install ./atmos-*.whl
+```
+
+wheel と sdist はリリースを公開したときに `.github/workflows/python-sdk-release.yaml` が添付する。
 
 ## 使い方
 
