@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { HANDLE_PATTERN, type SetupRequest, type SetupResponse } from '@/shared/types'
 import { ApiError, apiFetch, errorMessage } from '../lib/api-client'
 import { useCurrentUser } from './use-current-user'
+import { useSetupStatus } from './use-setup-status'
 
 const setupFormSchema = z.object({
   init_admin_key: z.string().nonempty('初期化キーを入力してください'),
@@ -59,11 +60,13 @@ export interface UseSetupFormResult {
   error: string | null
   result: SetupResponse | null
   submit: () => Promise<void>
-  /** True while `GET /api/me` is still being answered. */
+  /** True while `GET /api/me` or `GET /api/setup` is still being answered. */
   loading: boolean
   /**
    * Setup is over: someone is already signed in (a user row exists, so the
-   * server would refuse), or the server answered `already_initialized`.
+   * server would refuse), the server answered `already_initialized`, or
+   * `GET /api/setup` itself reports a registered user (so a signed-out
+   * visitor who lands on /setup after the fact still moves on).
    */
   closed: boolean
 }
@@ -76,7 +79,8 @@ export function useSetupForm(): UseSetupFormResult {
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<SetupResponse | null>(null)
   const [alreadyInitialized, setAlreadyInitialized] = useState(false)
-  const { user, loading, refetch } = useCurrentUser()
+  const { user, loading: userLoading, refetch } = useCurrentUser()
+  const setupStatus = useSetupStatus()
 
   const submit = useCallback(async () => {
     const validation = validateSetupForm({
@@ -121,7 +125,9 @@ export function useSetupForm(): UseSetupFormResult {
     error,
     result,
     submit,
-    loading,
-    closed: alreadyInitialized || (result === null && user !== null),
+    loading: userLoading || setupStatus.loading,
+    closed:
+      alreadyInitialized ||
+      (result === null && (user !== null || setupStatus.initialized === true)),
   }
 }

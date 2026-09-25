@@ -165,35 +165,51 @@ const roundTo = (value: number, unit: number): number => {
   return Number(value.toFixed(Math.min(decimals, 20)))
 }
 
-/** Whether a span of `units` divides into two or three equal, readable intervals. */
-const divides = (units: number): boolean => units <= 3 || units % 2 === 0 || units % 3 === 0
+/** Absorbs float dust before rounding a tick count (3e-4 / 1e-4 is 2.9999…). */
+const TICK_EPSILON = 1e-9
+
+/** 1, 2 or 5 times a power of ten near `raw`, in ascending order. */
+const roundSteps = (raw: number): number[] => {
+  const power = 10 ** Math.floor(Math.log10(raw))
+  return [1, 2, 5, 10].map((base) => base * power)
+}
 
 /**
- * Y-axis ticks the way the mocks rule their charts. The unit is the power of
- * ten below the range; the top is `max` rounded up to it, the bottom `min`
- * rounded down, dropped to 0 when that divides better (grad_norm 1.68..5.2
- * becomes 0..6 rather than 1..6). The span is then cut in two, or in three
- * when only three divides it: 1.0/0.7/0.4/0.1, 3e-4/1.5e-4/0, 6/3/0. A flat
- * series gets a single tick.
+ * Multiples of a round step (1, 2 or 5 times a power of ten) spanning
+ * `min..max`, the step chosen so their count lands closest to `target` (the
+ * finer step on a tie). `outward` widens the span to the enclosing multiples;
+ * otherwise only the multiples inside it are kept.
  */
-export const niceTicks = (min: number, max: number): number[] => {
+const roundTicks = (min: number, max: number, target: number, outward: boolean): number[] => {
   if (!Number.isFinite(min) || !Number.isFinite(max)) {
     return []
   }
   if (max <= min) {
     return [min]
   }
-  const unit = 10 ** Math.floor(Math.log10(max - min))
-  const high = Math.ceil(max / unit) * unit
-  const floored = Math.floor(min / unit) * unit
-  const unitsFrom = (low: number): number => Math.round((high - low) / unit)
-  const low = min >= 0 && !divides(unitsFrom(floored)) && divides(unitsFrom(0)) ? 0 : floored
-  const units = unitsFrom(low)
-  const intervals = units <= 3 || units % 2 === 0 || units % 3 !== 0 ? 2 : 3
-  return Array.from({ length: intervals + 1 }, (_, index) =>
-    roundTo(low + ((high - low) * index) / intervals, unit / 10),
+  const nudge = outward ? TICK_EPSILON : -TICK_EPSILON
+  const bounds = (step: number): [number, number] =>
+    outward
+      ? [Math.floor(min / step + nudge), Math.ceil(max / step - nudge)]
+      : [Math.ceil(min / step + nudge), Math.floor(max / step - nudge)]
+  const count = (step: number): number => {
+    const [low, high] = bounds(step)
+    return high - low + 1
+  }
+  const step = roundSteps((max - min) / Math.max(target - 1, 1)).reduce((best, candidate) =>
+    Math.abs(count(candidate) - target) < Math.abs(count(best) - target) ? candidate : best,
   )
+  const [low, high] = bounds(step)
+  return Array.from({ length: high - low + 1 }, (_, index) => roundTo((low + index) * step, step))
 }
+
+/**
+ * Y-axis ticks, about `target` of them, the axis widened to end on ticks:
+ * train/loss 0.18..0.98 reads 0.0 to 1.0 by 0.2, lr 0..3e-4 by 1e-4,
+ * grad_norm 1.65..5.2 reads 1 to 6. A flat series gets a single tick.
+ */
+export const niceTicks = (min: number, max: number, target = 5): number[] =>
+  roundTicks(min, max, target, true)
 
 /** Decimal places that show every tick exactly, so `1` reads `1.0` beside `0.7`. */
 const tickDecimals = (ticks: number[]): number =>
@@ -215,15 +231,12 @@ export const formatTicks = (ticks: number[]): ((value: number) => string) => {
   return (value) => value.toFixed(decimals)
 }
 
-/** `count` ticks evenly spaced from `min` to `max` (whole steps). */
-export const evenTicks = (min: number, max: number, count: number): number[] => {
-  if (count < 2 || max <= min) {
-    return [min]
-  }
-  return Array.from({ length: count }, (_, index) =>
-    Math.round(min + ((max - min) * index) / (count - 1)),
-  )
-}
+/**
+ * X-axis ticks, about `target` of them, inside the data's own range, so the
+ * last step need not be ticked (0..48,000 reads 0 to 40k by 10k).
+ */
+export const stepTicks = (min: number, max: number, target = 6): number[] =>
+  roundTicks(min, max, target, false)
 
 // ---------------------------------------------------------------------------
 // Chart arrangement
@@ -263,6 +276,11 @@ export const seriesColor = (key: string): number => (isRateKey(key) ? 2 : 0)
 /** Loss-like keys, then learning rates, then the rest by name. */
 const rank = (key: string): number => (isLossKey(key) ? 0 : isRateKey(key) ? 1 : 2)
 
+/**
+ * Display order of two metric keys: losses first, learning rates next, the
+ * rest alphabetically (lib/job-metric-view.ts reuses this for the job detail
+ * page's ungrouped key order).
+ */
 export const compareForDisplay = (a: string, b: string): number =>
   rank(a) - rank(b) || compareText(a, b)
 

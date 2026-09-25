@@ -1,13 +1,28 @@
-// POST /api/setup, in the two states the mocks draw:
+// GET /api/setup and POST /api/setup, in the states the mocks draw:
 //   - designs/pages/setup.html          fresh install, registration succeeds
 //   - designs/pages/setup-closed.html   scenario `closed` (/setup?scenario=closed):
 //                                       403 already_initialized
 // Neither stores anything.
+import type { SetupStatus } from '../../src/shared/types'
 import { HANDLE_PATTERN, type SetupRequest, type SetupResponse } from '../../src/shared/types'
-import { ME } from './me'
+import { isFreshSetupPage, ME } from './me'
 import { apiError, type FixtureHandler, json } from './respond'
 
 export const SETUP_CLOSED_SCENARIO = 'closed'
+
+/**
+ * `?scenario=uninitialized` on any page (not just /setup) answers
+ * `initialized: false`, so the app-wide redirect to /setup
+ * (components/layout/app-layout.tsx) can be exercised from elsewhere too.
+ * me.ts's isFreshSetupPage covers it, so /api/me answers 401 there as well.
+ */
+export const SETUP_UNINITIALIZED_SCENARIO = 'uninitialized'
+
+export const getSetup: FixtureHandler = ({ pagePath, scenario }) => {
+  const initialized = !isFreshSetupPage(pagePath, scenario)
+  const response: SetupStatus = { initialized }
+  return json(response)
+}
 
 /** The fixture's INIT_ADMIN_KEY; any other key is refused like the real one. */
 export const FIXTURE_INIT_ADMIN_KEY = 'fixture-init-admin-key'

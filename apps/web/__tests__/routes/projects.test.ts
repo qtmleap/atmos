@@ -3,6 +3,7 @@
 // Cf-Access-Jwt-Assertion verification goes through the real JWKS fetch (see
 // __tests__/routes/test-env.ts for why this does not reuse
 // __tests__/helpers/test-worker.ts).
+
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { eq } from 'drizzle-orm'
 import { now } from '../../src/api/lib/ids'
@@ -67,6 +68,18 @@ describe('GET /api/projects', () => {
     expect(names).toContain('owner public')
     expect(names).toContain('owner private')
     expect(names).not.toContain('stranger private')
+  })
+
+  test('the CF_Authorization cookie identifies the viewer outside Access', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'cookie-owner@example.com' })
+    await insertProject(env.DB, owner, { name: 'cookie private', visibility: 'private' })
+
+    const res = await dispatch('/api/projects', {
+      headers: { Cookie: `CF_Authorization=${await access.sign({ email: owner.cfAccessEmail })}` },
+    })
+    const body = await jsonShaped(projectPageSchema, res)
+    expect(body.items.map((p) => p.name)).toContain('cookie private')
   })
 
   test('internal projects are hidden from an anonymous viewer, shown to any signed-in registered user', async () => {
@@ -304,6 +317,30 @@ describe('POST /api/projects', () => {
     expect(project.owner.id).toBe(owner.id)
   })
 
+  test('creates a project for a web user identified by the CF_Authorization cookie', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'cookie-create@example.com' })
+    const cookie = `CF_Authorization=${await access.sign({ email: owner.cfAccessEmail })}`
+    const create = (fetchSite: string, name: string) =>
+      dispatch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: cookie,
+          'Sec-Fetch-Site': fetchSite,
+        },
+        body: JSON.stringify({ name }),
+      })
+
+    const sameOrigin = await create('same-origin', 'from-the-cookie')
+    expect(sameOrigin.status).toBe(201)
+    expect((await jsonShaped(projectSchema, sameOrigin)).owner.id).toBe(owner.id)
+
+    const crossSite = await create('cross-site', 'cross-site')
+    expect(crossSite.status).toBe(401)
+    await jsonError(crossSite, 'unauthenticated')
+  })
+
   test('409 conflict for an Access user creating a second project with the same name', async () => {
     const { dispatch, env, access } = testEnv()
     const owner = await insertUser(env.DB, { cfAccessEmail: 'access-conflict@example.com' })
@@ -379,6 +416,37 @@ describe('PATCH /api/projects/:project_id', () => {
     const body = await jsonShaped(projectSchema, res)
     expect(body.name).toBe('after')
     expect(body.visibility).toBe('public')
+  })
+
+  test('the owner may edit via the CF_Authorization cookie, same-origin only', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'patch-cookie-owner@example.com' })
+    const project = await insertProject(env.DB, owner, { name: 'cookie-before' })
+    const cookie = `CF_Authorization=${await access.sign({ email: owner.cfAccessEmail })}`
+
+    const sameOrigin = await dispatch(`/api/projects/${project.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: cookie,
+        'Sec-Fetch-Site': 'same-origin',
+      },
+      body: JSON.stringify({ name: 'cookie-after' }),
+    })
+    expect(sameOrigin.status).toBe(200)
+    expect((await jsonShaped(projectSchema, sameOrigin)).name).toBe('cookie-after')
+
+    const crossSite = await dispatch(`/api/projects/${project.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: cookie,
+        'Sec-Fetch-Site': 'cross-site',
+      },
+      body: JSON.stringify({ name: 'should-not-apply' }),
+    })
+    expect(crossSite.status).toBe(401)
+    await jsonError(crossSite, 'unauthenticated')
   })
 
   test('an admin may edit a project they do not own', async () => {

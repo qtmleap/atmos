@@ -11,6 +11,7 @@ import { useCurrentUser } from '../hooks/use-current-user'
 import { usePagedList } from '../hooks/use-paged-list'
 import { useRequiredParam } from '../hooks/use-required-param'
 import { useUser } from '../hooks/use-user'
+import { profileListNote, profileViewer } from '../lib/visibility-note'
 
 const PROJECTS_PAGE_SIZE = 20
 
@@ -113,9 +114,7 @@ function UserProfileContent({
         )}
 
         <p className="pt-4 text-xs text-muted-foreground">
-          {signedIn
-            ? 'ログイン中のため、公開・メンバー限定・非公開のすべてのプロジェクトを表示しています。'
-            : '公開プロジェクトのみ表示しています。'}
+          {profileListNote(profileViewer(signedIn, isOwnProfile))}
         </p>
       </section>
     </div>

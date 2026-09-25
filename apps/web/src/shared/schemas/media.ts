@@ -4,7 +4,7 @@
 // GET  /api/projects/:project_id/jobs/:job_id/media            listMediaQuerySchema -> pageSchema(mediaAssetSchema)
 // GET  /api/projects/:project_id/jobs/:job_id/media/:media_id  -> binary
 //
-// The file itself (content type per kind, 25MB cap) is checked by the handler
+// The file itself (content type per kind, 2048KB cap) is checked by the handler
 // against MEDIA_CONTENT_TYPES / MEDIA_MAX_BYTES in ../types.ts.
 import { z } from 'zod'
 import { isoDateTimeSchema, mediaKindSchema, paginationQuerySchema, uuidSchema } from './common'

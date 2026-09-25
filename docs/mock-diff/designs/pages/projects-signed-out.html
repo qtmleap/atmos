@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>プロジェクト · atmos</title>
+  <link rel="stylesheet" href="../_shared/atmos.css">
+  <style>
+    .page-content { max-width: 1600px; margin: 0 auto; padding: 16px 32px 24px; }
+    .page-content .page-header { padding-block: 16px; }
+    .list-toolbar { display: flex; align-items: center; gap: 12px; padding-block: 16px; }
+    .list-search { position: relative; width: 320px; }
+    .list-search > .icon { position: absolute; left: 10px; top: 8px; color: var(--muted-foreground); }
+    .list-search .input { padding-left: 34px; }
+    .list-filter { width: 176px; }
+    .list-note { margin-left: auto; color: var(--muted-foreground); font-size: 12px; }
+    .list-table { white-space: nowrap; }
+    .list-table th { color: var(--muted-foreground); font-size: 12px; }
+    .list-table td { height: 50px; }
+    .list-footer { padding-top: 12px; }
+    @media (max-width: 700px) { .page-content { padding: 20px 16px; } .list-toolbar { flex-wrap: wrap; } .list-search { width: 100%; } .list-note { margin-left: 0; } }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+<header class="app-header">
+  <a class="app-logo" href="projects.html" aria-label="atmos ホーム">atmos</a>
+  <nav class="app-nav" aria-label="メインナビゲーション"><a href="projects.html" aria-current="page">プロジェクト</a><a href="/users">メンバー</a></nav>
+  <div class="app-account"><button class="btn btn-ghost btn-icon" type="button" aria-label="表示テーマ: システム" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu-1"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg></button><div class="dropdown" id="theme-menu-1" role="menu" aria-label="表示テーマ" hidden><button class="dropdown-item" role="menuitem" data-preference="system" aria-current="true" aria-label="表示テーマ: システム（選択中）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>システム<span class="shortcut"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m20 6-11 11-5-5"/></svg></span></button><button class="dropdown-item" role="menuitem" data-preference="light"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>ライト</button><button class="dropdown-item" role="menuitem" data-preference="dark"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>ダーク</button></div><a class="btn btn-default" href="/settings/profile">ログイン</a></div>
+</header>
+<main class="page-content">
+  <header class="page-header">
+    <div class="between"><h1>プロジェクト</h1><div class="row"><span class="small muted">チームのワークスペース</span></div></div>
+    <p class="description">音声合成と画像生成の実験を、プロジェクトごとに。</p>
+  </header>
+  <div class="list-toolbar" role="search" aria-label="プロジェクトの検索と絞り込み">
+    <div class="list-search"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input class="input" type="search" aria-label="プロジェクトを検索" placeholder="プロジェクトを検索…"></div>
+    <div class="select-wrap list-filter"><select class="select" aria-label="公開範囲"><option>すべての公開範囲</option><option>公開</option></select><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+    <div class="select-wrap list-filter"><select class="select" aria-label="所有者"><option>すべての所有者</option><option>田中 美咲</option><option>佐藤 悠斗</option><option>鈴木 葵</option><option>伊藤 凛</option><option>渡辺 陽翔</option><option>中村 湊</option></select><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+    <span class="list-note">最終更新が新しい順 · 日時は UTC</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table list-table" aria-label="閲覧可能なプロジェクト">
+      <thead><tr><th scope="col">プロジェクト名</th><th scope="col">公開範囲</th><th scope="col">所有者</th><th scope="col" class="numeric">ジョブ数</th><th scope="col">最終更新</th><th scope="col"><span class="sr-only">詳細</span></th></tr></thead>
+      <tbody>
+<tr><td><a class="row data-row-title" href="/projects/prj_tts_ja_baseline"><span class="muted"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2Z"/></svg></span>日本語音声合成 / ベースライン</a></td><td><span class="badge badge-outline visibility"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a16 16 0 0 0 0 20 16 16 0 0 0 0-20M2 12h20"/></svg>公開</span></td><td>田中 美咲</td><td class="numeric mono">96</td><td class="mono small muted"><time datetime="2026-09-24T12:40:00Z">09-24 12:40</time></td><td><a class="btn btn-ghost btn-icon" href="/projects/prj_tts_ja_baseline" aria-label="日本語音声合成 / ベースラインのジョブ一覧"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a></td></tr>
+<tr><td><a class="row data-row-title" href="/projects/prj_bigvgan"><span class="muted"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2Z"/></svg></span>ボコーダ / BigVGAN</a></td><td><span class="badge badge-outline visibility"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a16 16 0 0 0 0 20 16 16 0 0 0 0-20M2 12h20"/></svg>公開</span></td><td>佐藤 悠斗</td><td class="numeric mono">83</td><td class="mono small muted"><time datetime="2026-09-24T10:08:00Z">09-24 10:08</time></td><td><a class="btn btn-ghost btn-icon" href="/projects/prj_bigvgan" aria-label="ボコーダ / BigVGANのジョブ一覧"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a></td></tr>
+<tr><td><a class="row data-row-title" href="/projects/prj_controlnet_depth"><span class="muted"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2Z"/></svg></span>画像生成 / ControlNet 深度条件</a></td><td><span class="badge badge-outline visibility"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a16 16 0 0 0 0 20 16 16 0 0 0 0-20M2 12h20"/></svg>公開</span></td><td>鈴木 葵</td><td class="numeric mono">64</td><td class="mono small muted"><time datetime="2026-09-23T22:46:00Z">09-23 22:46</time></td><td><a class="btn btn-ghost btn-icon" href="/projects/prj_controlnet_depth" aria-label="画像生成 / ControlNet 深度条件のジョブ一覧"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a></td></tr>
+<tr><td><a class="row data-row-title" href="/projects/prj_tts_few_shot"><span class="muted"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2Z"/></svg></span>音声合成 / 少量データ適応</a></td><td><span class="badge badge-outline visibility"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a16 16 0 0 0 0 20 16 16 0 0 0 0-20M2 12h20"/></svg>公開</span></td><td>伊藤 凛</td><td class="numeric mono">38</td><td class="mono small muted"><time datetime="2026-09-23T16:04:00Z">09-23 16:04</time></td><td><a class="btn btn-ghost btn-icon" href="/projects/prj_tts_few_shot" aria-label="音声合成 / 少量データ適応のジョブ一覧"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a></td></tr>
+<tr><td><a class="row data-row-title" href="/projects/prj_hifigan_ft"><span class="muted"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2Z"/></svg></span>ボコーダ / HiFi-GAN 微調整</a></td><td><span class="badge badge-outline visibility"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a16 16 0 0 0 0 20 16 16 0 0 0 0-20M2 12h20"/></svg>公開</span></td><td>渡辺 陽翔</td><td class="numeric mono">29</td><td class="mono small muted"><time datetime="2026-09-23T11:48:00Z">09-23 11:48</time></td><td><a class="btn btn-ghost btn-icon" href="/projects/prj_hifigan_ft" aria-label="ボコーダ / HiFi-GAN 微調整のジョブ一覧"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a></td></tr>
+<tr><td><a class="row data-row-title" href="/projects/prj_whisper_ja"><span class="muted"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2Z"/></svg></span>音声認識 / Whisper 日本語</a></td><td><span class="badge badge-outline visibility"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a16 16 0 0 0 0 20 16 16 0 0 0 0-20M2 12h20"/></svg>公開</span></td><td>中村 湊</td><td class="numeric mono">18</td><td class="mono small muted"><time datetime="2026-09-22T08:05:00Z">09-22 08:05</time></td><td><a class="btn btn-ghost btn-icon" href="/projects/prj_whisper_ja" aria-label="音声認識 / Whisper 日本語のジョブ一覧"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <nav class="pagination list-footer" aria-label="プロジェクトのページ送り"><span>6件表示 · すべて表示しました</span><ul class="pagination-content"><li><button class="btn btn-ghost" type="button" disabled>前へ</button></li><li><button class="btn btn-outline" type="button" disabled>次へ</button></li></ul></nav>
+  <p class="small muted list-footer">公開プロジェクトのみ表示しています。</p>
+</main>
+</div>
+<script src="../_shared/theme-toggle.js"></script>
+</body>
+</html>

@@ -4,6 +4,8 @@
 - image: image/png, image/jpeg, image/webp
 - audio: audio/wav, audio/mpeg
 
+ファイルサイズの上限は2048KB（2,097,152バイト）。
+
 標準ライブラリの`mimetypes`は`.wav`を`audio/x-wav`と推定する環境があるため、
 既知のエイリアスは正規化してから許可リストと突き合わせる。
 """
@@ -15,6 +17,9 @@ from pathlib import Path
 from typing import Literal
 
 MediaKind = Literal["image", "audio"]
+
+# `apps/web/src/shared/types.ts`の`MEDIA_MAX_BYTES`と揃える。
+MEDIA_MAX_BYTES = 2048 * 1024
 
 _ALLOWED_CONTENT_TYPES: dict[MediaKind, frozenset[str]] = {
     "image": frozenset({"image/png", "image/jpeg", "image/webp"}),
@@ -45,3 +50,12 @@ def guess_content_type(path: Path, kind: MediaKind) -> str:
         f"{path} のcontent_typeを{kind}として推定できませんでした"
         f"（推定結果: {guessed!r}、許可されている形式: {sorted(allowed)}）"
     )
+
+
+def check_size(path: Path) -> None:
+    """ファイルが上限を超えていれば送信前に`ValueError`を送出する。"""
+    size = path.stat().st_size
+    if size > MEDIA_MAX_BYTES:
+        raise ValueError(
+            f"{path} は{size}バイトで、上限の{MEDIA_MAX_BYTES}バイト（2048KB）を超えています"
+        )

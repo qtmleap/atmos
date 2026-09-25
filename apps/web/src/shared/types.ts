@@ -260,7 +260,7 @@ export const MEDIA_CONTENT_TYPES = {
   image: ['image/png', 'image/jpeg', 'image/webp'],
   audio: ['audio/wav', 'audio/mpeg'],
 } as const satisfies Record<MediaKind, readonly string[]>
-export const MEDIA_MAX_BYTES = 25 * 1024 * 1024
+export const MEDIA_MAX_BYTES = 2048 * 1024
 
 export type ListMediaQuery = z.input<typeof listMediaQuerySchema>
 

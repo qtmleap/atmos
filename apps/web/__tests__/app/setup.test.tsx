@@ -134,3 +134,29 @@ describe('SetupPage', () => {
     currentUser.unmount()
   })
 })
+
+describe('AppLayout setup gate', () => {
+  test('redirects any other page to /setup while atmos has no registered user yet', async () => {
+    installFetch({ '/api/setup': () => ({ initialized: false }) })
+    // A signed-in leftover from an earlier test would also close /setup
+    // (use-setup-form.ts's `closed`); force signed-out so this only exercises
+    // the setup gate itself.
+    await primeCurrentUser()
+    await renderRoute('/')
+    expect(await screen.findByText('atmos へようこそ')).toBeInTheDocument()
+  })
+
+  test('does not redirect away from /setup itself', async () => {
+    installFetch({ '/api/setup': () => ({ initialized: false }) })
+    await primeCurrentUser()
+    await renderRoute('/setup')
+    expect(await screen.findByText('atmos へようこそ')).toBeInTheDocument()
+  })
+
+  test('once initialized, /setup itself lets the visitor proceed instead of looping', async () => {
+    installFetch({ '/api/setup': () => ({ initialized: true }) })
+    await primeCurrentUser()
+    await renderRoute('/setup')
+    expect(await screen.findByText('セットアップは完了しています')).toBeInTheDocument()
+  })
+})

@@ -2,13 +2,18 @@ import { resolve } from 'node:path'
 import { cloudflare } from '@cloudflare/vite-plugin'
 import mockDiff from '@qtmleap/vite-plugin-mock-diff'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
-import react from '@vitejs/plugin-react-swc'
+import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { intlayer } from 'vite-intlayer'
 import { VitePWA } from 'vite-plugin-pwa'
 import atmosDevFixtures from './dev/fixtures/plugin'
 
-export default defineConfig({
+// Email the Worker signs every localhost request in as under `vite` (serve),
+// where no Cloudflare Access sits in front (src/api/lib/auth.ts). Never set for
+// `vite build`, so the deployed Worker keeps verifying the Access JWT.
+const LOCAL_ACCESS_EMAIL = 'local@example.com'
+
+export default defineConfig(({ command }) => ({
   server: {
     port: 12155,
   },
@@ -19,7 +24,7 @@ export default defineConfig({
     mockDiff(),
     // Dev-only fixture API: answers /api/* with the data the mocks draw, since
     // the Worker needs Cloudflare Access and a filled D1 (dev/fixtures/plugin.ts).
-    // ATMOS_DEV_API=real sends /api to the Worker instead.
+    // ATMOS_DEV_API=real (shell or apps/web/.env.local) sends /api to the Worker instead.
     atmosDevFixtures(),
     // File-based routes under src/app/routes; the generated tree is committed
     // because `bun test` and `tsc` run without Vite. Must come before react().
@@ -35,6 +40,8 @@ export default defineConfig({
     intlayer(),
     cloudflare({
       configPath: './wrangler.toml',
+      config: (worker) =>
+        command === 'serve' ? { vars: { ...worker.vars, LOCAL_ACCESS_EMAIL } } : undefined,
     }),
     // Minimal PWA (docs/PLAN.md §6): an installable manifest and icons only.
     // The service worker precaches nothing and has no navigation fallback,
@@ -78,7 +85,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
+      '@': resolve(import.meta.dirname, './src'),
     },
   },
-})
+}))
