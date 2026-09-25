@@ -28,7 +28,9 @@ import { Label } from '../../components/ui/label'
 import { Separator } from '../../components/ui/separator'
 import { Skeleton } from '../../components/ui/skeleton'
 import { Switch } from '../../components/ui/switch'
-import type { MetricChartSpec, MetricSeries } from '../../lib/metrics'
+import { niceDomain } from '../../lib/chart-scale'
+import type { JobChart, JobChartLine } from '../../lib/job-metric-view'
+import { type MetricChartSpec, type MetricSeries, seriesColor } from '../../lib/metrics'
 import { CatalogPage, SampleCaption, Specimen } from './catalog-section'
 
 // ---------------------------------------------------------------------------
@@ -114,6 +116,38 @@ const PAIR: MetricChartSpec = {
   series: [TRAIN_LOSS_SMOOTH, VAL_LOSS],
 }
 
+/** MetricFigure now draws through ChartSvg (lib/job-metric-view.ts `JobChart`) rather than a spec directly, so the catalog's static specs need a domain and per-line colours too. */
+const toChartLines = (spec: MetricChartSpec): JobChartLine[] =>
+  spec.series.length > 1
+    ? spec.series.map((item, index) => ({
+        key: item.key,
+        color: index,
+        dashed: index === 1,
+        raw: item.points,
+        smoothed: item.points,
+      }))
+    : spec.series.map((item) => ({
+        key: item.key,
+        color: seriesColor(item.key),
+        dashed: false,
+        raw: item.points,
+        smoothed: item.points,
+      }))
+
+const toChart = (spec: MetricChartSpec): JobChart => {
+  const steps = spec.series.flatMap((item) => item.points.map((point) => point.step))
+  const values = spec.series.flatMap((item) => item.points.map((point) => point.value))
+  return {
+    id: spec.id,
+    title: spec.title,
+    mono: spec.mono,
+    spec,
+    lines: toChartLines(spec),
+    xDomain: niceDomain(Math.min(...steps), Math.max(...steps), 'linear'),
+    yDomain: niceDomain(Math.min(...values), Math.max(...values), 'linear'),
+  }
+}
+
 const CONFIG = {
   model: 'vits',
   learning_rate: 0.0003,
@@ -182,33 +216,37 @@ export default function RunWidgetsCatalog() {
       <Specimen
         title="メトリクス"
         codes={['.metric-grid / .metric-chart', '.chart-svg / .chart-legend']}
-        note="Recharts LineChartへの移行を想定。各チャートは見出しと罫線のみで区切ります。"
+        note="components/project/chart-svg.tsx を共用。各チャートは見出しと罫線のみで区切ります。"
         className="grid grid-cols-2 gap-x-8 gap-y-6"
       >
         <MetricFigure
-          spec={single(TRAIN_LOSS)}
-          height={CHART_HEIGHT}
+          chart={toChart(single(TRAIN_LOSS))}
+          heightClassName="h-[180px]"
+          smooth={0}
           subtitle="単系列 · step 48,000"
           live={false}
           lastReceivedAt={LAST_AT}
         />
         <MetricFigure
-          spec={PAIR}
-          height={CHART_HEIGHT}
+          chart={toChart(PAIR)}
+          heightClassName="h-[180px]"
+          smooth={0}
           subtitle="複数系列 · 同一ジョブ"
           live
           lastReceivedAt={LAST_AT}
         />
         <MetricFigure
-          spec={single(LR)}
-          height={CHART_HEIGHT}
+          chart={toChart(single(LR))}
+          heightClassName="h-[180px]"
+          smooth={0}
           subtitle="単系列 · step 48,000"
           live={false}
           lastReceivedAt={LAST_AT}
         />
         <MetricFigure
-          spec={single(GRAD_NORM)}
-          height={CHART_HEIGHT}
+          chart={toChart(single(GRAD_NORM))}
+          heightClassName="h-[180px]"
+          smooth={0}
           subtitle="単系列 · step 48,000"
           live={false}
           lastReceivedAt={LAST_AT}

@@ -7,15 +7,20 @@ import { Button } from './button'
 /**
  * A panel the full height of the window, anchored to one side over the dimmed
  * page (designs/pages/project-jobs-compare-drawer.html `.job-drawer`): 560px
- * wide, at most 90vw, padded 20px 24px, a one pixel rule along its inner edge
- * instead of a border, scrolling on its own. The header carries a rule below
+ * wide, or 384px at size "sm" (designs/pages/job-detail-settings.html), at
+ * most 90vw, padded 20px 24px, a one pixel rule along its inner edge instead
+ * of a border, scrolling on its own. The header carries a rule below
  * and room on the right for the corner close button; the footer sits at the
  * bottom with a rule above.
  */
 const sheetStyles = {
   overlay: 'bg-black/50',
   content:
-    'flex h-full w-[560px] max-w-[90vw] flex-col overflow-y-auto bg-background px-6 py-5 text-foreground outline-none',
+    'flex h-full max-w-[90vw] flex-col overflow-y-auto bg-background px-6 py-5 text-foreground outline-none',
+  size: {
+    default: 'w-[560px]',
+    sm: 'w-[384px]',
+  },
   side: {
     left: 'inset-y-0 left-0 shadow-[1px_0_0_var(--border)] data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left',
     right:
@@ -29,6 +34,7 @@ const sheetStyles = {
 }
 
 export type SheetSide = keyof typeof sheetStyles.side
+export type SheetSize = keyof typeof sheetStyles.size
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
@@ -67,11 +73,13 @@ function SheetContent({
   className,
   children,
   side = 'right',
+  size = 'default',
   closeLabel = '閉じる',
   onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: SheetSide
+  size?: SheetSize
   closeLabel?: string
 }) {
   return (
@@ -81,6 +89,7 @@ function SheetContent({
         data-slot="sheet-content"
         className={cn(
           sheetStyles.content,
+          sheetStyles.size[size],
           'fixed z-50 data-[state=closed]:animate-out data-[state=open]:animate-in',
           sheetStyles.side[side],
           className,

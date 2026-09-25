@@ -218,16 +218,25 @@ describe('JobDetailPage', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'exp1' })).toBeInTheDocument()
     expect(screen.getByText('完了')).toBeInTheDocument()
     expect(screen.getByText('更新終了 · 01:02:03 UTC')).toBeInTheDocument()
-    const config = screen.getByRole('table', { name: '学習ハイパーパラメータ' })
-    expect(within(config).getByRole('rowheader', { name: 'optimizer' })).toBeInTheDocument()
-    expect(within(config).getByRole('cell', { name: '{"lr": 0.001}' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { level: 3, name: 'train/loss' })).toBeInTheDocument()
     // The summary tile and the chart header both show the latest value.
     expect(screen.getAllByText('0.4').length).toBeGreaterThanOrEqual(2)
     // The starter is the project owner; no member list is read for it.
     expect(await screen.findByText(/^Alice が開始 · /)).toBeInTheDocument()
-    expect(screen.getByText(/^実行者\sAlice/)).toBeInTheDocument()
     expect(requested.some((url) => url.startsWith('/api/users'))).toBe(false)
+
+    // The config stays in a sheet until asked for, so the charts get the width.
+    expect(screen.queryByRole('table', { name: '学習ハイパーパラメータ' })).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: '設定' }))
+    const sheet = await screen.findByRole('dialog', { name: '設定' })
+    const config = within(sheet).getByRole('table', { name: '学習ハイパーパラメータ' })
+    expect(within(config).getByRole('rowheader', { name: 'optimizer' })).toBeInTheDocument()
+    expect(within(config).getByRole('cell', { name: '{"lr": 0.001}' })).toBeInTheDocument()
+    const runInfo = within(sheet).getByRole('table', { name: '実行情報' })
+    expect(within(runInfo).getByRole('rowheader', { name: '実行者' })).toBeInTheDocument()
+    expect(within(runInfo).getByRole('cell', { name: 'Alice' })).toBeInTheDocument()
+    await userEvent.click(within(sheet).getByRole('button', { name: '設定を閉じる' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 
     await userEvent.click(screen.getByRole('tab', { name: 'ログ' }))
     const log = await screen.findByRole('log')

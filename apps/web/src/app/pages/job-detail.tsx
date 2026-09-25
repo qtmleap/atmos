@@ -2,16 +2,17 @@ import { Link, useLocation } from '@tanstack/react-router'
 import { JobActions } from '../components/job/job-actions'
 import { JobHeader } from '../components/job/job-header'
 import { JobSections } from '../components/job/job-sections'
-import { JobSidebar } from '../components/job/job-sidebar'
+import { JobSettingsSheet } from '../components/job/job-settings-sheet'
 import { JobFailure, JobSummary } from '../components/job/job-summary'
 import { Button } from '../components/ui/button'
 import { Skeleton } from '../components/ui/skeleton'
+import { useActionFlags } from '../hooks/use-action-flags'
 import { useJobDetail } from '../hooks/use-job-detail'
 import { useRequiredParam } from '../hooks/use-required-param'
 import { readProjectLinkState } from '../lib/project-link'
 
-/** Page width and padding shared with the other pages (docs/mock-diff/designs/pages). */
-const PAGE_CLASS = 'mx-auto max-w-[1312px] px-8 py-6'
+/** Same width cap as the other pages (docs/mock-diff/designs/pages/job-detail.html). */
+const PAGE_CLASS = 'mx-auto max-w-[1600px] px-8 py-6'
 
 export default function JobDetailPage() {
   const projectId = useRequiredParam('projectId')
@@ -19,6 +20,7 @@ export default function JobDetailPage() {
   const location = useLocation()
   const detail = useJobDetail(projectId, jobId, readProjectLinkState(location.state, projectId))
   const { job } = detail
+  const flags = useActionFlags<'settings'>()
 
   if (job.job === null) {
     if (job.error !== null) {
@@ -62,22 +64,27 @@ export default function JobDetailPage() {
         now={detail.now}
         lastReceivedAt={detail.lastReceivedAt}
         actions={
-          <JobActions
-            projectId={projectId}
-            project={detail.project}
-            owner={detail.creator}
-            job={job.job}
-            refresh={job.refresh}
-          />
+          <>
+            <JobSettingsSheet
+              open={flags.isOpen('settings')}
+              onOpenChange={(open) => flags.setOpen('settings', open)}
+              job={job.job}
+              creator={detail.creator}
+            />
+            <JobActions
+              projectId={projectId}
+              project={detail.project}
+              owner={detail.creator}
+              job={job.job}
+              refresh={job.refresh}
+            />
+          </>
         }
       />
       {job.job.status === 'failed' ? <JobFailure lines={detail.logs.lines} /> : null}
       <JobSummary series={detail.metrics.series} config={job.job.config} />
-      <div className="grid gap-8 pt-5 lg:grid-cols-[minmax(0,1fr)_260px]">
-        <div className="min-w-0">
-          <JobSections detail={detail} job={job.job} />
-        </div>
-        <JobSidebar job={job.job} creator={detail.creator} />
+      <div className="pt-5">
+        <JobSections detail={detail} job={job.job} />
       </div>
     </div>
   )
