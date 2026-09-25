@@ -1,7 +1,7 @@
 // Projects endpoints (docs/SPEC.md §6).
 import { and, desc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { createDb, type ProjectRow, projects, type UserRow, users } from '../../db/schema'
+import { type Db, type ProjectRow, projects, type UserRow, users } from '#schema'
 import { createProjectRequestSchema, updateProjectRequestSchema } from '../../shared/schemas'
 import type { Project } from '../../shared/types'
 import {
@@ -24,8 +24,9 @@ import {
   parsePagination,
   toPage,
 } from '../lib/pagination'
+import { type AppEnv, getPlatform } from '../platform/context'
 
-export const projectsRoutes = new Hono<{ Bindings: CloudflareBindings }>()
+export const projectsRoutes = new Hono<AppEnv>()
 
 const toProject = (
   project: ProjectRow,
@@ -41,9 +42,9 @@ const toProject = (
 // GET /api/projects — public projects to everyone, internal ones to any
 // signed-in registered user, private ones only to their owner and admins.
 projectsRoutes.get('/', async (c) => {
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
   const { limit, cursor } = parsePagination(c.req.query())
-  const viewer = await resolveViewer(c.env, c.req.raw)
+  const viewer = await resolveViewer(getPlatform(c), c.req.raw)
   const visibilityCondition = projectVisibilityCondition(viewer)
   const cursorCondition =
     cursor === undefined
@@ -70,7 +71,7 @@ projectsRoutes.get('/', async (c) => {
 // /projects/:projectId. Same visibility rule as the job endpoints (§7): public
 // to everyone, private only to the owner (401 anonymous / 403 other viewers).
 projectsRoutes.get('/:project_id', async (c) => {
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
   const rows = await db
     .select({ project: projects, owner: users })
     .from(projects)
@@ -81,7 +82,7 @@ projectsRoutes.get('/:project_id', async (c) => {
   if (row === undefined) {
     throw notFound('project not found')
   }
-  const viewer = await resolveViewer(c.env, c.req.raw)
+  const viewer = await resolveViewer(getPlatform(c), c.req.raw)
   assertCanViewProject(row.project, viewer)
   return c.json(toProject(row.project, row.owner))
 })
@@ -97,10 +98,10 @@ projectsRoutes.get('/:project_id', async (c) => {
 projectsRoutes.post('/', async (c) => {
   const viaBearer = readBearerToken(c.req.raw) !== null
   const user = viaBearer
-    ? await requireBearerUser(c.env, c.req.raw)
-    : await requireAccessUser(c.env, c.req.raw)
+    ? await requireBearerUser(getPlatform(c), c.req.raw)
+    : await requireAccessUser(getPlatform(c), c.req.raw)
   const body = await readJson(c.req.raw, createProjectRequestSchema)
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
   // Same-owner duplicates are possible in principle (name is not unique); the
   // oldest one wins (docs/SPEC.md §6 "補足").
   const existing = await db.query.projects.findFirst({
@@ -126,7 +127,7 @@ projectsRoutes.post('/', async (c) => {
 
 /** project_id lookup shared by PATCH/DELETE, with its owner for the response and 409 check. */
 const findProjectWithOwner = async (
-  db: ReturnType<typeof createDb>,
+  db: Db,
   projectId: string,
 ): Promise<{ project: ProjectRow; owner: UserRow } | null> => {
   const rows = await db
@@ -147,9 +148,9 @@ const findProjectWithOwner = async (
 projectsRoutes.patch('/:project_id', async (c) => {
   const viaBearer = readBearerToken(c.req.raw) !== null
   const user = viaBearer
-    ? await requireBearerUser(c.env, c.req.raw)
-    : await requireAccessUser(c.env, c.req.raw)
-  const db = createDb(c.env.DB)
+    ? await requireBearerUser(getPlatform(c), c.req.raw)
+    : await requireAccessUser(getPlatform(c), c.req.raw)
+  const db = getPlatform(c).db
   const found = await findProjectWithOwner(db, c.req.param('project_id'))
   if (found === null || !canViewProject(found.project, user)) {
     throw notFound('project not found')
@@ -185,9 +186,9 @@ projectsRoutes.patch('/:project_id', async (c) => {
 projectsRoutes.delete('/:project_id', async (c) => {
   const viaBearer = readBearerToken(c.req.raw) !== null
   const user = viaBearer
-    ? await requireBearerUser(c.env, c.req.raw)
-    : await requireAccessUser(c.env, c.req.raw)
-  const db = createDb(c.env.DB)
+    ? await requireBearerUser(getPlatform(c), c.req.raw)
+    : await requireAccessUser(getPlatform(c), c.req.raw)
+  const db = getPlatform(c).db
   const found = await findProjectWithOwner(db, c.req.param('project_id'))
   if (found === null || !canViewProject(found.project, user)) {
     throw notFound('project not found')
@@ -195,7 +196,7 @@ projectsRoutes.delete('/:project_id', async (c) => {
   if (!canManageProject(found.project, user)) {
     throw forbidden('only the owner or an admin may delete this project')
   }
-  await deleteProjectMedia(c.env.BUCKET, db, found.project.id)
+  await deleteProjectMedia(getPlatform(c).storage, db, found.project.id)
   await db.delete(projects).where(eq(projects.id, found.project.id))
   return c.body(null, 204)
 })

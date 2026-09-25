@@ -16,6 +16,7 @@ import {
   serialCondition,
   toPage,
 } from '../../src/api/lib/pagination'
+import { durableObjectLiveHub } from '../../src/api/platform/cloudflare'
 import { createDb, logs, projects } from '../../src/db/schema'
 import type { LiveMessage, Metric } from '../../src/shared/types'
 import { insertAccessToken, insertJob, insertProject, insertUser } from '../helpers/fixtures'
@@ -98,14 +99,15 @@ describe('bearer tokens against D1', () => {
     const alice = await insertUser(env.DB)
     const token = await insertAccessToken(env.DB, alice)
     const ok = await requireBearerUser(
-      env,
+      { db: createDb(env.DB) },
       new Request('http://x/', { headers: { Authorization: `Bearer ${token}` } }),
     )
     expect(ok.id).toBe(alice.id)
 
-    const failure = await requireBearerUser(env, new Request('http://x/')).catch(
-      (error: unknown) => error,
-    )
+    const failure = await requireBearerUser(
+      { db: createDb(env.DB) },
+      new Request('http://x/'),
+    ).catch((error: unknown) => error)
     expect(failure).toBeInstanceOf(ApiError)
     expect(failure instanceof ApiError ? failure.status : null).toBe(401)
   })
@@ -315,7 +317,7 @@ describe('JobLive Durable Object', () => {
       const other = await openSocket(newId())
 
       const message: LiveMessage = { type: 'metric', data: metric(jobId) }
-      const result = await notifyLive(env, jobId, message)
+      const result = await notifyLive(durableObjectLiveHub(env.JOB_LIVE), jobId, message)
       expect(result).toEqual({ delivered: 2 })
 
       await waitFor(() => a.received.length === 1 && b.received.length === 1)
@@ -340,7 +342,7 @@ describe('JobLive Durable Object', () => {
         type: 'status',
         data: { status: 'running', finished_at: null },
       }
-      await notifyLive(env, jobId, running)
+      await notifyLive(durableObjectLiveHub(env.JOB_LIVE), jobId, running)
       await waitFor(() => socket.received.length === 1)
       expect(socket.closed.code).toBeNull()
 
@@ -348,7 +350,7 @@ describe('JobLive Durable Object', () => {
         type: 'status',
         data: { status: 'finished', finished_at: '2026-09-24T01:00:00.000Z' },
       }
-      await notifyLive(env, jobId, finished)
+      await notifyLive(durableObjectLiveHub(env.JOB_LIVE), jobId, finished)
       await waitFor(() => socket.closed.code !== null)
       expect(socket.received.map((frame) => JSON.parse(frame))).toEqual([running, finished])
       expect(socket.closed.code).toBe(1000)
@@ -375,7 +377,12 @@ describe('JobLive Durable Object', () => {
 
   test('notifyLive with no listeners delivers to nobody', async () => {
     const { env } = testEnv()
-    expect(await notifyLive(env, newId(), { type: 'metric', data: metric('x') })).toEqual({
+    expect(
+      await notifyLive(durableObjectLiveHub(env.JOB_LIVE), newId(), {
+        type: 'metric',
+        data: metric('x'),
+      }),
+    ).toEqual({
       delivered: 0,
     })
   })

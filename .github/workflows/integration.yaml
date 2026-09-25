@@ -147,6 +147,8 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Run tests
         run: bun run test
+      - name: Run PostgreSQL tests
+        run: bun run test:pg
 
   # --- packages/python-sdk ---
 
