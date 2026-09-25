@@ -10,7 +10,7 @@ import { useChartInteraction } from '../../hooks/use-chart-interaction'
 import { useChartView } from '../../hooks/use-chart-view'
 import type { ChartRun } from '../../hooks/use-compare-chart'
 import type { ScaleKind } from '../../lib/chart-scale'
-import { CHART_HEIGHT_CLASS, chartGridColsClass } from '../../lib/chart-size'
+import { CHART_HEIGHT_CLASS, jobChartGridColsClass } from '../../lib/chart-size'
 import { type JobChart, type JobChartLine, jobChartGroups } from '../../lib/job-metric-view'
 import { ENDED_NOTES, type JobPhase } from '../../lib/job-phase'
 import { formatMetricShort, formatStep, METRIC_LABELS, type MetricSeries } from '../../lib/metrics'
@@ -269,7 +269,7 @@ export function MetricCharts({
             onToggle={() =>
               setCollapsed((current) => ({ ...current, [group.id]: current[group.id] !== true }))
             }
-            gridClassName={chartGridColsClass(chartView.size, group.charts.length)}
+            gridClassName={jobChartGridColsClass(chartView.size)}
           >
             {group.charts.map((chart) => (
               <MetricFigure
