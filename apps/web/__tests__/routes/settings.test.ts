@@ -1,15 +1,18 @@
 // docs/SPEC.md §5 — Settings: profile, avatar upload, access tokens.
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import dayjs from 'dayjs'
+import { z } from 'zod'
 import { hashAccessToken } from '../../src/api/lib/auth'
 import { createDb } from '../../src/db/schema'
 import {
   accessTokenCreatedSchema,
+  accessTokenStatusSchema,
   updateAvatarResponseSchema,
   userWithEmailSchema,
 } from '../../src/shared/schemas'
 import { AVATAR_MAX_BYTES } from '../../src/shared/types'
 import { insertAccessToken, insertUser } from '../helpers/fixtures'
-import { jsonError, jsonShaped } from '../helpers/http'
+import { expectShape, jsonError, jsonOf, jsonShaped } from '../helpers/http'
 import { createRoutesTestEnv, type RoutesTestEnv } from '../helpers/routes-env'
 
 const TIMEOUT = 60_000
@@ -157,6 +160,61 @@ describe('PUT /api/settings/avatar', () => {
   })
 })
 
+describe('GET /api/settings/tokens', () => {
+  test('401 without an Access identity', async () => {
+    const { dispatch } = testEnv()
+    const res = await dispatch('/api/settings/tokens')
+    expect(res.status).toBe(401)
+    await jsonError(res, 'unauthenticated')
+  })
+
+  test('active: null when the user has no token', async () => {
+    const { access, dispatch, env } = testEnv()
+    const user = await insertUser(env.DB)
+    const res = await dispatch('/api/settings/tokens', {
+      headers: { 'Cf-Access-Jwt-Assertion': await access.sign({ email: user.cfAccessEmail }) },
+    })
+    expect(res.status).toBe(200)
+    const body = await jsonShaped(accessTokenStatusSchema, res)
+    expect(body.active).toBeNull()
+  })
+
+  test('shows the token issued via POST, and null again after DELETE', async () => {
+    const { access, dispatch, env } = testEnv()
+    const user = await insertUser(env.DB)
+    const headers = { 'Cf-Access-Jwt-Assertion': await access.sign({ email: user.cfAccessEmail }) }
+
+    const issued = await dispatch('/api/settings/tokens', { method: 'POST', headers })
+    const created = await jsonShaped(accessTokenCreatedSchema, issued)
+
+    const afterIssue = await dispatch('/api/settings/tokens', { headers })
+    expect(afterIssue.status).toBe(200)
+    const rawBody = await jsonOf(afterIssue)
+    const rawAfterIssue = expectShape(
+      z.object({ active: z.record(z.string().nonempty(), z.unknown()) }),
+      rawBody,
+    )
+    const statusAfterIssue = expectShape(accessTokenStatusSchema, rawBody)
+    // The DB keeps Unix seconds (src/api/lib/ids.ts), so a value read back after
+    // an insert loses the milliseconds the in-memory POST response had.
+    expect(statusAfterIssue.active).toMatchObject({
+      id: created.id,
+      issued_at: dayjs(created.issued_at).startOf('second').toISOString(),
+      revoked_at: null,
+      hint: `atmos_...${created.token.slice(-4)}`,
+    })
+    // Never leaks the hash or the plaintext, not just what the schema keeps.
+    expect(rawAfterIssue.active).not.toHaveProperty('token')
+    expect(rawAfterIssue.active).not.toHaveProperty('token_hash')
+
+    await dispatch('/api/settings/tokens', { method: 'DELETE', headers })
+
+    const afterRevoke = await dispatch('/api/settings/tokens', { headers })
+    const statusAfterRevoke = await jsonShaped(accessTokenStatusSchema, afterRevoke)
+    expect(statusAfterRevoke.active).toBeNull()
+  })
+})
+
 describe('POST /api/settings/tokens', () => {
   test('401 without an Access identity', async () => {
     const { dispatch } = testEnv()
@@ -176,7 +234,8 @@ describe('POST /api/settings/tokens', () => {
     expect(res.status).toBe(201)
     const body = await jsonShaped(accessTokenCreatedSchema, res)
     expect(body.revoked_at).toBeNull()
-    expect(body.token).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(body.token).toMatch(/^atmos_[0-9A-Za-z]{43}$/)
+    expect(body.hint).toBe(`atmos_...${body.token.slice(-4)}`)
 
     const db = createDb(env.DB)
     const oldHash = await hashAccessToken(oldToken)

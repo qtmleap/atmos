@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>アクセストークン · atmos</title>
+  <title>アクセストークン（未発行） · atmos</title>
   <link rel="stylesheet" href="../_shared/atmos.css">
   <style>
     .page-content { max-width: 1312px; margin: 0 auto; padding: 16px 32px 24px; }
@@ -34,11 +34,11 @@
         <a class="btn btn-ghost" href="/settings/tokens" aria-current="page"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="16" cy="8" r="5"/><path d="m12.5 11.5-9 9H1v-3l3-3h3v-3h3"/></svg>アクセストークン</a>
       </nav>
       <section class="settings-section" aria-labelledby="tokens-title">
-        <div class="stack-sm"><div class="between"><h2 id="tokens-title">アクセストークン</h2><span class="badge badge-outline">有効なトークン 1 / 1</span></div><p class="description">Python SDK から実験データを送信するための認証情報です。</p></div>
+        <div class="stack-sm"><div class="between"><h2 id="tokens-title">アクセストークン</h2></div><p class="description">Python SDK から実験データを送信するための認証情報です。</p></div>
         <div class="stack">
-          <div class="alert" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg><div><p class="alert-title">トークンを発行しました</p><p class="alert-description">平文トークンはこの一度だけ表示されます。ページを離れると二度と表示できません。今すぐコピーし、安全な場所に保存してください。</p></div></div>
-          <div class="token-block"><code>atmos_v1JYP8vUPD3rjF6Pfo89T0gEk3MY39122Icxagew52G</code><button class="btn btn-outline" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>コピー</button></div>
-          <div class="between small muted"><span>発行日時：2026年9月24日 09:42 UTC</span><span>表示値はモック専用です</span></div>
+          <div class="alert" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="16" cy="8" r="5"/><path d="m12.5 11.5-9 9H1v-3l3-3h3v-3h3"/></svg><div><p class="alert-title">トークンを発行できます</p><p class="alert-description">発行した平文トークンはその一度だけ表示されます。ページを離れると二度と表示できません。発行後すぐにコピーし、安全な場所に保存してください。</p></div></div>
+          <div class="token-block"><code class="muted">平文トークンは発行直後にここに表示されます</code><button class="btn btn-default" type="button">新しいトークンを発行</button></div>
+          <div class="between small muted"><span>発行日時：まだ発行していません</span></div>
         </div>
         <section class="stack section-divider" aria-labelledby="sdk-title">
           <div class="stack-sm"><h3 id="sdk-title">SDK での使い方</h3><p class="description">実行環境に接続先と、コピーしたトークンを設定します。</p></div>
@@ -48,7 +48,7 @@ python train.py</code></pre>
           <p class="small muted">接続先は実際の atmos の URL に置き換えてください。<br>トークンをソースコードや Git リポジトリに含めないでください。</p>
         </section>
         <section class="stack section-divider" aria-labelledby="revoke-title">
-          <div class="between"><h3 id="revoke-title">トークンの失効</h3><button class="btn btn-outline danger" type="button">トークンを失効</button></div>
+          <div class="between"><h3 id="revoke-title">トークンの失効</h3><button class="btn btn-outline danger" type="button" disabled>トークンを失効</button></div>
           <p class="small muted">失効すると、このトークンを使った SDK からの送信はできなくなります。<br>有効なトークンは1ユーザーにつき1つです。新しく発行すると旧トークンは自動失効します。</p>
         </section>
       </section>

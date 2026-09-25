@@ -196,7 +196,7 @@ screens:
           astra: {type: html, path: designs/pages/settings-profile.html}
         actual: {type: url, url: "http://localhost:12155/settings/profile"}
   - id: page-settings-tokens
-    name: アクセストークン
+    name: アクセストークン（発行直後）
     category: ページ
     devices:
       - id: desktop
@@ -204,7 +204,47 @@ screens:
         viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
         versions:
           astra: {type: html, path: designs/pages/settings-tokens.html}
+        actual: {type: url, url: "http://localhost:12155/settings/tokens?scenario=issued"}
+  - id: page-settings-tokens-active
+    name: アクセストークン（発行済み）
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/settings-tokens-active.html}
         actual: {type: url, url: "http://localhost:12155/settings/tokens"}
+  - id: page-settings-tokens-reissue
+    name: アクセストークン（再発行の確認）
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/settings-tokens-reissue.html}
+        actual: {type: url, url: "http://localhost:12155/settings/tokens?dialog=reissue"}
+  - id: page-settings-tokens-none
+    name: アクセストークン（未発行）
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/settings-tokens-none.html}
+        actual: {type: url, url: "http://localhost:12155/settings/tokens?scenario=none"}
+  - id: page-settings-tokens-revoked
+    name: アクセストークン（失効後）
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/settings-tokens-revoked.html}
+        actual: {type: url, url: "http://localhost:12155/settings/tokens?scenario=revoked"}
   - id: page-admin
     name: ユーザー管理
     category: ページ

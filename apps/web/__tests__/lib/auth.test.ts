@@ -109,9 +109,9 @@ describe('verifyAccessJwt', async () => {
 })
 
 describe('access tokens', () => {
-  test('generateAccessToken yields 32 random bytes in base64url', () => {
+  test('generateAccessToken yields atmos_ + 32 random bytes in base62', () => {
     const token = generateAccessToken()
-    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(token).toMatch(/^atmos_[0-9A-Za-z]{43}$/)
     expect(generateAccessToken()).not.toBe(token)
   })
 

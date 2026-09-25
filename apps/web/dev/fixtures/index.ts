@@ -16,7 +16,7 @@ import { listJobs } from './jobs'
 import { getMe } from './me'
 import { createProject, deleteProject, getProject, listProjects, updateProject } from './projects'
 import { apiError, type FixtureHandler, type FixtureRequest, type FixtureResponse } from './respond'
-import { issueToken, revokeToken, updateAvatar, updateProfile } from './settings'
+import { getTokenStatus, issueToken, revokeToken, updateAvatar, updateProfile } from './settings'
 import { postSetup } from './setup'
 import { getUser, getUserAvatar, listUserProjects, listUsers } from './users'
 
@@ -45,6 +45,7 @@ export const ROUTES: readonly Route[] = [
 
   { method: 'PATCH', pattern: '/api/settings/profile', handler: updateProfile },
   { method: 'PUT', pattern: '/api/settings/avatar', handler: updateAvatar },
+  { method: 'GET', pattern: '/api/settings/tokens', handler: getTokenStatus },
   { method: 'POST', pattern: '/api/settings/tokens', handler: issueToken },
   { method: 'DELETE', pattern: '/api/settings/tokens', handler: revokeToken },
 
