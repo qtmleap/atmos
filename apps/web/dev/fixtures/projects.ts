@@ -5,9 +5,15 @@
 // wire type `Project` (src/shared/types.ts) does not carry. They are sent as
 // the extra fields `job_count` and `updated_at` so the numbers exist once the
 // type grows them; until then the page simply ignores them.
-import type { CreateProjectRequest, Project } from '../../src/shared/types'
+import type {
+  CreateProjectRequest,
+  Project,
+  UpdateProjectRequest,
+  Visibility,
+} from '../../src/shared/types'
+import { VISIBILITIES } from '../../src/shared/types'
 import { ME } from './me'
-import { type FixtureHandler, json, notFound, paginate } from './respond'
+import { apiError, type FixtureHandler, json, noContent, notFound, paginate } from './respond'
 import { ownerOf } from './users'
 
 export interface FixtureProject extends Project {
@@ -171,11 +177,33 @@ const MORE: readonly FixtureProject[] = [
 
 const PROJECTS: readonly FixtureProject[] = [...LISTED, ...MORE]
 
-export const findProject = (id: string): FixtureProject | undefined =>
-  PROJECTS.find((row) => row.id === id)
+/**
+ * PATCH /api/projects/:project_id overlay: name/visibility written since the
+ * dev server started, so a rename or a visibility change survives a re-render
+ * of the same page.
+ */
+const EDITED: Map<string, Partial<Pick<FixtureProject, 'name' | 'visibility'>>> = new Map()
+
+/** DELETE /api/projects/:project_id overlay: ids removed since the dev server started. */
+const DELETED: Set<string> = new Set()
+
+const withOverlay = (project: FixtureProject): FixtureProject => {
+  const edit = EDITED.get(project.id)
+  return edit === undefined ? project : { ...project, ...edit }
+}
+
+export const findProject = (id: string): FixtureProject | undefined => {
+  if (DELETED.has(id)) {
+    return undefined
+  }
+  const found = PROJECTS.find((row) => row.id === id)
+  return found === undefined ? undefined : withOverlay(found)
+}
 
 export const listProjects: FixtureHandler = ({ url }) =>
-  json(paginate(PROJECTS, url, LISTED.length))
+  json(
+    paginate(PROJECTS.filter((row) => !DELETED.has(row.id)).map(withOverlay), url, LISTED.length),
+  )
 
 /** GET /api/projects/:project_id — the heading of project-jobs.html and friends. */
 export const getProject: FixtureHandler = ({ params }) => {
@@ -208,4 +236,67 @@ export const createProject: FixtureHandler = async ({ json: body }) => {
     created_at: '2026-09-24T14:32:00Z',
   }
   return json(created, 201)
+}
+
+const isVisibility = (value: unknown): value is Visibility =>
+  VISIBILITIES.some((visibility) => visibility === value)
+
+const isUpdateProjectRequest = (value: unknown): value is UpdateProjectRequest => {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  const name = 'name' in value ? value.name : undefined
+  const visibility = 'visibility' in value ? value.visibility : undefined
+  if (name !== undefined && (typeof name !== 'string' || name === '')) {
+    return false
+  }
+  if (visibility !== undefined && !isVisibility(visibility)) {
+    return false
+  }
+  return name !== undefined || visibility !== undefined
+}
+
+/**
+ * Persists into the EDITED overlay: the web UI stays on the project after
+ * saving, and the renamed project has to still read that way. 409 `conflict`
+ * on a name collision with another project of the same owner, mirroring the
+ * real API (src/api/routes/projects.ts).
+ */
+export const updateProject: FixtureHandler = async ({ params, json: body }) => {
+  const project = params.project_id === undefined ? undefined : findProject(params.project_id)
+  if (project === undefined) {
+    return notFound('project')
+  }
+  const request = await body()
+  if (!isUpdateProjectRequest(request)) {
+    return apiError(400, 'validation_error', 'at least one of name or visibility is required')
+  }
+  if (request.name !== undefined && request.name !== project.name) {
+    const collision = PROJECTS.filter((row) => !DELETED.has(row.id) && row.id !== project.id)
+      .map(withOverlay)
+      .find((row) => row.owner.handle === project.owner.handle && row.name === request.name)
+    if (collision !== undefined) {
+      return apiError(409, 'conflict', 'a project with this name already exists')
+    }
+  }
+  EDITED.set(project.id, {
+    ...EDITED.get(project.id),
+    ...(request.name === undefined ? {} : { name: request.name }),
+    ...(request.visibility === undefined ? {} : { visibility: request.visibility }),
+  })
+  const updated = findProject(project.id)
+  return updated === undefined ? notFound('project') : json(updated)
+}
+
+/**
+ * Marks the project deleted in the DELETED overlay: the web UI navigates away
+ * and the project must stop being found afterwards, list included.
+ */
+export const deleteProject: FixtureHandler = ({ params }) => {
+  const project = params.project_id === undefined ? undefined : findProject(params.project_id)
+  if (project === undefined) {
+    return notFound('project')
+  }
+  DELETED.add(project.id)
+  return noContent()
 }

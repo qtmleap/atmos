@@ -113,3 +113,7 @@ export const errorMessage = (error: unknown): string => {
   }
   return '不明なエラーが発生しました。'
 }
+
+/** HTTP status of an ApiError, or null for anything else (network failure, bug). */
+export const errorStatus = (error: unknown): number | null =>
+  error instanceof ApiError ? error.status : null

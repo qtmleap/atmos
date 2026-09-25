@@ -21,9 +21,10 @@ import {
   type MediaKind,
   type Metric,
   type Page,
+  type UpdateJobRequest,
 } from '../../src/shared/types'
 import { COMPARE_SERIES, type SeriesPoints } from './compare-series'
-import { LIST_JOBS } from './jobs'
+import { deleteJobFixture, isJobDeleted, LIST_JOBS, setJobName, withJobOverrides } from './jobs'
 import { ME } from './me'
 import { VITS_PROJECT_ID } from './projects'
 import {
@@ -32,6 +33,7 @@ import {
   binary,
   type FixtureHandler,
   json,
+  noContent,
   notFound,
   paginate,
   readLimit,
@@ -76,15 +78,15 @@ const DETAIL_JOBS: readonly Job[] = [
 const withoutListFields = ({ last_step: _step, ...rest }: (typeof LIST_JOBS)[number]): Job => rest
 
 export const findJob = (projectId: string, jobId: string): Job | undefined => {
-  if (projectId !== VITS_PROJECT_ID) {
+  if (projectId !== VITS_PROJECT_ID || isJobDeleted(jobId)) {
     return undefined
   }
   const detail = DETAIL_JOBS.find((row) => row.id === jobId)
   if (detail !== undefined) {
-    return detail
+    return withJobOverrides(detail)
   }
   const listed = LIST_JOBS.find((row) => row.id === jobId)
-  return listed === undefined ? undefined : withoutListFields(listed)
+  return listed === undefined ? undefined : withJobOverrides(withoutListFields(listed))
 }
 
 // ---------------------------------------------------------------------------
@@ -484,6 +486,31 @@ export const finishJob: FixtureHandler = withJob(async (job, { json: body }) => 
     return apiError(400, 'validation_error', 'status must be finished or failed')
   }
   return json({ ...job, status: request.status, finished_at: '2026-09-24T14:32:00Z' })
+})
+
+const isUpdateJobRequest = (value: unknown): value is UpdateJobRequest =>
+  typeof value === 'object' &&
+  value !== null &&
+  'name' in value &&
+  (value.name === null || (typeof value.name === 'string' && value.name !== ''))
+
+/**
+ * Persists into jobs.ts's EDITED_NAMES overlay: the job detail page re-reads
+ * the job after saving.
+ */
+export const updateJob: FixtureHandler = withJob(async (job, { json: body }) => {
+  const request = await body()
+  if (!isUpdateJobRequest(request)) {
+    return apiError(400, 'validation_error', 'name must be a non-empty string or null')
+  }
+  setJobName(job.id, request.name)
+  return json({ ...job, name: request.name })
+})
+
+/** Marks the job deleted in jobs.ts's DELETED_JOBS overlay. */
+export const deleteJob: FixtureHandler = withJob((job) => {
+  deleteJobFixture(job.id)
+  return noContent()
 })
 
 /** Whether `.../live` should be accepted (and then left silent) for these ids. */

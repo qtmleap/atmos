@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Job, LiveStatusData } from '@/shared/types'
-import { apiFetch, errorMessage } from '../lib/api-client'
+import { apiFetch, errorMessage, errorStatus } from '../lib/api-client'
 import { jobApiPath } from '../lib/job-paths'
 
 export interface JobResource {
   job: Job | null
   loading: boolean
   error: string | null
+  /** HTTP status of the failed load, or null. */
+  errorStatus: number | null
   /** Refetches the job (the list of fields a live status message carries is partial). */
   refresh: () => void
   applyStatus: (data: LiveStatusData) => void
@@ -17,6 +19,7 @@ export function useJob(projectId: string, jobId: string): JobResource {
   const [job, setJob] = useState<Job | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [status, setStatus] = useState<number | null>(null)
   const generation = useRef(0)
 
   const load = useCallback(async () => {
@@ -28,10 +31,12 @@ export function useJob(projectId: string, jobId: string): JobResource {
       if (gen === generation.current) {
         setJob(fetched)
         setError(null)
+        setStatus(null)
       }
     } catch (caught) {
       if (gen === generation.current) {
         setError(errorMessage(caught))
+        setStatus(errorStatus(caught))
       }
     } finally {
       if (gen === generation.current) {
@@ -60,5 +65,5 @@ export function useJob(projectId: string, jobId: string): JobResource {
     )
   }, [])
 
-  return { job, loading, error, refresh, applyStatus }
+  return { job, loading, error, errorStatus: status, refresh, applyStatus }
 }

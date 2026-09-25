@@ -1,22 +1,36 @@
 // Jobs endpoints (docs/SPEC.md §7).
 import { and, desc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { createDb, type Db, type JobRow, jobs, type ProjectRow, projects } from '../../db/schema'
+import {
+  createDb,
+  type Db,
+  type JobRow,
+  jobs,
+  type ProjectRow,
+  projects,
+  type UserRow,
+} from '../../db/schema'
 import {
   createJobRequestSchema,
   finishJobRequestSchema,
   listJobsQuerySchema,
+  updateJobRequestSchema,
 } from '../../shared/schemas'
 import type { Job } from '../../shared/types'
 import {
   assertCanViewProject,
+  canManageProject,
+  canViewProject,
   canWriteProject,
+  readBearerToken,
+  requireAccessUser,
   requireBearerUser,
   resolveViewer,
 } from '../lib/auth'
-import { conflict, notFound, readJson, validate } from '../lib/errors'
+import { conflict, forbidden, notFound, readJson, validate } from '../lib/errors'
 import { newId, now, toIsoString, toIsoStringOrNull } from '../lib/ids'
 import { notifyLive } from '../lib/live'
+import { deleteJobMedia } from '../lib/media-cleanup'
 import { decodeKeysetCursor, encodeKeysetCursor, keysetCondition, toPage } from '../lib/pagination'
 
 export const jobsRoutes = new Hono<{ Bindings: CloudflareBindings }>()
@@ -141,4 +155,71 @@ jobsRoutes.post('/:project_id/jobs/:job_id/finish', async (c) => {
     }),
   )
   return c.json(toJob(updated))
+})
+
+/**
+ * project_id/job_id lookup shared by PATCH/DELETE. Unlike POST/finish (Bearer
+ * token, owner-only, missing write permission hides as 404 via canWriteProject),
+ * these are also reachable from the web UI by an admin acting on someone
+ * else's project, so the caller decides 403 vs 404 with canViewProject /
+ * canManageProject (docs/SPEC.md §6/§7).
+ */
+const findManageableJob = async (
+  db: Db,
+  user: UserRow,
+  projectId: string,
+  jobId: string,
+): Promise<{ project: ProjectRow; job: JobRow }> => {
+  const project = await findProject(db, projectId)
+  if (project === null || !canViewProject(project, user)) {
+    throw notFound('project not found')
+  }
+  const job = await findScopedJob(db, project.id, jobId)
+  if (job === null) {
+    throw notFound('job not found')
+  }
+  if (!canManageProject(project, user)) {
+    throw forbidden('only the project owner or an admin may edit this job')
+  }
+  return { project, job }
+}
+
+// PATCH /api/projects/:project_id/jobs/:job_id (追加分) — the project owner
+// or an admin renames a job; `name: null` clears it.
+jobsRoutes.patch('/:project_id/jobs/:job_id', async (c) => {
+  const viaBearer = readBearerToken(c.req.raw) !== null
+  const user = viaBearer
+    ? await requireBearerUser(c.env, c.req.raw)
+    : await requireAccessUser(c.env, c.req.raw)
+  const db = createDb(c.env.DB)
+  const { job } = await findManageableJob(
+    db,
+    user,
+    c.req.param('project_id'),
+    c.req.param('job_id'),
+  )
+  const body = await readJson(c.req.raw, updateJobRequestSchema)
+  await db.update(jobs).set({ name: body.name }).where(eq(jobs.id, job.id))
+  return c.json(toJob({ ...job, name: body.name }))
+})
+
+// DELETE /api/projects/:project_id/jobs/:job_id (追加分) — the project owner
+// or an admin deletes the job along with its metrics, logs and media (D1
+// cascades metrics/logs/media_assets on the job foreign key; R2 objects are
+// removed explicitly first, and no live broadcast is sent).
+jobsRoutes.delete('/:project_id/jobs/:job_id', async (c) => {
+  const viaBearer = readBearerToken(c.req.raw) !== null
+  const user = viaBearer
+    ? await requireBearerUser(c.env, c.req.raw)
+    : await requireAccessUser(c.env, c.req.raw)
+  const db = createDb(c.env.DB)
+  const { job } = await findManageableJob(
+    db,
+    user,
+    c.req.param('project_id'),
+    c.req.param('job_id'),
+  )
+  await deleteJobMedia(c.env.BUCKET, db, job.id)
+  await db.delete(jobs).where(eq(jobs.id, job.id))
+  return c.body(null, 204)
 })

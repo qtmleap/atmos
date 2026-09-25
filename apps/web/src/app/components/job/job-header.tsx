@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import type * as React from 'react'
 import type { Job, ProjectOwner } from '@/shared/types'
 import type { LiveConnection } from '../../hooks/use-job-live'
 import type { LinkedProject } from '../../hooks/use-job-project'
@@ -18,6 +19,8 @@ export interface JobHeaderProps {
   now: string
   /** When the newest metric or log line was received. */
   lastReceivedAt: string | null
+  /** The "…" menu after the update state, for those who can manage the project. */
+  actions?: React.ReactNode
 }
 
 /** Right side of the title row: the live state, or when updates stopped. */
@@ -54,6 +57,7 @@ export function JobHeader({
   connection,
   now,
   lastReceivedAt,
+  actions,
 }: JobHeaderProps) {
   const running = job.status === 'running'
   const description = describeJob(job.config)
@@ -93,7 +97,10 @@ export function JobHeader({
             <h1 className="text-2xl leading-8">{jobDisplayName(job)}</h1>
             <Status status={job.status}>{STATUS_LABELS[job.status]}</Status>
           </div>
-          <UpdateState job={job} connection={connection} lastReceivedAt={lastReceivedAt} />
+          <div className="flex items-center gap-3">
+            <UpdateState job={job} connection={connection} lastReceivedAt={lastReceivedAt} />
+            {actions}
+          </div>
         </div>
         <div className="flex items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">

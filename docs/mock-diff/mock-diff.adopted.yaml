@@ -21,3 +21,9 @@ adopted:
   page-project-jobs-compare-drawer: astra
   page-projects-new: astra
   component-theme-dark: astra
+  page-project-settings: astra
+  page-project-delete: astra
+  page-project-jobs-menu: astra
+  page-job-detail-menu: astra
+  page-job-rename: astra
+  page-job-delete: astra

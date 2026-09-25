@@ -315,3 +315,14 @@ export const projectVisibilityCondition = (viewer: UserRow | null): SQL | undefi
  */
 export const canWriteProject = (project: Pick<ProjectRow, 'ownerId'>, user: UserRow): boolean =>
   user.id === project.ownerId
+
+/**
+ * The owner or an admin may edit or delete a project (and its jobs): the
+ * PATCH/DELETE endpoints of docs/SPEC.md §6/§7, reachable from the web UI by
+ * an admin acting on someone else's project, not only through the Bearer
+ * token the SDK uses. Unlike `canWriteProject`, a missing permission here is
+ * reported as 403 `forbidden` when the project is otherwise visible (404
+ * only when it is not, or does not exist).
+ */
+export const canManageProject = (project: Pick<ProjectRow, 'ownerId'>, user: UserRow): boolean =>
+  user.id === project.ownerId || isAdmin(user)

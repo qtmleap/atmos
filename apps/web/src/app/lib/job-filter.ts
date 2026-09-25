@@ -4,10 +4,13 @@
 //   ?drawer=jobs             the "ジョブを選ぶ" drawer is open (compare view)
 //   ?jobs=id1,id2            jobs drawn in the comparison; absent means the
 //                            default pick (defaultCompareSelection), empty none
+//   ?menu=1, ?edit=1, ?delete=1  the heading's "…" menu and its dialogs
+//                            (manage-search.ts)
 import { z } from 'zod'
 import { JOB_STATUSES, type Job, type JobStatus } from '@/shared/types'
 import { withQuery } from './api-client'
 import { jobDisplayName } from './format'
+import { projectActionsSearchShape } from './manage-search'
 
 /**
  * The search params of /projects/:projectId (routes/_app/projects.$projectId.tsx).
@@ -24,6 +27,7 @@ export const jobsSearchSchema = z.object({
     .union([z.literal(''), z.string().nonempty()])
     .optional()
     .catch(undefined),
+  ...projectActionsSearchShape,
 })
 
 export type JobsSearch = z.infer<typeof jobsSearchSchema>

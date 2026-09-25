@@ -11,7 +11,7 @@ export const JOBS_PAGE_SIZE = 50
 
 /** What the heading needs of the project. */
 export type ProjectHeading = Pick<Project, 'id' | 'name' | 'visibility'> &
-  Partial<Pick<Project, 'owner'>>
+  Partial<Pick<Project, 'owner' | 'job_count'>>
 
 export interface ProjectJobs {
   filter: StatusFilter

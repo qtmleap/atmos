@@ -1,9 +1,11 @@
 // docs/SPEC.md §1 Job and §7 Jobs.
 //
-// POST /api/projects/:project_id/jobs                 createJobRequestSchema -> 201 jobSchema
-// GET  /api/projects/:project_id/jobs                 listJobsQuerySchema -> pageSchema(jobSchema)
-// GET  /api/projects/:project_id/jobs/:job_id         -> jobSchema
-// POST /api/projects/:project_id/jobs/:job_id/finish  finishJobRequestSchema -> jobSchema
+// POST   /api/projects/:project_id/jobs                 createJobRequestSchema -> 201 jobSchema
+// GET    /api/projects/:project_id/jobs                 listJobsQuerySchema -> pageSchema(jobSchema)
+// GET    /api/projects/:project_id/jobs/:job_id         -> jobSchema
+// PATCH  /api/projects/:project_id/jobs/:job_id         updateJobRequestSchema -> jobSchema
+// DELETE /api/projects/:project_id/jobs/:job_id         -> 204
+// POST   /api/projects/:project_id/jobs/:job_id/finish  finishJobRequestSchema -> jobSchema
 import { z } from 'zod'
 import {
   finishedJobStatusSchema,
@@ -41,4 +43,9 @@ export const listJobsQuerySchema = paginationQuerySchema.extend({
 
 export const finishJobRequestSchema = z.object({
   status: finishedJobStatusSchema,
+})
+
+/** Same `name` rule as create; `null` clears it (create's `name` is only absent, never null). */
+export const updateJobRequestSchema = z.object({
+  name: z.string().nonempty().nullable(),
 })
