@@ -395,7 +395,9 @@ describe('JobDetailPage', () => {
     const config = within(sheet).getByRole('table', { name: '学習ハイパーパラメータ' })
     expect(within(config).getByRole('rowheader', { name: 'optimizer' })).toBeInTheDocument()
     expect(within(config).getByRole('cell', { name: '{"lr": 0.001}' })).toBeInTheDocument()
-    expect(within(sheet).getByText(/^実行者\sAlice/)).toBeInTheDocument()
+    const runInfo = within(sheet).getByRole('table', { name: '実行情報' })
+    expect(within(runInfo).getByRole('rowheader', { name: '実行者' })).toBeInTheDocument()
+    expect(within(runInfo).getByRole('cell', { name: 'Alice' })).toBeInTheDocument()
     await userEvent.click(within(sheet).getByRole('button', { name: '設定を閉じる' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 
