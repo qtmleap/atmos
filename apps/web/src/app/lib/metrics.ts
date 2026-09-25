@@ -320,8 +320,6 @@ export const arrangeMetricCharts = (series: MetricSeries[]): MetricChartSpec[] =
 
 export interface SummaryStat {
   key: string
-  /** Japanese name when the key is a known one. */
-  label: string | null
   /** null when the job has not logged this key. */
   value: number | null
 }
@@ -344,10 +342,8 @@ export const summaryStats = (series: MetricSeries[], slots = 3): SummaryStat[] =
   const padded = [...keys, ...PREFERRED_STATS.filter((key) => !keys.includes(key))].slice(0, slots)
   return padded.map((key) => {
     const found = byKey.get(key)
-    const label = METRIC_LABELS[key]
     return {
       key,
-      label: label === undefined ? null : label,
       value: found === undefined ? null : found.latest.value,
     }
   })
