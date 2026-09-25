@@ -15,9 +15,17 @@ import {
 import { Button } from '../ui/button'
 import { Skeleton } from '../ui/skeleton'
 
-/** Two clips abreast (one on a narrow screen), as `.audio-grid` in the mocks. */
-export function AudioGrid({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">{children}</div>
+const AUDIO_GRID_COLS_CLASS = 'grid-cols-1 sm:grid-cols-2 @6xl:grid-cols-3'
+
+/**
+ * Two clips abreast (one on a narrow screen, three in a wide container), as
+ * `.audio-grid` in the mocks. Given fewer clips than columns, they widen to
+ * fill the row.
+ */
+export function AudioGrid({ count, children }: { count?: number; children: React.ReactNode }) {
+  const cols =
+    count === 1 ? 'grid-cols-1' : count === 2 ? 'grid-cols-1 sm:grid-cols-2' : AUDIO_GRID_COLS_CLASS
+  return <div className={`grid gap-x-8 ${cols}`}>{children}</div>
 }
 
 /** One clip: the head row above its waveform, a rule below. */
@@ -211,7 +219,7 @@ export function AudioList({ clips }: { clips: MediaAsset[] }) {
     return null
   }
   return (
-    <AudioGrid>
+    <AudioGrid count={clips.length}>
       {clips.map((clip) => (
         <AudioClip key={clip.id} clip={clip} />
       ))}

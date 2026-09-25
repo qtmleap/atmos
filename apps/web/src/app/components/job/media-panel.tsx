@@ -53,7 +53,7 @@ export function MediaPanel({ images, audio, config }: MediaPanelProps) {
   )
   const audioNote = describeAudio(config)
   return (
-    <div>
+    <div className="@container">
       <StepSlider
         id={sliderId}
         label="ステップ"

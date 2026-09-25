@@ -51,18 +51,6 @@ export function useProject(projectId: string): ProjectResource {
   }, [projectId])
 
   useEffect(() => {
-    const listener = (updated: Project) => {
-      if (updated.id === projectId) {
-        setProject(updated)
-      }
-    }
-    listeners.add(listener)
-    return () => {
-      listeners.delete(listener)
-    }
-  }, [projectId])
-
-  useEffect(() => {
     const known = cache.get(projectId)
     if (known !== undefined) {
       setProject(known)
