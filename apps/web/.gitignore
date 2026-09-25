@@ -96,6 +96,9 @@ vite.config.*.timestamp-*
 # === Intlayer (built by `intlayer build`) ===
 .intlayer/
 
+# === TanStack (router/start temp files) ===
+.tanstack/
+
 # === Agents ===
 .claude/
 .codex/
