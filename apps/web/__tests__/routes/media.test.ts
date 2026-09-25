@@ -240,7 +240,7 @@ describe('POST /api/projects/:project_id/jobs/:job_id/media', () => {
   })
 
   test(
-    '413 payload_too_large over the 25MB limit',
+    '413 payload_too_large over the 2048KB limit',
     async () => {
       const { dispatch } = testEnv()
       const { project, job, token } = await setup()
