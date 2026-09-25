@@ -9,6 +9,7 @@ adopted:
   page-projects: astra
   page-project-jobs: astra
   page-job-detail: astra
+  page-job-detail-settings: astra
   page-job-detail-failed: astra
   page-users: astra
   page-user-profile: astra

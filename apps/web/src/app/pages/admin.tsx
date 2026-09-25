@@ -39,7 +39,7 @@ export default function AdminPage() {
   const roles = countRoles(list.items)
 
   return (
-    <div className="mx-auto max-w-[1312px] px-8 pt-4 pb-6">
+    <div className="mx-auto max-w-[1600px] px-8 pt-4 pb-6">
       <header className="grid gap-4 border-b py-6">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl leading-8 font-semibold tracking-tight">ユーザー管理</h1>

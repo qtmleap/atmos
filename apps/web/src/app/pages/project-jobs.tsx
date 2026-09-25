@@ -136,7 +136,7 @@ export default function ProjectJobsPage() {
   const view = parseJobsView(search.view)
   const heading = useProjectHeading(projectId)
   return (
-    <div className="mx-auto max-w-[1312px] px-8 pt-4 pb-6">
+    <div className="mx-auto max-w-[1600px] px-8 pt-4 pb-6">
       <ProjectHeader
         projectId={projectId}
         project={heading.project}

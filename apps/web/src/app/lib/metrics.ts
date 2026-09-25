@@ -263,7 +263,8 @@ export const seriesColor = (key: string): number => (isRateKey(key) ? 2 : 0)
 /** Loss-like keys, then learning rates, then the rest by name. */
 const rank = (key: string): number => (isLossKey(key) ? 0 : isRateKey(key) ? 1 : 2)
 
-const compareForDisplay = (a: string, b: string): number => rank(a) - rank(b) || compareText(a, b)
+export const compareForDisplay = (a: string, b: string): number =>
+  rank(a) - rank(b) || compareText(a, b)
 
 /**
  * Charts in the order the run page draws them: every `train/x` with a

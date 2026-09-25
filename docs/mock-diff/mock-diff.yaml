@@ -185,6 +185,16 @@ screens:
         versions:
           astra: {type: html, path: designs/pages/job-detail.html}
         actual: {type: url, url: "http://localhost:12155/projects/prj_vits/jobs/job_vits_baseline_042"}
+  - id: page-job-detail-settings
+    name: ジョブ詳細（設定）
+    category: ページ
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/job-detail-settings.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits/jobs/job_vits_baseline_042?settings=1"}
   - id: page-job-detail-failed
     name: ジョブ詳細（失敗）
     category: ページ

@@ -20,7 +20,7 @@ export interface SettingsShellProps {
 
 export function SettingsShell({ current, children }: SettingsShellProps) {
   return (
-    <div className="mx-auto max-w-[1312px] px-8 pt-4 pb-6">
+    <div className="mx-auto max-w-[1600px] px-8 pt-4 pb-6">
       <header className="grid gap-4 border-b py-6">
         <h1 className="text-2xl leading-8 font-semibold tracking-tight">設定</h1>
         <p className="leading-[22px] text-muted-foreground">

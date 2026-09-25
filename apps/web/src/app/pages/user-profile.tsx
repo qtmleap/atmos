@@ -14,7 +14,7 @@ import { useUser } from '../hooks/use-user'
 
 const PROJECTS_PAGE_SIZE = 20
 
-const PAGE = 'mx-auto max-w-[1312px] px-8 pt-8 pb-6'
+const PAGE = 'mx-auto max-w-[1600px] px-8 pt-8 pb-6'
 
 export default function UserProfilePage() {
   const handle = useRequiredParam('handle')
