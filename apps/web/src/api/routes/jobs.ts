@@ -101,8 +101,8 @@ jobsRoutes.post('/:project_id/jobs', async (c) => {
       })
       .where(eq(jobs.id, existing.id))
     if (!wasRunning) {
-      c.executionCtx.waitUntil(
-        notifyLive(c.env, existing.id, {
+      getPlatform(c).waitUntil(
+        notifyLive(getPlatform(c).live, existing.id, {
           type: 'status',
           data: { status: 'running', finished_at: null },
         }),
