@@ -61,7 +61,9 @@ export const projects = sqliteTable(
   {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
-    visibility: text("visibility", { enum: ["public", "private"] }).notNull(),
+    // "public": 誰でも閲覧可。"internal": ログイン済みの登録ユーザーなら誰でも閲覧可（表示名は「メンバー限定」）。
+    // "private": ownerとadminのみ閲覧可。
+    visibility: text("visibility", { enum: ["public", "internal", "private"] }).notNull(),
     ownerId: text("owner_id")
       .notNull()
       .references(() => users.id),

@@ -66,6 +66,39 @@ describe('GET /api/projects', () => {
     expect(names).not.toContain('stranger private')
   })
 
+  test('internal projects are hidden from an anonymous viewer, shown to any signed-in registered user', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'internal-owner@example.com' })
+    await insertProject(env.DB, owner, { name: 'members only one', visibility: 'internal' })
+    const other = await insertUser(env.DB, { cfAccessEmail: 'internal-viewer@example.com' })
+
+    const anon = await dispatch('/api/projects')
+    const anonBody = await jsonShaped(projectPageSchema, anon)
+    expect(anonBody.items.map((p) => p.name)).not.toContain('members only one')
+
+    const signedIn = await dispatch('/api/projects', {
+      headers: { 'Cf-Access-Jwt-Assertion': await access.sign({ email: other.cfAccessEmail }) },
+    })
+    const signedInBody = await jsonShaped(projectPageSchema, signedIn)
+    expect(signedInBody.items.map((p) => p.name)).toContain('members only one')
+  })
+
+  test('an admin sees every project regardless of visibility', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'admin-list-owner@example.com' })
+    await insertProject(env.DB, owner, { name: 'admin sees private', visibility: 'private' })
+    const admin = await insertUser(env.DB, {
+      cfAccessEmail: 'admin-list-viewer@example.com',
+      role: 'admin',
+    })
+
+    const res = await dispatch('/api/projects', {
+      headers: { 'Cf-Access-Jwt-Assertion': await access.sign({ email: admin.cfAccessEmail }) },
+    })
+    const body = await jsonShaped(projectPageSchema, res)
+    expect(body.items.map((p) => p.name)).toContain('admin sees private')
+  })
+
   test('paginates with next_cursor', async () => {
     const { dispatch, env } = testEnv()
     const owner = await insertUser(env.DB)
@@ -119,6 +152,45 @@ describe('GET /api/projects/:project_id', () => {
     const missing = await dispatch('/api/projects/no-such-project')
     expect(missing.status).toBe(404)
     await jsonError(missing, 'not_found')
+  })
+
+  test('an internal project needs an Access identity, but not ownership', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'internal-detail-owner@example.com' })
+    const project = await insertProject(env.DB, owner, {
+      name: 'internal detail',
+      visibility: 'internal',
+    })
+    const other = await insertUser(env.DB, { cfAccessEmail: 'internal-detail-viewer@example.com' })
+
+    const anon = await dispatch(`/api/projects/${project.id}`)
+    expect(anon.status).toBe(401)
+    await jsonError(anon, 'unauthenticated')
+
+    const signedIn = await dispatch(`/api/projects/${project.id}`, {
+      headers: { 'Cf-Access-Jwt-Assertion': await access.sign({ email: other.cfAccessEmail }) },
+    })
+    expect(signedIn.status).toBe(200)
+  })
+
+  test('an admin may view a private project they do not own', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'admin-detail-owner@example.com' })
+    const project = await insertProject(env.DB, owner, {
+      name: 'admin detail',
+      visibility: 'private',
+    })
+    const admin = await insertUser(env.DB, {
+      cfAccessEmail: 'admin-detail-viewer@example.com',
+      role: 'admin',
+    })
+
+    const res = await dispatch(`/api/projects/${project.id}`, {
+      headers: { 'Cf-Access-Jwt-Assertion': await access.sign({ email: admin.cfAccessEmail }) },
+    })
+    expect(res.status).toBe(200)
+    const body = await jsonShaped(projectSchema, res)
+    expect(body.name).toBe('admin detail')
   })
 })
 
@@ -205,6 +277,72 @@ describe('POST /api/projects', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...bearer(revoked) },
       body: JSON.stringify({ name: 'x' }),
+    })
+    expect(res.status).toBe(401)
+    await jsonError(res, 'unauthenticated')
+  })
+
+  test('creates a project for a Cloudflare Access user with no Bearer token (web UI)', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'access-create@example.com' })
+
+    const res = await dispatch('/api/projects', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cf-Access-Jwt-Assertion': await access.sign({ email: owner.cfAccessEmail }),
+      },
+      body: JSON.stringify({ name: 'from-the-web-ui', visibility: 'internal' }),
+    })
+    expect(res.status).toBe(201)
+    const project = await jsonShaped(projectSchema, res)
+    expect(project.name).toBe('from-the-web-ui')
+    expect(project.visibility).toBe('internal')
+    expect(project.owner.id).toBe(owner.id)
+  })
+
+  test('409 conflict for an Access user creating a second project with the same name', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'access-conflict@example.com' })
+    const accessHeader = await access.sign({ email: owner.cfAccessEmail })
+    const create = () =>
+      dispatch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cf-Access-Jwt-Assertion': accessHeader,
+        },
+        body: JSON.stringify({ name: 'duplicate-from-ui' }),
+      })
+
+    const first = await create()
+    expect(first.status).toBe(201)
+
+    const second = await create()
+    expect(second.status).toBe(409)
+    await jsonError(second, 'conflict')
+  })
+
+  test('401 unauthenticated with neither a Bearer token nor an Access identity', async () => {
+    const { dispatch } = testEnv()
+    const res = await dispatch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'nobody' }),
+    })
+    expect(res.status).toBe(401)
+    await jsonError(res, 'unauthenticated')
+  })
+
+  test('401 unauthenticated for an Access identity that is not a registered user', async () => {
+    const { dispatch, access } = testEnv()
+    const res = await dispatch('/api/projects', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cf-Access-Jwt-Assertion': await access.sign({ email: 'unregistered@example.com' }),
+      },
+      body: JSON.stringify({ name: 'nobody' }),
     })
     expect(res.status).toBe(401)
     await jsonError(res, 'unauthenticated')

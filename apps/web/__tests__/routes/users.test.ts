@@ -104,6 +104,36 @@ describe('GET /api/users/:handle/projects', () => {
     expect(body.items.map((p) => p.name)).toContain('mine')
   })
 
+  test('internal projects are hidden from an anonymous viewer, shown to any signed-in registered user', async () => {
+    const { access, dispatch, env } = testEnv()
+    const owner = await insertUser(env.DB, { handle: 'owner-with-internal' })
+    const other = await insertUser(env.DB)
+    await insertProject(env.DB, owner, { name: 'members only listing', visibility: 'internal' })
+
+    const anon = await dispatch(`/api/users/${owner.handle}/projects`)
+    const anonBody = await jsonShaped(pageSchema(projectSchema), anon)
+    expect(anonBody.items.map((p) => p.name)).not.toContain('members only listing')
+
+    const signedIn = await dispatch(`/api/users/${owner.handle}/projects`, {
+      headers: { 'Cf-Access-Jwt-Assertion': await access.sign({ email: other.cfAccessEmail }) },
+    })
+    const signedInBody = await jsonShaped(pageSchema(projectSchema), signedIn)
+    expect(signedInBody.items.map((p) => p.name)).toContain('members only listing')
+  })
+
+  test('an admin sees a private project in another user’s list', async () => {
+    const { access, dispatch, env } = testEnv()
+    const owner = await insertUser(env.DB, { handle: 'owner-for-admin-list' })
+    await insertProject(env.DB, owner, { name: 'private for admin', visibility: 'private' })
+    const admin = await insertUser(env.DB, { role: 'admin' })
+
+    const res = await dispatch(`/api/users/${owner.handle}/projects`, {
+      headers: { 'Cf-Access-Jwt-Assertion': await access.sign({ email: admin.cfAccessEmail }) },
+    })
+    const body = await jsonShaped(pageSchema(projectSchema), res)
+    expect(body.items.map((p) => p.name)).toContain('private for admin')
+  })
+
   test('404 for an unknown handle', async () => {
     const { dispatch } = testEnv()
     const res = await dispatch('/api/users/does-not-exist-xyz/projects')

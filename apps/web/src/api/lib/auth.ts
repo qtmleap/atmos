@@ -11,7 +11,7 @@
 //   assertCanViewProject(project, viewer)                      // 401 / 403
 //   const user = await requireBearerUser(c.env, c.req.raw)     // 401
 //   const admin = requireAdmin(await requireAccessUser(c.env, c.req.raw)) // 401 / 403
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, or, type SQL } from 'drizzle-orm'
 import {
   createLocalJWKSet,
   createRemoteJWKSet,
@@ -24,6 +24,7 @@ import {
   createDb,
   type Db,
   type ProjectRow,
+  projects,
   type UserRow,
   users,
 } from '../../db/schema'
@@ -251,14 +252,31 @@ export const requireAdmin = (user: UserRow): UserRow => {
 
 type ProjectAccess = Pick<ProjectRow, 'visibility' | 'ownerId'>
 
-/** Public projects are visible to everyone; private ones only to their owner. */
-export const canViewProject = (project: ProjectAccess, viewer: UserRow | null): boolean =>
-  project.visibility === 'public' || (viewer !== null && viewer.id === project.ownerId)
+/**
+ * Visibility rule (docs/SPEC.md §1 Project):
+ *   - `public`: everyone, including anonymous viewers.
+ *   - `internal`: any signed-in registered user.
+ *   - `private`: the owner and admins only.
+ * Admins can always view a project regardless of `visibility`.
+ */
+export const canViewProject = (project: ProjectAccess, viewer: UserRow | null): boolean => {
+  if (project.visibility === 'public') {
+    return true
+  }
+  if (viewer === null) {
+    return false
+  }
+  if (viewer.id === project.ownerId || isAdmin(viewer)) {
+    return true
+  }
+  return project.visibility === 'internal'
+}
 
 /**
  * Throws unless `viewer` may see `project`: 401 `unauthenticated` for an
- * anonymous viewer of a private project, 403 `forbidden` for a signed-in
- * non-owner. List endpoints should filter with canViewProject instead.
+ * anonymous viewer of a non-public project, 403 `forbidden` for a signed-in
+ * viewer without permission (non-owner/non-admin on `private`). List
+ * endpoints should filter with projectVisibilityCondition instead.
  */
 export const assertCanViewProject = (project: ProjectAccess, viewer: UserRow | null): void => {
   if (canViewProject(project, viewer)) {
@@ -268,6 +286,26 @@ export const assertCanViewProject = (project: ProjectAccess, viewer: UserRow | n
     throw unauthenticated('this project is private; Cloudflare Access login required')
   }
   throw forbidden('this project is private')
+}
+
+/**
+ * The `WHERE` condition every project list endpoint filters with, so the
+ * rule above is expressed once: anonymous viewers see `public` only,
+ * signed-in registered users additionally see `internal` and their own
+ * projects, and admins see everything (`undefined`, i.e. no filter).
+ */
+export const projectVisibilityCondition = (viewer: UserRow | null): SQL | undefined => {
+  if (viewer === null) {
+    return eq(projects.visibility, 'public')
+  }
+  if (isAdmin(viewer)) {
+    return undefined
+  }
+  return or(
+    eq(projects.visibility, 'public'),
+    eq(projects.visibility, 'internal'),
+    eq(projects.ownerId, viewer.id),
+  )
 }
 
 /**

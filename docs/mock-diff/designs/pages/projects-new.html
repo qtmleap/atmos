@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>プロジェクト · atmos</title>
+  <title>新規プロジェクト · atmos</title>
   <link rel="stylesheet" href="../_shared/atmos.css">
   <style>
     .page-content { max-width: 1312px; margin: 0 auto; padding: 16px 32px 24px; }
@@ -19,6 +19,8 @@
     .list-table td { height: 50px; }
     .list-footer { padding-top: 12px; }
     @media (max-width: 700px) { .page-content { padding: 20px 16px; } .list-toolbar { flex-wrap: wrap; } .list-search { width: 100%; } .list-note { margin-left: 0; } }
+    .new-project-overlay { position: fixed; inset: 0; z-index: 10; }
+    .new-project-dialog { max-width: 460px; }
   </style>
 </head>
 <body>
@@ -59,6 +61,41 @@
   <nav class="pagination list-footer" aria-label="一覧のページ送り"><span>10件表示 · 先頭 · 続きあり</span><ul class="pagination-content"><li><button class="btn btn-ghost" type="button" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>前へ</button></li><li><button class="btn btn-outline" type="button">次へ<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></li></ul></nav>
   <p class="small muted list-footer">ログイン中のため、公開・メンバー限定のプロジェクトに加え、閲覧できる非公開のプロジェクトも表示しています。</p>
 </main>
+</div>
+<div class="dialog-overlay new-project-overlay">
+  <div class="dialog new-project-dialog" role="dialog" aria-labelledby="new-project-title" aria-describedby="new-project-description">
+    <button class="btn btn-ghost btn-icon dialog-close" aria-label="新規プロジェクトを閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12"/></svg></button>
+    <h3 class="dialog-title" id="new-project-title">新規プロジェクト</h3>
+    <p class="dialog-description" id="new-project-description">SDKからジョブを送信する先になります。公開範囲はあとから変更できます。</p>
+    <div class="dialog-content stack">
+      <div class="form-field">
+        <label class="label" for="new-project-name">プロジェクト名 <span class="muted">（必須）</span></label>
+        <input class="input mono" id="new-project-name" placeholder="例：voice-synthesis-v5" required aria-describedby="new-project-name-help">
+        <p class="form-description" id="new-project-name-help">SDK の wb.init() で指定する名前と同じにすると、そのプロジェクトに記録されます。</p>
+      </div>
+      <div class="form-field">
+        <span class="label" id="new-project-visibility-label">公開範囲</span>
+        <div class="radio-group" role="radiogroup" aria-labelledby="new-project-visibility-label">
+          <label class="radio-option">
+            <input type="radio" class="radio" name="visibility" value="public">
+            <span class="stack-sm"><span class="label">公開</span><span class="form-description">ログインしていない人も、ジョブやメトリクスを閲覧できます。</span></span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" class="radio" name="visibility" value="internal">
+            <span class="stack-sm"><span class="label">メンバー限定</span><span class="form-description">ログインしているメンバーなら誰でも閲覧できます。</span></span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" class="radio" name="visibility" value="private" checked>
+            <span class="stack-sm"><span class="label">非公開</span><span class="form-description">所有者と管理者だけが閲覧できます。</span></span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="dialog-footer">
+      <button class="btn btn-outline" type="button">キャンセル</button>
+      <button class="btn btn-default" type="button">作成する</button>
+    </div>
+  </div>
 </div>
 <script src="../_shared/theme-toggle.js"></script>
 </body>

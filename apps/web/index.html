@@ -8,6 +8,29 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>atmos</title>
+    <!-- Paints the first frame in the chosen theme. Same key and rules as src/app/lib/theme.ts. -->
+    <script>
+      ;(() => {
+        try {
+          // Storage may throw on a locked-down page; that alone must not stop a dark OS from
+          // painting dark, so it gets its own guard and falls back to "system".
+          const preference = (() => {
+            try {
+              const stored = localStorage.getItem('atmos-theme')
+              return stored === 'light' || stored === 'dark' ? stored : 'system'
+            } catch {
+              return 'system'
+            }
+          })()
+          const dark =
+            preference === 'dark' ||
+            (preference === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.classList.toggle('dark', dark)
+        } catch {
+          // No matchMedia: stay light until React takes over.
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

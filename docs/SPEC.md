@@ -75,7 +75,9 @@ interface UserWithEmail extends User {
 interface Project {
   id: string
   name: string
-  visibility: "public" | "private"
+  // "public": 誰でも閲覧可。 "internal": ログイン済みの登録ユーザーなら誰でも閲覧可（表示名は「メンバー限定」）。
+  // "private": ownerとadminのみ閲覧可。
+  visibility: "public" | "internal" | "private"
   owner: {
     id: string
     handle: string
@@ -137,6 +139,18 @@ interface AccessTokenCreated extends AccessToken {
 ```
 
 ## 2. Setup
+
+### `GET /api/setup`（追加分）
+
+認証: 不要。SPAが起動直後に叩き、未セットアップなら初期設定画面へ誘導するための判定に使う。
+
+```ts
+interface SetupStatus {
+  initialized: boolean   // usersテーブルが1件以上あればtrue
+}
+```
+
+Response: `SetupStatus`
 
 ### `POST /api/setup`
 
@@ -222,11 +236,11 @@ Response: `User`
 
 ### `GET /api/users/:handle/projects`
 
-認証: 不要（非公開プロジェクトの混在有無はAccessで判定）
+認証: 不要（`internal`/`private`の混在有無はAccessで判定）
 
 Query: `PaginationQuery`
 
-Response: `Page<Project>`（閲覧者に権限が無い非公開プロジェクトは結果に含めない）
+Response: `Page<Project>`（閲覧者に権限が無い`internal`・`private`プロジェクトは結果に含めない。ただし`:handle`本人およびadminがアクセスした場合は自身の`private`も含む）
 
 ### `GET /api/users/:handle/avatar`
 
@@ -299,15 +313,15 @@ Response: `204 No Content`
 
 ### `GET /api/projects`
 
-認証: 不要（非公開はAccessで判定）
+認証: 不要（`internal`/`private`はAccessで判定）
 
 Query: `PaginationQuery`
 
-Response: `Page<Project>`（閲覧権限のない非公開プロジェクトは結果に含めない）
+Response: `Page<Project>`（閲覧権限のない`internal`・`private`プロジェクトは結果に含めない。`public`は誰でも、`internal`はログイン済みの登録ユーザーなら誰でも、`private`はownerとadminのみ、それぞれ結果に含む）
 
 ### `GET /api/projects/:project_id`（追加分）
 
-認証: 不要（非公開ならAccess必須）
+認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ閲覧可）
 
 Response: `Project`
 
@@ -315,25 +329,26 @@ Response: `Project`
 
 ### `POST /api/projects`（追加分）
 
-認証: Bearer Token（`wb.init(project="...")`のproject解決に対応）
+認証: Bearer TokenまたはAccess（どちらも無ければ`401 unauthenticated`）
 
 ```ts
 interface CreateProjectRequest {
   name: string
-  visibility?: "public" | "private"   // 省略時は"private"
+  visibility?: "public" | "internal" | "private"   // 省略時は"private"
 }
 ```
 
-動作（get-or-create）:
-- トークンの持ち主（owner）が所有するプロジェクトの中に`name`が完全一致するものがあれば、それを返す（新規作成しない）。この場合`visibility`は無視し、既存プロジェクトの値を変更しない
-- 無ければ、トークンの持ち主をownerとして新規作成して返す
+動作は認証方法で分かれる:
+- Bearer Token（`wb.init(project="...")`のproject解決に対応、get-or-create） — トークンの持ち主（owner）が所有するプロジェクトの中に`name`が完全一致するものがあれば、それを返す（新規作成しない）。この場合`visibility`は無視し、既存プロジェクトの値を変更しない。無ければ、トークンの持ち主をownerとして新規作成して返す
+- Access（Bearerが無い場合。Web UIの「新規プロジェクト」フォームから呼ぶ） — 作成のみ。ログイン中のユーザーが所有するプロジェクトの中に`name`が完全一致するものが既にあれば`409 conflict`。無ければ、そのユーザーをownerとして新規作成して返す
 
 Response:
-- `200`: `Project` — 既存のプロジェクトを返した
-- `201`: `Project` — 新規作成した
+- `200`: `Project` — Bearer Tokenで、既存のプロジェクトを返した
+- `201`: `Project` — 新規作成した（Bearer Token・Accessいずれも）
 
 エラー:
 - `400 validation_error` — `name`が空、または`visibility`が不正
+- `409 conflict` — Access経由で、同じownerに同名のプロジェクトが既にある
 
 補足: `projects.name`はDB上一意ではないため、同じownerの下に同名プロジェクトが既に複数ある場合（将来UIから作成できるようになった場合など）は、`created_at`が最も古いものを返す。
 
@@ -356,7 +371,7 @@ Response `201`: `Job`（`status: "running"`, `started_at`はサーバー側の�
 
 ### `GET /api/projects/:project_id/jobs`
 
-認証: 不要（非公開ならAccess必須）
+認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ閲覧可）
 
 Query:
 ```ts
@@ -369,7 +384,7 @@ Response: `Page<Job>`
 
 ### `GET /api/projects/:project_id/jobs/:job_id`
 
-認証: 不要（非公開ならAccess必須）
+認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ閲覧可）
 
 Response: `Job`
 
@@ -422,7 +437,7 @@ interface IngestAcceptedResponse {
 
 ### `GET /api/projects/:project_id/jobs/:job_id/metrics`
 
-認証: 不要（非公開ならAccess必須）
+認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ閲覧可）
 
 Query:
 ```ts
@@ -455,7 +470,7 @@ Response `201`: `MediaAsset`
 
 ### `GET /api/projects/:project_id/jobs/:job_id/media`（追加分）
 
-認証: 不要（非公開ならAccess必須）
+認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ閲覧可）
 
 Query:
 ```ts
@@ -468,7 +483,7 @@ Response: `Page<MediaAsset>`
 
 ### `GET /api/projects/:project_id/jobs/:job_id/media/:media_id`
 
-認証: 不要（非公開ならAccess必須）
+認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ閲覧可）
 
 Response: `200`、`Content-Type`は`media_assets.content_type`、bodyはバイナリ（Workerがr2からストリーミング）
 
@@ -496,7 +511,7 @@ Response `202`: `IngestAcceptedResponse`
 
 ### `GET /api/projects/:project_id/jobs/:job_id/logs`
 
-認証: 不要（非公開ならAccess必須）
+認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ閲覧可）
 
 Query:
 ```ts
@@ -513,7 +528,7 @@ Response: `Page<LogLine>`
 
 ### `GET /api/projects/:project_id/jobs/:job_id/live`（Upgrade: websocket）
 
-認証: 不要（非公開ならAccess必須。判定はWorkerがUpgrade前に行い、Durable Objectへは可視性判定済みの接続のみハンドオフする）
+認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ。判定はWorkerがUpgrade前に行い、Durable Objectへは可視性判定済みの接続のみハンドオフする）
 
 接続後、クライアント→サーバーのアプリケーションメッセージは無し（単方向push）。サーバー→クライアントは以下のJSON textフレームで送られる。
 
@@ -527,5 +542,5 @@ type LiveMessage =
 
 Close code:
 - `1000` — job側の正常終了、またはクライアント切断
-- `4403` — 接続時点で非公開かつ権限なし（Upgrade前にWorkerが弾く想定だが、念のため定義）
+- `4403` — 接続時点で`internal`/`private`かつ権限なし（Upgrade前にWorkerが弾く想定だが、念のため定義）
 - `4404` — `project_id`/`job_id`が存在しない

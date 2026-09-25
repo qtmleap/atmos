@@ -20,7 +20,7 @@ export function VisibilityBadge({
       {plain ? (
         <span className="text-xs leading-4 text-muted-foreground">{label}</span>
       ) : (
-        <Visibility isPublic={visibility === 'public'} className="leading-4">
+        <Visibility visibility={visibility} className="leading-4">
           {label}
         </Visibility>
       )}

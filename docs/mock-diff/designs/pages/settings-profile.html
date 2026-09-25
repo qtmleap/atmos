@@ -28,7 +28,7 @@
   <header class="app-header">
     <a class="app-logo" href="/" aria-label="atmos ホーム">atmos</a>
     <nav class="app-nav" aria-label="ログイン時のナビゲーション"><a href="/">プロジェクト</a><a href="/users">メンバー</a></nav>
-    <div class="app-account"><span class="small">田中 美咲</span><span class="avatar" role="img" aria-label="田中 美咲のアバター">田</span><button class="btn btn-ghost btn-icon" type="button" aria-label="ユーザーメニュー" aria-haspopup="menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>
+    <div class="app-account"><button class="btn btn-ghost btn-icon" type="button" aria-label="表示テーマ: システム" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu-1"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg></button><div class="dropdown" id="theme-menu-1" role="menu" aria-label="表示テーマ" hidden><button class="dropdown-item" role="menuitem" data-preference="system" aria-current="true" aria-label="表示テーマ: システム（選択中）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>システム<span class="shortcut"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m20 6-11 11-5-5"/></svg></span></button><button class="dropdown-item" role="menuitem" data-preference="light"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>ライト</button><button class="dropdown-item" role="menuitem" data-preference="dark"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>ダーク</button></div><span class="small">田中 美咲</span><span class="avatar" role="img" aria-label="田中 美咲のアバター">田</span><button class="btn btn-ghost btn-icon" type="button" aria-label="ユーザーメニュー" aria-haspopup="menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>
   </header>
   <main class="page-content">
     <header class="page-header"><h1>設定</h1><p class="description">プロフィールとアクセストークンを管理します。</p></header>
@@ -51,5 +51,6 @@
     </div>
   </main>
 </div>
+<script src="../_shared/theme-toggle.js"></script>
 </body>
 </html>

@@ -114,7 +114,7 @@ function UserProfileContent({
 
         <p className="pt-4 text-xs text-muted-foreground">
           {signedIn
-            ? 'ログイン中のため、公開・非公開の両方のプロジェクトを表示しています。'
+            ? 'ログイン中のため、公開・メンバー限定・非公開のすべてのプロジェクトを表示しています。'
             : '公開プロジェクトのみ表示しています。'}
         </p>
       </section>

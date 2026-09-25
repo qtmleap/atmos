@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { ChevronDownIcon, ChevronRightIcon, LinkIcon, UserIcon } from 'lucide-react'
 import { Fragment } from 'react'
 import { AppHeaderBar } from '../../components/layout/app-header'
+import { ConnectedThemeToggle } from '../../components/layout/theme-toggle'
 import { Avatar, AvatarFallback } from '../../components/ui/avatar'
 import { Button } from '../../components/ui/button'
 import { Skeleton } from '../../components/ui/skeleton'
@@ -68,6 +69,7 @@ export default function NavigationCatalog() {
           navLabel="ログイン時のナビゲーション"
           account={
             <>
+              <ConnectedThemeToggle />
               <span className="text-xs">田中 美咲</span>
               <Avatar role="img" aria-label="田中 美咲のアバター">
                 <AvatarFallback>田</AvatarFallback>
@@ -117,7 +119,12 @@ export default function NavigationCatalog() {
         <AppHeaderBar
           current="projects"
           navLabel="未ログイン時のナビゲーション"
-          account={<Button>ログイン</Button>}
+          account={
+            <>
+              <ConnectedThemeToggle />
+              <Button>ログイン</Button>
+            </>
+          }
         />
         <p className="text-xs text-muted-foreground">
           「メンバー」を開く際は認証が必要です。ここでは遷移しない静止見本として表示しています。
@@ -132,18 +139,21 @@ export default function NavigationCatalog() {
           current="users"
           navLabel="メンバー選択時のナビゲーション"
           account={
-            <Button
-              variant="ghost"
-              size="icon"
-              data-preview="focus"
-              aria-label="ユーザーメニューを開く"
-              aria-haspopup="menu"
-              aria-expanded="false"
-            >
-              <Avatar aria-hidden="true">
-                <AvatarFallback>田</AvatarFallback>
-              </Avatar>
-            </Button>
+            <>
+              <ConnectedThemeToggle />
+              <Button
+                variant="ghost"
+                size="icon"
+                data-preview="focus"
+                aria-label="ユーザーメニューを開く"
+                aria-haspopup="menu"
+                aria-expanded="false"
+              >
+                <Avatar aria-hidden="true">
+                  <AvatarFallback>田</AvatarFallback>
+                </Avatar>
+              </Button>
+            </>
           }
         />
       </Specimen>
@@ -201,7 +211,7 @@ export default function NavigationCatalog() {
                 2026-09-18
               </Description>
             </div>
-            <Visibility isPublic={false}>非公開</Visibility>
+            <Visibility visibility="private">非公開</Visibility>
           </div>
         </PageHeader>
         <PageHeader>

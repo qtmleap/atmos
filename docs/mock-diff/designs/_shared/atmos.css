@@ -687,6 +687,8 @@ svg.icon {
 .app-logo {
 	font-size: 20px;
 	line-height: 28px;
+	/* IBM Plex Sans JP は字面が行ボックスの上寄りに乗るため、2px 下げてアイコンと中心を揃える */
+	padding-top: 2px;
 	letter-spacing: -0.04em;
 	font-weight: 650;
 }
@@ -699,7 +701,10 @@ svg.icon {
 .app-nav a {
 	display: flex;
 	align-items: center;
+	box-sizing: border-box;
 	height: 100%;
+	/* .app-logo と同じ理由で字面を 2px 下げる */
+	padding-top: 2px;
 	color: var(--muted-foreground);
 	font-size: 14px;
 }
@@ -1300,4 +1305,45 @@ svg.icon {
 	.audio-row {
 		flex-wrap: wrap;
 	}
+}
+.radio-group {
+	display: grid;
+	gap: 12px;
+}
+.radio-option {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+}
+.radio {
+	appearance: none;
+	flex: none;
+	width: 16px;
+	height: 16px;
+	margin-top: -1px;
+	/* .label の行高 14px に円の中心を合わせる */
+	border: 1px solid var(--input);
+	border-radius: 999px;
+	background: transparent;
+	outline: none;
+}
+.radio:hover:not(:disabled) {
+	border-color: var(--ring);
+}
+.radio:checked {
+	border-color: var(--primary);
+}
+.radio:checked::after {
+	content: "";
+	display: block;
+	width: 8px;
+	height: 8px;
+	margin: 3px;
+	border-radius: 999px;
+	background: var(--primary);
+}
+.radio:focus-visible,
+.radio.is-focus {
+	outline: 3px solid color-mix(in oklch, var(--ring) 50%, transparent);
+	outline-offset: 0;
 }

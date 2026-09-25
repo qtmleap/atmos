@@ -11,3 +11,8 @@ export const setupRequestSchema = z.object({
 export const setupResponseSchema = z.object({
   user: userWithEmailSchema,
 })
+
+/** `GET /api/setup`: whether atmos already has a registered user. */
+export const setupStatusSchema = z.object({
+  initialized: z.boolean(),
+})
