@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { ChevronDownIcon } from 'lucide-react'
 import type { UserWithEmail } from '@/shared/types'
+import { ACCESS_LOGOUT_PATH, useLogout } from '../../hooks/use-logout'
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 import { Button } from '../ui/button'
 import {
@@ -18,9 +19,6 @@ export interface UserMenuProps {
   loading: boolean
 }
 
-/** Cloudflare Access ends the session at this path on the app's own host. */
-const ACCESS_LOGOUT_PATH = '/cdn-cgi/access/logout'
-
 /**
  * The account at the right of the header: display name, avatar, and a ghost
  * chevron button that opens the menu. Signed out, a sign-in link instead.
@@ -29,13 +27,14 @@ const ACCESS_LOGOUT_PATH = '/cdn-cgi/access/logout'
  * route change would never reach Access.
  */
 export function UserMenu({ user, loading }: UserMenuProps) {
+  const logout = useLogout()
   if (loading) {
     return <Skeleton className="size-8 rounded-full" />
   }
   if (user === null) {
     return (
       <Button asChild>
-        <a href="/settings/profile">サインイン</a>
+        <a href="/settings/profile">ログイン</a>
       </Button>
     )
   }
@@ -76,7 +75,15 @@ export function UserMenu({ user, loading }: UserMenuProps) {
           ) : null}
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <a href={ACCESS_LOGOUT_PATH}>ログアウト</a>
+            <a
+              href={ACCESS_LOGOUT_PATH}
+              onClick={(event) => {
+                event.preventDefault()
+                logout()
+              }}
+            >
+              ログアウト
+            </a>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

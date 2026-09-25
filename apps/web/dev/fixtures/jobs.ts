@@ -96,6 +96,9 @@ const FIRST_PAGE = 8
 const isJobStatus = (value: string | null): value is JobStatus =>
   JOB_STATUSES.some((status) => status === value)
 
+/** `?scenario=empty`: the project has no jobs yet (project-jobs-empty.html). */
+export const JOBS_EMPTY_SCENARIO = 'empty'
+
 /**
  * PATCH .../jobs/:job_id overlay (name only, `null` clears it) and DELETE
  * .../jobs/:job_id overlay, kept here rather than in job-detail.ts: that
@@ -121,8 +124,8 @@ export const deleteJobFixture = (jobId: string): void => {
   DELETED_JOBS.add(jobId)
 }
 
-export const listJobs: FixtureHandler = ({ params, url }) => {
-  if (params.project_id !== VITS_PROJECT_ID) {
+export const listJobs: FixtureHandler = ({ params, url, scenario }) => {
+  if (params.project_id !== VITS_PROJECT_ID || scenario === JOBS_EMPTY_SCENARIO) {
     return json({ items: [], next_cursor: null })
   }
   const status = url.searchParams.get('status')

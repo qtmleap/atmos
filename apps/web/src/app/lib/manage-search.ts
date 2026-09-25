@@ -26,6 +26,8 @@ export const jobSearchSchema = z.object({
   menu: flag,
   rename: flag,
   delete: flag,
+  /** The settings sheet (components/job/job-settings-sheet.tsx). */
+  settings: flag,
   ...chartViewSearchShape,
 })
 

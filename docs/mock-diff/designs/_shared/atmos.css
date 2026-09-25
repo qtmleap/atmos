@@ -20,6 +20,7 @@
 	--border: oklch(0.922 0 0);
 	--input: oklch(0.922 0 0);
 	--ring: oklch(0.708 0 0);
+	--overlay: oklch(0 0 0 / 50%);
 	--chart-1: oklch(0.646 0.222 41.116);
 	--chart-2: oklch(0.6 0.118 184.704);
 	--chart-3: oklch(0.398 0.07 227.392);
@@ -54,6 +55,7 @@
 	--border: oklch(1 0 0 / 10%);
 	--input: oklch(1 0 0 / 15%);
 	--ring: oklch(0.556 0 0);
+	--overlay: oklch(0 0 0 / 50%);
 	--chart-1: oklch(0.488 0.243 264.376);
 	--chart-2: oklch(0.696 0.17 162.48);
 	--chart-3: oklch(0.769 0.188 70.08);
@@ -305,6 +307,12 @@ svg.icon {
 	font-size: 14px;
 	outline: none;
 }
+:is(.input, .select, .textarea).is-focus {
+	outline: 3px solid color-mix(in oklch, var(--ring) 50%, transparent);
+}
+.dark :is(.input, .select, .textarea) {
+	background: color-mix(in oklch, var(--input) 30%, transparent);
+}
 .input::placeholder,
 .textarea::placeholder {
 	color: var(--muted-foreground);
@@ -343,6 +351,10 @@ svg.icon {
 [aria-invalid="true"]:focus-visible,
 [aria-invalid="true"].is-focus {
 	outline-color: color-mix(in oklch, var(--destructive) 20%, transparent);
+}
+.dark [aria-invalid="true"]:focus-visible,
+.dark [aria-invalid="true"].is-focus {
+	outline-color: color-mix(in oklch, var(--destructive) 40%, transparent);
 }
 .label {
 	font-size: 14px;
@@ -570,7 +582,7 @@ svg.icon {
 	color: var(--muted-foreground);
 }
 .dialog-overlay {
-	background: oklch(0 0 0 / 50%);
+	background: var(--overlay);
 	padding: 24px;
 	display: grid;
 	place-items: center;
@@ -1029,22 +1041,56 @@ svg.icon {
 	padding-block: 12px;
 	font-size: 12px;
 }
-.audio-row {
-	display: flex;
-	align-items: center;
-	gap: 16px;
-	padding: 14px 0;
+.audio-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	column-gap: 32px;
+}
+.audio-cell {
+	display: grid;
+	gap: 8px;
+	padding-block: 14px;
 	border-bottom: 1px solid var(--border);
 }
+.audio-head {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
 .audio-info {
-	width: 200px;
-	flex: none;
+	flex: 1;
+	min-width: 0;
+}
+.audio-info p {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 .audio-wave {
+	position: relative;
+	height: 40px;
+	cursor: pointer;
+	outline: none;
+}
+.audio-wave svg {
+	position: absolute;
+	inset: 0;
 	width: 100%;
-	height: 32px;
+	height: 100%;
+	fill: none;
 	stroke: var(--muted-foreground);
 	stroke-width: 2;
+	opacity: 0.5;
+}
+.audio-wave .audio-wave-played {
+	stroke: var(--foreground);
+	opacity: 1;
+}
+.audio-wave:focus-visible {
+	box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent);
+}
+.audio-wave .skeleton {
+	height: 100%;
 }
 .audio-time {
 	font: 12px var(--font-mono);
@@ -1283,7 +1329,8 @@ svg.icon {
 	.grid-2,
 	.grid-3,
 	.metric-grid,
-	.gallery {
+	.gallery,
+	.audio-grid {
 		grid-template-columns: 1fr;
 	}
 	.swatch-grid {
@@ -1301,9 +1348,6 @@ svg.icon {
 	}
 	.app-nav {
 		gap: 12px;
-	}
-	.audio-row {
-		flex-wrap: wrap;
 	}
 }
 .radio-group {

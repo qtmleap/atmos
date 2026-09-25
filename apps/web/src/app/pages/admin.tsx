@@ -5,11 +5,11 @@
 import { ShieldIcon } from 'lucide-react'
 import { useState } from 'react'
 import { CreateUserForm } from '../components/admin/create-user-form'
+import { UserPager } from '../components/admin/user-pager'
 import { UserTable, UserToolbar } from '../components/admin/user-table'
-import { ListFooter } from '../components/common/list-footer'
 import { LoadingRows } from '../components/common/loading-rows'
 import { Badge } from '../components/ui/badge'
-import { type CreateUserFormInput, countRoles, useAdminUsers } from '../hooks/use-admin-users'
+import { type CreateUserFormInput, useAdminUsers } from '../hooks/use-admin-users'
 import { useCurrentUser } from '../hooks/use-current-user'
 
 const EMPTY_FORM: CreateUserFormInput = {
@@ -36,10 +36,8 @@ export default function AdminPage() {
     )
   }
 
-  const roles = countRoles(list.items)
-
   return (
-    <div className="mx-auto max-w-[1312px] px-8 pt-4 pb-6">
+    <div className="mx-auto max-w-[1600px] px-8 pt-4 pb-6">
       <header className="grid gap-4 border-b py-6">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl leading-8 font-semibold tracking-tight">ユーザー管理</h1>
@@ -55,19 +53,9 @@ export default function AdminPage() {
 
       <div className="grid grid-cols-[minmax(0,1fr)_304px] gap-8 pt-7">
         <section aria-labelledby="users-title">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <h2 id="users-title" className="text-xl leading-7 font-semibold tracking-tight">
-                ユーザー一覧
-              </h2>
-              {list.initial ? null : <Badge variant="secondary">{list.items.length}人</Badge>}
-            </div>
-            {list.initial ? null : (
-              <span className="text-xs text-muted-foreground">
-                管理者 {roles.admin}人 · メンバー {roles.user}人
-              </span>
-            )}
-          </div>
+          <h2 id="users-title" className="text-xl leading-7 font-semibold tracking-tight">
+            ユーザー一覧
+          </h2>
 
           <UserToolbar
             query={list.query}
@@ -76,9 +64,9 @@ export default function AdminPage() {
             onRoleFilterChange={list.setRoleFilter}
           />
 
-          {list.initial ? <LoadingRows /> : null}
+          {list.initial || (list.loading && list.items.length === 0) ? <LoadingRows /> : null}
 
-          {!list.initial && list.items.length === 0 && list.error === null ? (
+          {!list.initial && !list.loading && list.items.length === 0 && list.error === null ? (
             <p className="py-10 text-muted-foreground">ユーザーがいません。</p>
           ) : null}
 
@@ -86,37 +74,26 @@ export default function AdminPage() {
             <p className="py-10 text-muted-foreground">条件に合うユーザーがいません。</p>
           ) : null}
 
-          {list.updateError !== null ? (
-            <p role="alert" className="pb-4 text-xs text-destructive">
-              {list.updateError}
-            </p>
-          ) : null}
-
           {list.visibleItems.length > 0 ? (
             <UserTable
               users={list.visibleItems}
               currentUserId={currentUser.id}
               updatingUserId={list.updatingUserId}
+              roleError={list.updateError}
               onRoleChange={(userId, role) => void list.updateRole(userId, role)}
             />
           ) : null}
 
           {list.initial ? null : (
-            <ListFooter
-              noun="ユーザー"
-              count={list.visibleItems.length}
-              hasMore={list.hasMore}
+            <UserPager
+              canGoPrevious={list.canGoPrevious}
+              canGoNext={list.canGoNext}
               loading={list.loading}
               error={list.error}
-              onLoadMore={list.loadMore}
-              onRetry={list.retry}
-              className="pt-5"
+              onPrevious={list.goPrevious}
+              onNext={list.goNext}
             />
           )}
-
-          <p className="mt-6 text-xs text-muted-foreground">
-            ロールを選択して変更します。最後の管理者を member に変更することはできません。
-          </p>
         </section>
 
         <CreateUserForm
