@@ -1,15 +1,35 @@
 import { PauseIcon, PlayIcon, Volume2Icon, VolumeXIcon } from 'lucide-react'
-import { useMemo } from 'react'
+import type * as React from 'react'
 import type { MediaAsset } from '@/shared/types'
+import { useAudioPeaks } from '../../hooks/use-audio-peaks'
 import { type AudioPlayer, useJobAudio } from '../../hooks/use-job-audio'
-import { formatAudioTime, sortMediaNewestFirst } from '../../lib/media'
+import { formatAudioTime } from '../../lib/media'
 import { formatStep } from '../../lib/metrics'
+import {
+  computePeaks,
+  playedRatio,
+  seekTargetForKey,
+  WAVE_VIEWBOX,
+  wavePath,
+} from '../../lib/waveform'
 import { Button } from '../ui/button'
 import { Skeleton } from '../ui/skeleton'
-import { RangeInput } from './step-slider'
 
-/** A row of the audio list: button, 200px of info, the middle, time, volume. */
-export function AudioRow({
+const AUDIO_GRID_COLS_CLASS = 'grid-cols-1 sm:grid-cols-2 @6xl:grid-cols-3'
+
+/**
+ * Two clips abreast (one on a narrow screen, three in a wide container), as
+ * `.audio-grid` in the mocks. Given fewer clips than columns, they widen to
+ * fill the row.
+ */
+export function AudioGrid({ count, children }: { count?: number; children: React.ReactNode }) {
+  const cols =
+    count === 1 ? 'grid-cols-1' : count === 2 ? 'grid-cols-1 sm:grid-cols-2' : AUDIO_GRID_COLS_CLASS
+  return <div className={`grid gap-x-8 ${cols}`}>{children}</div>
+}
+
+/** One clip: the head row above its waveform, a rule below. */
+export function AudioCell({
   busy = false,
   children,
 }: {
@@ -17,17 +37,22 @@ export function AudioRow({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex items-center gap-4 border-b py-3.5" aria-busy={busy ? 'true' : undefined}>
+    <div className="grid gap-2 border-b py-3.5" aria-busy={busy ? 'true' : undefined}>
       {children}
     </div>
   )
 }
 
+/** Play button, label and note, time, volume button. */
+export function AudioHead({ children }: { children: React.ReactNode }) {
+  return <div className="flex items-center gap-3">{children}</div>
+}
+
 export function AudioInfo({ label, note }: { label: string; note: string }) {
   return (
-    <div className="w-[200px] shrink-0">
-      <p className="font-mono text-xs">{label}</p>
-      <p className="text-xs text-muted-foreground">{note}</p>
+    <div className="min-w-0 flex-1 text-xs">
+      <p className="truncate font-mono">{label}</p>
+      <p className="truncate text-muted-foreground">{note}</p>
     </div>
   )
 }
@@ -40,102 +65,164 @@ export function AudioTime({ children }: { children: React.ReactNode }) {
   )
 }
 
+export interface AudioWaveProps {
+  label: string
+  /** Bar heights 0 to 1; null while the clip is being decoded. */
+  peaks: number[] | null
+  position: number
+  /** Seconds; NaN while unknown, which disables seeking. */
+  duration: number
+  onSeek?: (seconds: number) => void
+}
+
 /**
- * Stand-in for the clip's waveform before it is played: a mid line with
- * evenly spaced bars, drawn by the browser rather than fetched.
+ * The clip's waveform, doubling as its position slider: the played part is
+ * drawn again in the foreground colour and clipped to the playhead.
  */
-export function AudioWave() {
+export function AudioWave({ label, peaks, position, duration, onSeek }: AudioWaveProps) {
+  const known = Number.isFinite(duration) && duration > 0
+  const played = playedRatio(position, duration)
+  const path = peaks === null ? '' : wavePath(peaks)
+  const seekTo = (seconds: number | null) => {
+    if (seconds !== null && onSeek !== undefined) {
+      onSeek(seconds)
+    }
+  }
   return (
-    <svg
-      viewBox="0 0 300 32"
-      aria-hidden="true"
-      className="h-8 w-full stroke-muted-foreground stroke-2"
+    <div
+      role="slider"
+      tabIndex={0}
+      aria-label={`${label}の再生位置`}
+      aria-valuemin={0}
+      aria-valuemax={known ? Math.ceil(duration) : 0}
+      aria-valuenow={Math.floor(position)}
+      aria-valuetext={known ? `${Math.ceil(duration)}秒中${Math.floor(position)}秒` : undefined}
+      aria-disabled={known ? undefined : 'true'}
+      className="relative h-10 cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-disabled:cursor-default"
+      onClick={(event) => {
+        if (!known) {
+          return
+        }
+        const box = event.currentTarget.getBoundingClientRect()
+        seekTo(box.width > 0 ? ((event.clientX - box.left) / box.width) * duration : null)
+      }}
+      onKeyDown={(event) => {
+        const target = seekTargetForKey(event.key, position, duration)
+        if (target !== null) {
+          event.preventDefault()
+          seekTo(target)
+        }
+      }}
     >
-      <path
-        fill="none"
-        d="M0 16h300M8 12v8m8-14v20m8-24v28m8-20v12m8-15v18m8-24v30m8-19v8m8-15v22m8-17v12m8-20v28m8-21v14m8-10v6m8-15v24m8-20v16m8-12v8m8-19v30m8-23v16m8-12v8m8-17v26m8-20v14m8-17v20m8-14v8m8-10v12m8-17v22m8-15v8m8-6v4m8-10v16m8-13v10m8-15v20m8-13v6m8-5v4m8-3v2"
-      />
-    </svg>
+      {peaks === null ? (
+        <Skeleton className="h-full" />
+      ) : (
+        <>
+          <svg
+            viewBox={WAVE_VIEWBOX}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+            className="absolute inset-0 size-full fill-none stroke-muted-foreground stroke-2 opacity-50"
+          >
+            <path vectorEffect="non-scaling-stroke" d={path} />
+          </svg>
+          <svg
+            viewBox={WAVE_VIEWBOX}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+            className="absolute inset-0 size-full fill-none stroke-foreground stroke-2"
+            style={{ clipPath: `inset(0 ${(1 - played) * 100}% 0 0)` }}
+          >
+            <path vectorEffect="non-scaling-stroke" d={path} />
+          </svg>
+        </>
+      )}
+    </div>
   )
 }
 
-const phaseNote = (player: AudioPlayer): string | null =>
+const phaseNote = (player: AudioPlayer, decoding: boolean): string | null =>
   player.phase === 'playing'
     ? '再生中'
     : player.phase === 'loading'
       ? '読み込み中'
       : player.phase === 'error'
         ? '再生できませんでした'
-        : null
+        : decoding
+          ? '波形を読み込み中'
+          : null
+
+const FLAT = computePeaks([])
 
 function AudioClip({ clip }: { clip: MediaAsset }) {
-  const player = useJobAudio(clip.url)
-  const note = phaseNote(player)
-  const started = player.phase !== 'idle'
+  const wave = useAudioPeaks(clip.url)
+  // Plays the bytes fetched for the waveform (seekable), or the file itself
+  // when they could not be decoded.
+  const player = useJobAudio(
+    wave.phase === 'ready' ? wave.src : wave.phase === 'error' ? clip.url : null,
+  )
+  const decoding = wave.phase === 'loading'
+  const note = phaseNote(player, decoding)
   const playing = player.phase === 'playing' || player.phase === 'loading'
+  // The decoded length is known before the <audio> element's metadata.
+  const duration = Number.isFinite(player.duration)
+    ? player.duration
+    : wave.phase === 'ready'
+      ? wave.duration
+      : Number.NaN
   return (
-    <AudioRow busy={player.phase === 'loading'}>
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={player.toggle}
-        disabled={player.phase === 'error'}
-        aria-label={`${clip.label}を${playing ? '一時停止' : '再生'}`}
-      >
-        {playing ? <PauseIcon /> : <PlayIcon />}
-      </Button>
-      <AudioInfo
+    <AudioCell busy={decoding || player.phase === 'loading'}>
+      <AudioHead>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={player.toggle}
+          disabled={decoding || player.phase === 'error'}
+          aria-label={`${clip.label}を${playing ? '一時停止' : '再生'}`}
+        >
+          {playing ? <PauseIcon /> : <PlayIcon />}
+        </Button>
+        <AudioInfo
+          label={clip.label}
+          note={`step ${formatStep(clip.step)} · ${note === null ? clip.content_type : note}`}
+        />
+        <AudioTime>
+          {Number.isFinite(duration)
+            ? `${formatAudioTime(player.position)} / ${formatAudioTime(duration)}`
+            : '— / —'}
+        </AudioTime>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={player.toggleMuted}
+          aria-label={`${clip.label}の音量`}
+          aria-pressed={player.muted}
+        >
+          {player.muted ? <VolumeXIcon /> : <Volume2Icon />}
+        </Button>
+      </AudioHead>
+      <AudioWave
         label={clip.label}
-        note={`step ${formatStep(clip.step)} · ${note === null ? clip.content_type : note}`}
+        // A clip that cannot be decoded still gets a flat line to seek on.
+        peaks={wave.phase === 'ready' ? wave.peaks : wave.phase === 'error' ? FLAT : null}
+        position={player.position}
+        duration={duration}
+        onSeek={player.seek}
       />
-      <div className="min-w-0 flex-1">
-        {started ? (
-          Number.isFinite(player.duration) ? (
-            <RangeInput
-              min={0}
-              max={player.duration}
-              step={0.1}
-              value={player.position}
-              aria-label={`${clip.label}の再生位置`}
-              aria-valuetext={`${Math.ceil(player.duration)}秒中${Math.floor(player.position)}秒`}
-              onChange={(event) => player.seek(Number(event.target.value))}
-            />
-          ) : (
-            <Skeleton className="h-4" />
-          )
-        ) : (
-          <AudioWave />
-        )}
-      </div>
-      <AudioTime>
-        {started && !Number.isFinite(player.duration)
-          ? '— / —'
-          : `${formatAudioTime(player.position)} / ${formatAudioTime(player.duration)}`}
-      </AudioTime>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={player.toggleMuted}
-        aria-label={`${clip.label}の音量`}
-        aria-pressed={player.muted}
-      >
-        {player.muted ? <VolumeXIcon /> : <Volume2Icon />}
-      </Button>
-    </AudioRow>
+    </AudioCell>
   )
 }
 
-/** Newest step first; one player per clip. */
+/** The clips of one step, in logging order; one player per clip. */
 export function AudioList({ clips }: { clips: MediaAsset[] }) {
-  const sorted = useMemo(() => sortMediaNewestFirst(clips), [clips])
-  if (sorted.length === 0) {
+  if (clips.length === 0) {
     return null
   }
   return (
-    <div>
-      {sorted.map((clip) => (
+    <AudioGrid count={clips.length}>
+      {clips.map((clip) => (
         <AudioClip key={clip.id} clip={clip} />
       ))}
-    </div>
+    </AudioGrid>
   )
 }

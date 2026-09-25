@@ -96,11 +96,41 @@ const FIRST_PAGE = 8
 const isJobStatus = (value: string | null): value is JobStatus =>
   JOB_STATUSES.some((status) => status === value)
 
-export const listJobs: FixtureHandler = ({ params, url }) => {
-  if (params.project_id !== VITS_PROJECT_ID) {
+/** `?scenario=empty`: the project has no jobs yet (project-jobs-empty.html). */
+export const JOBS_EMPTY_SCENARIO = 'empty'
+
+/**
+ * PATCH .../jobs/:job_id overlay (name only, `null` clears it) and DELETE
+ * .../jobs/:job_id overlay, kept here rather than in job-detail.ts: that
+ * module imports LIST_JOBS from here, and job-detail.ts's own DETAIL_JOBS go
+ * through the same two helpers below, so both call sites share one place for
+ * the mutable state.
+ */
+const EDITED_NAMES: Map<string, string | null> = new Map()
+const DELETED_JOBS: Set<string> = new Set()
+
+export const isJobDeleted = (jobId: string): boolean => DELETED_JOBS.has(jobId)
+
+export const withJobOverrides = <T extends { id: string; name: string | null }>(job: T): T => {
+  const name = EDITED_NAMES.get(job.id)
+  return name === undefined ? job : { ...job, name }
+}
+
+export const setJobName = (jobId: string, name: string | null): void => {
+  EDITED_NAMES.set(jobId, name)
+}
+
+export const deleteJobFixture = (jobId: string): void => {
+  DELETED_JOBS.add(jobId)
+}
+
+export const listJobs: FixtureHandler = ({ params, url, scenario }) => {
+  if (params.project_id !== VITS_PROJECT_ID || scenario === JOBS_EMPTY_SCENARIO) {
     return json({ items: [], next_cursor: null })
   }
   const status = url.searchParams.get('status')
-  const rows = isJobStatus(status) ? LIST_JOBS.filter((row) => row.status === status) : LIST_JOBS
+  const rows = (isJobStatus(status) ? LIST_JOBS.filter((row) => row.status === status) : LIST_JOBS)
+    .filter((row) => !isJobDeleted(row.id))
+    .map(withJobOverrides)
   return json(paginate(rows, url, FIRST_PAGE))
 }

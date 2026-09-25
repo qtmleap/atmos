@@ -1,7 +1,10 @@
 // Authentication and authorization helpers (docs/PLAN.md §3, docs/SPEC.md §0.2).
 //
 // Two independent credentials:
-//   - Cloudflare Access JWT in `Cf-Access-Jwt-Assertion` (browsers).
+//   - Cloudflare Access JWT (browsers): the `Cf-Access-Jwt-Assertion` header
+//     on Access-protected paths, else the `CF_Authorization` cookie. Access
+//     only protects /setup, /settings, /admin and a few /api paths, so on
+//     /api/projects/* the cookie is the only way to see who is logged in.
 //   - `Authorization: Bearer <token>` access token (the Python SDK).
 //
 // Functions named `require*` / `assert*` throw an ApiError (see errors.ts) so
@@ -29,9 +32,9 @@ import {
   users,
 } from '../../db/schema'
 import { forbidden, unauthenticated } from './errors'
-import { bytesToBase64Url } from './ids'
 
 export const ACCESS_JWT_HEADER = 'Cf-Access-Jwt-Assertion'
+export const ACCESS_JWT_COOKIE = 'CF_Authorization'
 
 // ---------------------------------------------------------------------------
 // Cloudflare Access JWT
@@ -42,6 +45,8 @@ export interface AccessConfig {
   teamDomain: string
   /** Application Audience (AUD) tag. */
   aud: string
+  /** Dev server only: localhost requests are signed in as this email without a JWT. */
+  localEmail?: string
 }
 
 export interface AccessIdentity {
@@ -54,6 +59,7 @@ export type JwksResolver = JWTVerifyGetKey
 export const accessConfigFromEnv = (env: CloudflareBindings): AccessConfig => ({
   teamDomain: env.ACCESS_TEAM_DOMAIN,
   aud: env.ACCESS_AUD,
+  localEmail: env.LOCAL_ACCESS_EMAIL,
 })
 
 export const accessCertsUrl = (teamDomain: string): URL =>
@@ -110,20 +116,84 @@ export const verifyAccessJwt = async (
   }
 }
 
+/** Value of one cookie in the request's Cookie header, or null. */
+export const readCookie = (request: Request, name: string): string | null => {
+  const header = request.headers.get('Cookie')
+  if (header === null) {
+    return null
+  }
+  for (const part of header.split(';')) {
+    const separator = part.indexOf('=')
+    if (separator !== -1 && part.slice(0, separator).trim() === name) {
+      const value = part.slice(separator + 1).trim()
+      return value.length === 0 ? null : value
+    }
+  }
+  return null
+}
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
+// Browsers attach the cookie to cross-site requests too, so a write that is
+// authenticated only by the cookie must come from our own origin: either the
+// browser says so (Sec-Fetch-Site) or the Origin matches the request URL.
+const isSameOrigin = (request: Request): boolean =>
+  request.headers.get('Sec-Fetch-Site') === 'same-origin' ||
+  request.headers.get('Origin') === new URL(request.url).origin
+
 /**
- * Access identity of the request, or null when the header is absent or does
+ * The Access JWT of the request: the header Access adds on protected paths,
+ * else the CF_Authorization cookie. The cookie is not accepted for writes
+ * from another origin. Null when neither is present.
+ */
+const readAccessJwt = (request: Request): string | null => {
+  const header = request.headers.get(ACCESS_JWT_HEADER)
+  if (header !== null && header.length > 0) {
+    return header
+  }
+  const cookie = readCookie(request, ACCESS_JWT_COOKIE)
+  if (cookie === null) {
+    return null
+  }
+  if (!SAFE_METHODS.has(request.method) && !isSameOrigin(request)) {
+    return null
+  }
+  return cookie
+}
+
+/**
+ * Access identity of the request, or null when there is no JWT or it does
  * not verify. Resources that are public treat both cases as anonymous.
  */
-export const readAccessIdentity = async (
+export const readAccessIdentity = (
   env: CloudflareBindings,
   request: Request,
   jwks?: JwksResolver,
+): Promise<AccessIdentity | null> => identifyAccessRequest(request, accessConfigFromEnv(env), jwks)
+
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
+
+/** A request addressed to this machine, as the dev server sees every request. */
+export const isLocalRequest = (request: Request): boolean =>
+  LOCAL_HOSTNAMES.has(new URL(request.url).hostname)
+
+/** readAccessIdentity with the Access config passed directly. */
+export const identifyAccessRequest = async (
+  request: Request,
+  config: AccessConfig,
+  jwks?: JwksResolver,
 ): Promise<AccessIdentity | null> => {
-  const token = request.headers.get(ACCESS_JWT_HEADER)
-  if (token === null || token.length === 0) {
+  // The dev server has no Access in front of it, so there is no JWT to check.
+  // Both conditions are needed: only `vite` (serve) sets localEmail
+  // (vite.config.ts), and Miniflare also hands the route tests a 127.0.0.1 URL.
+  if (config.localEmail !== undefined && isLocalRequest(request)) {
+    return { email: config.localEmail, payload: { email: config.localEmail } }
+  }
+  const token = readAccessJwt(request)
+  if (token === null) {
     return null
   }
-  return verifyAccessJwt(token, accessConfigFromEnv(env), jwks)
+  return verifyAccessJwt(token, config, jwks)
 }
 
 /** Like readAccessIdentity, but throws 401 `unauthenticated` instead of returning null. */
@@ -186,15 +256,46 @@ export const requireAccessUser = async (
 /** Random bytes per token (256 bits). */
 export const ACCESS_TOKEN_BYTES = 32
 
-/** A new plaintext access token: 32 random bytes, base64url (43 characters). */
-export const generateAccessToken = (): string =>
-  bytesToBase64Url(crypto.getRandomValues(new Uint8Array(ACCESS_TOKEN_BYTES)))
+/** Marks the string as an atmos token for secret scanners and people reading it. */
+export const ACCESS_TOKEN_PREFIX = 'atmos_'
+
+const BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+
+/** 62^43 > 2^256, so 43 base62 digits hold any 32 random bytes. */
+const ACCESS_TOKEN_BODY_LENGTH = 43
+
+/**
+ * A new plaintext access token: `atmos_` + 32 random bytes as 43 base62 digits.
+ * Base62 rather than base64url so there is no `-` and a double-click selects
+ * the whole token, like GitHub's `ghp_` tokens.
+ */
+export const generateAccessToken = (): string => {
+  const bytes = crypto.getRandomValues(new Uint8Array(ACCESS_TOKEN_BYTES))
+  let value = bytes.reduce((acc, byte) => (acc << 8n) | BigInt(byte), 0n)
+  let body = ''
+  for (let i = 0; i < ACCESS_TOKEN_BODY_LENGTH; i++) {
+    body = `${BASE62[Number(value % 62n)]}${body}`
+    value /= 62n
+  }
+  return `${ACCESS_TOKEN_PREFIX}${body}`
+}
 
 /** SHA-256 of the token as lowercase hex; this is what `access_tokens.token_hash` stores. */
 export const hashAccessToken = async (token: string): Promise<string> => {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
+
+/** Trailing characters of the plaintext kept in `access_tokens.token_hint`. */
+export const ACCESS_TOKEN_HINT_LENGTH = 4
+
+/**
+ * `atmos_...w52G`, the prefix and last 4 characters as OpenAI and Stripe show
+ * keys: enough to tell tokens apart, and 4 of 43 random characters leave the
+ * token as strong as before.
+ */
+export const accessTokenHint = (token: string): string =>
+  `${ACCESS_TOKEN_PREFIX}...${token.slice(-ACCESS_TOKEN_HINT_LENGTH)}`
 
 /** Token from `Authorization: Bearer <token>`, or null when absent or malformed. */
 export const readBearerToken = (request: Request): string | null => {
@@ -315,3 +416,14 @@ export const projectVisibilityCondition = (viewer: UserRow | null): SQL | undefi
  */
 export const canWriteProject = (project: Pick<ProjectRow, 'ownerId'>, user: UserRow): boolean =>
   user.id === project.ownerId
+
+/**
+ * The owner or an admin may edit or delete a project (and its jobs): the
+ * PATCH/DELETE endpoints of docs/SPEC.md §6/§7, reachable from the web UI by
+ * an admin acting on someone else's project, not only through the Bearer
+ * token the SDK uses. Unlike `canWriteProject`, a missing permission here is
+ * reported as 403 `forbidden` when the project is otherwise visible (404
+ * only when it is not, or does not exist).
+ */
+export const canManageProject = (project: Pick<ProjectRow, 'ownerId'>, user: UserRow): boolean =>
+  user.id === project.ownerId || isAdmin(user)

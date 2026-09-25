@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>アクセストークン（発行済み） · atmos</title>
+  <link rel="stylesheet" href="../_shared/atmos.css">
+  <style>
+    .page-content { max-width: 1600px; margin: 0 auto; padding: 16px 32px 24px; }
+    .settings-layout { display: grid; grid-template-columns: 216px minmax(0, 640px); gap: 48px; padding-top: 32px; }
+    .settings-nav { display: grid; align-content: start; gap: 4px; }
+    .settings-nav a { justify-content: flex-start; }
+    .settings-nav [aria-current="page"] { background: var(--accent); }
+    .settings-section { display: grid; gap: 16px; }
+    .token-block { border-radius: 0; border-inline: 0; }
+    .code-example { padding: 16px; background: var(--muted); font-size: 12px; line-height: 24px; overflow-x: auto; }
+    .section-divider { border-top: 1px solid var(--border); padding-top: 16px; }
+    .settings-section .stack { gap: 12px; }
+    @media (max-width: 700px) { .page-content { padding-inline: 16px; } .settings-layout { grid-template-columns: 1fr; gap: 24px; } .settings-nav { display: flex; } }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header">
+    <a class="app-logo" href="/" aria-label="atmos ホーム">atmos</a>
+    <nav class="app-nav" aria-label="ログイン時のナビゲーション"><a href="/">プロジェクト</a><a href="/users">メンバー</a></nav>
+    <div class="app-account"><button class="btn btn-ghost btn-icon" type="button" aria-label="表示テーマ: システム" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu-1"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg></button><div class="dropdown" id="theme-menu-1" role="menu" aria-label="表示テーマ" hidden><button class="dropdown-item" role="menuitem" data-preference="system" aria-current="true" aria-label="表示テーマ: システム（選択中）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>システム<span class="shortcut"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m20 6-11 11-5-5"/></svg></span></button><button class="dropdown-item" role="menuitem" data-preference="light"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>ライト</button><button class="dropdown-item" role="menuitem" data-preference="dark"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>ダーク</button></div><span class="small">田中 美咲</span><span class="avatar" role="img" aria-label="田中 美咲のアバター">田</span><button class="btn btn-ghost btn-icon" type="button" aria-label="ユーザーメニュー" aria-haspopup="menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>
+  </header>
+  <main class="page-content">
+    <header class="page-header"><h1>設定</h1><p class="description">プロフィールとアクセストークンを管理します。</p></header>
+    <div class="settings-layout">
+      <nav class="settings-nav" aria-label="設定メニュー">
+        <a class="btn btn-ghost" href="/settings/profile"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M20 21v-2a8 8 0 0 0-16 0v2"/></svg>プロフィール</a>
+        <a class="btn btn-ghost" href="/settings/tokens" aria-current="page"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="16" cy="8" r="5"/><path d="m12.5 11.5-9 9H1v-3l3-3h3v-3h3"/></svg>アクセストークン</a>
+      </nav>
+      <section class="settings-section" aria-labelledby="tokens-title">
+        <div class="stack-sm"><div class="between"><h2 id="tokens-title">アクセストークン</h2><span class="badge badge-outline">有効なトークン 1 / 1</span></div><p class="description">Python SDK から実験データを送信するための認証情報です。</p></div>
+        <div class="stack">
+          <div class="alert" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="16" cy="8" r="5"/><path d="m12.5 11.5-9 9H1v-3l3-3h3v-3h3"/></svg><div><p class="alert-title">有効なトークンがあります</p><p class="alert-description">トークンは発行時にしか表示されません。</p></div></div>
+          <div class="token-block"><code>atmos_...w52G</code><a class="btn btn-outline" href="settings-tokens-reissue.html">新しいトークンを発行</a></div>
+          <div class="between small muted"><span>発行日時：2026年9月24日 09:42 UTC</span></div>
+        </div>
+        <section class="stack section-divider" aria-labelledby="sdk-title">
+          <div class="stack-sm"><h3 id="sdk-title">SDK での使い方</h3><p class="description">実行環境に接続先と、コピーしたトークンを設定します。</p></div>
+          <pre class="code-example"><code>export ATMOS_API_URL="https://atmos.example.com"
+export ATMOS_TOKEN="ここにコピーしたトークンを貼り付け"
+python train.py</code></pre>
+          <p class="small muted">接続先は実際の atmos の URL に置き換えてください。<br>トークンをソースコードや Git リポジトリに含めないでください。</p>
+        </section>
+        <section class="stack section-divider" aria-labelledby="revoke-title">
+          <div class="between"><h3 id="revoke-title">トークンの失効</h3><button class="btn btn-outline danger" type="button">トークンを失効</button></div>
+          <p class="small muted">失効すると、このトークンを使った SDK からの送信はできなくなります。<br>有効なトークンは1ユーザーにつき1つです。新しく発行すると旧トークンは自動失効します。</p>
+        </section>
+      </section>
+    </div>
+  </main>
+</div>
+<script src="../_shared/theme-toggle.js"></script>
+</body>
+</html>

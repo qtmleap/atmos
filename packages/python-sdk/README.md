@@ -26,6 +26,15 @@ logging.getLogger().addHandler(run.log_handler())  # 標準loggingの出力も�
 run.finish()
 ```
 
+`with`文で使うと、正常終了時は`finish("finished")`、例外で抜けた場合は
+`finish("failed")`が自動的に呼ばれ、元の例外はそのまま伝播する。
+
+```python
+with wb.init(project="my-project") as run:
+    run.log({"loss": 0.1}, step=1)
+    train()  # ここで例外が飛んでもfinish("failed")が呼ばれてから伝播する
+```
+
 ## 接続先の指定
 
 `api_url`・`token`は`wb.init()`の引数（`api_url=`/`token=`）を優先し、未指定なら環境変数
@@ -38,8 +47,14 @@ export ATMOS_TOKEN="xxxxx"  # /settings/tokens で発行したアクセストー
 
 ## 公開API
 
-- `atmos.init(project, *, name=None, config=None, api_url=None, token=None, flush_interval=5.0, batch_size=100) -> Run`
+- `atmos.init(project, *, name=None, config=None, visibility="private", api_url=None, token=None, flush_interval=5.0, batch_size=100, max_retries=5, retry_initial_delay=0.5, retry_max_delay=30.0) -> Run`
   - `project`のget-or-create（`POST /api/projects`）→ job作成（`POST /api/projects/:project_id/jobs`）を行い`Run`を返す。
+  - `visibility`は`"public"`・`"internal"`・`"private"`のいずれか。projectを新規作成するときの公開範囲で、
+    同名のprojectが既にあればそちらを使い、公開範囲は変更しない。それ以外の値は`ValueError`。
+    既存projectの公開範囲が指定した`visibility`と異なる場合は警告ログを出す
+    （変更したい場合はWebの設定から行う）。
+  - `max_retries`/`retry_initial_delay`/`retry_max_delay`で一時的な失敗への再試行の
+    回数・待ち時間の上限を変更できる（詳細は後述）。
 - `Run.log(metrics: dict[str, float], step: int) -> None`
 - `Run.log_image(label: str, path, step: int) -> None`
 - `Run.log_audio(label: str, path, step: int) -> None`
@@ -47,6 +62,10 @@ export ATMOS_TOKEN="xxxxx"  # /settings/tokens で発行したアクセストー
 - `Run.log_handler() -> logging.Handler` — 標準`logging`と連携するハンドラ
 - `Run.finish(status: Literal["finished", "failed"] = "finished") -> None`
 - `Run.project_id` / `Run.job_id` — プロパティ
+- `Run`は`with`文（context manager）に対応する。`__enter__`は`self`を返し、
+  `__exit__`はブロックを正常に抜ければ`finish("finished")`、例外で抜ければ
+  `finish("failed")`を呼ぶ（後者で`finish()`自体が失敗しても警告ログに留めて
+  元の例外は隠さない）。
 
 ## 設計判断
 
@@ -67,14 +86,33 @@ export ATMOS_TOKEN="xxxxx"  # /settings/tokens で発行したアクセストー
   例外として送出する。`finish()`はrunの結末を確定させる最後の呼び出しであり、
   失敗を握りつぶすとrunが`running`のまま取り残されたことにユーザーが気付けない
   ため、ここだけは例外を伝播させる。
-- **リトライは行わない**: v1では単純さを優先し、送信失敗時の自動リトライは
-  実装していない（失敗した分のバッファは破棄される）。将来的にリトライが
-  必要になった場合は`BackgroundFlusher`（`src/atmos/_buffering.py`）に
-  閉じ込めて追加できる。
+- **一時的な失敗は自動的に再試行する**（`src/atmos/_retry.py`）: 接続エラー・
+  タイムアウト（`httpx.TransportError`）と、一時的とみなせるHTTPステータス
+  （408, 429, 500, 502, 503, 504）は指数バックオフ＋ジッタで再試行する
+  （429・503は`Retry-After`ヘッダ（秒）があればそれに従う）。それ以外の4xx
+  （400/401/404/413等）はやり直しても結果が変わらないため再試行しない。
+  回数・待ち時間の上限は`atmos.init()`の`max_retries`/`retry_initial_delay`/
+  `retry_max_delay`引数で変更できる（既定は最大5回、初回0.5秒、上限30秒）。
+  対象はmetrics/logsの送信、mediaアップロード、`finish`のPOST、`init()`での
+  project/job作成。
+- **再試行を使い切った塊の扱い**: `log()`/`log_text()`のバックグラウンド
+  送信（定期flush・件数flush）で再試行を使い切った塊は、破棄せずバッファの
+  先頭へ戻し次回のflushで再送を試みる（`BackgroundFlusher`、
+  `src/atmos/_buffering.py`）。ただし際限なく溜まり続けないよう
+  `MAX_BUFFERED_ITEMS`（既定10万件）を上限に古いものから捨てる（捨てた場合は
+  警告する）。一方`finish()`が呼ぶ最終flushだけは、再試行を使い切ると
+  これまで通り例外として送出する（戻さない）。
+- **プロセス終了時の後始末**: `finish()`を呼び忘れてプロセスが終了した場合に
+  備え、`atexit`で未finishの`Run`を片付ける。未捕捉例外（`KeyboardInterrupt`
+  を含む）でプロセスが終了していれば`failed`、そうでなければ`finished`として
+  `finish()`を呼ぶ。未捕捉例外の有無は`sys.excepthook`を連鎖させて記録する
+  （既存のフックは必ず呼ぶ）。この後始末が失敗しても警告ログに留める。
 - **content_typeの推定**: `mimetypes`標準ライブラリでファイル名から推定する。
   環境によっては`.wav`が`audio/x-wav`と推定されるため、`docs/SPEC.md`が
   要求する`audio/wav`へ正規化してから許可リストと突き合わせる
   （`src/atmos/_media.py`）。許可されていない拡張子は`ValueError`を送出する。
+- **ファイルサイズの上限**: 1ファイル2048KB（2,097,152バイト）まで。サーバーと同じ上限を
+  送信前に確かめ、超えていれば`ValueError`を送出する（アップロードしてから413で断られるのを避ける）。
 - **`transport`引数**: `atmos.init(..., transport=...)`で`httpx.BaseTransport`
   （`httpx.MockTransport`等）を注入できる。主にテスト用の入口で、通常利用では
   指定不要。
@@ -101,6 +139,14 @@ export ATMOS_TOKEN="xxxxx"  # /settings/tokens で発行したアクセストー
   `thread.join()`にはタイムアウトを設けているが、仮にバックグラウンド側が送信中に
   タイムアウトしても、`httpx.Client`自体の既定タイムアウト（各操作5秒）により
   リクエストはいずれ完了・失敗するため、`finish()`が永久にハングすることはない。
+- **再試行によりmetrics/logsが重複することがある**: サーバー側は
+  `(job_id, key, step)`や`(job_id, step)`での重複排除を行わない単純な`INSERT`
+  （`apps/web/src/api/routes/metrics.ts`・`logs.ts`）のため、サーバーへの到達後に
+  レスポンスだけ失われた場合など、同じ内容を再試行すると同じ内容の行が二重に
+  記録される可能性がある。SDK側は冪等性キーを持たない。
+- **`sys.excepthook`はプロセス全体で1回だけ差し替わる**: `atmos`を`import`した
+  時点で、未捕捉例外を記録するためのフックに差し替わる（元のフックは必ず
+  呼ぶので既存の動作は変わらない）。
 
 ## テスト
 

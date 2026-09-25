@@ -10,6 +10,10 @@ PLAN.mdの5節には無いが、5節の用途説明・6節のUI要件を満た�
 - `GET /api/projects/:project_id/jobs/:job_id/media` — 6節のrun詳細ページ「画像ギャラリー」を実装するには一覧取得が必要なため追加
 - `POST /api/projects` — PLAN.md 10節の未決事項「SDKの`wb.init(project="...")`が何をキーにプロジェクトを検索/作成するか」を解消するため追加。トークンの持ち主が所有するプロジェクトの中で`name`が完全一致するものを使い、無ければ作成する（get-or-create）
 - `GET /api/projects/:project_id` — 6節のジョブ一覧・ジョブ詳細ページの見出しとパンくずにプロジェクト名と公開範囲を出すため追加。一覧（`GET /api/projects`）から探すと数百件で破綻する
+- `PATCH /api/projects/:project_id` — 6節のプロジェクト設定UIで名前・公開範囲を編集するため追加
+- `DELETE /api/projects/:project_id` — 6節のプロジェクト設定UIでプロジェクトを削除するため追加
+- `PATCH /api/projects/:project_id/jobs/:job_id` — 6節のjob詳細ページでjob名を編集するため追加
+- `DELETE /api/projects/:project_id/jobs/:job_id` — 6節のjob詳細ページでjobを削除するため追加
 
 ## 0. 共通事項
 
@@ -24,6 +28,7 @@ PLAN.mdの5節には無いが、5節の用途説明・6節のUI要件を満た�
 | ヘッダー | 付与元 | 用途 |
 |---|---|---|
 | `Cf-Access-Jwt-Assertion` | Cloudflare Access（ログイン済みブラウザに自動付与） | ブラウザ閲覧時のログイン状態判定 |
+| `Cookie: CF_Authorization=<JWT>` | Cloudflare Access（ログイン時にホスト全体へ発行） | Access の対象外のパス（`/api/projects/*` など）でのログイン状態判定。ヘッダーが無いときだけ読む。GET 以外は同じオリジンからの要求に限る |
 | `Authorization: Bearer <token>` | クライアント（Python SDK）が明示的に付与 | SDKからのデータ送信（ingest系） |
 
 ### 0.3 共通エラーレスポンス
@@ -130,11 +135,17 @@ interface AccessToken {
   id: string
   issued_at: string
   revoked_at: string | null
+  hint: string | null // `atmos_...` と末尾4文字（例 `atmos_...w52G`）。列追加前に発行したものは null
 }
 
 // 発行直後のレスポンスのみ平文トークンを含む（以降は再取得不可）
 interface AccessTokenCreated extends AccessToken {
   token: string
+}
+
+// GET /api/settings/tokens のレスポンス。ハッシュや平文トークンは含まない
+interface AccessTokenStatus {
+  active: AccessToken | null
 }
 ```
 
@@ -293,6 +304,12 @@ interface UpdateAvatarResponse {
 - `400 invalid_content_type`
 - `413 payload_too_large`
 
+### `GET /api/settings/tokens`
+
+認証: Access
+
+Response: `AccessTokenStatus`（有効なトークンが無ければ`active`は`null`）
+
 ### `POST /api/settings/tokens`
 
 認証: Access
@@ -352,6 +369,36 @@ Response:
 
 補足: `projects.name`はDB上一意ではないため、同じownerの下に同名プロジェクトが既に複数ある場合（将来UIから作成できるようになった場合など）は、`created_at`が最も古いものを返す。
 
+### `PATCH /api/projects/:project_id`（追加分）
+
+認証: Bearer TokenまたはAccess（どちらも無ければ`401 unauthenticated`）。ownerまたはadminのみ編集可
+
+```ts
+interface UpdateProjectRequest {
+  name?: string
+  visibility?: "public" | "internal" | "private"
+  // name/visibilityの少なくとも一方が必須
+}
+```
+
+Response: `Project`
+
+エラー:
+- `400 validation_error` — `name`が空、`visibility`が不正、または両方省略
+- `403 forbidden` — 閲覧はできるがownerでもadminでもない
+- `404 not_found` — 存在しない、またはそもそも閲覧権限が無い
+- `409 conflict` — 同じownerに同名の別プロジェクトが既にある
+
+### `DELETE /api/projects/:project_id`（追加分）
+
+認証: Bearer TokenまたはAccess（どちらも無ければ`401 unauthenticated`）。ownerまたはadminのみ削除可
+
+Response: `204 No Content`（プロジェクト配下のjob・metrics・logs・media_assetsも削除する。media_assetsが参照するR2オブジェクトも削除する）
+
+エラー:
+- `403 forbidden` — 閲覧はできるがownerでもadminでもない
+- `404 not_found` — 存在しない、またはそもそも閲覧権限が無い
+
 ## 7. Jobs
 
 ### `POST /api/projects/:project_id/jobs`
@@ -406,6 +453,33 @@ Response: `Job`
 - `404 not_found`
 - `409 conflict` — 既に`finished`/`failed`のjobを再度finishしようとした
 
+### `PATCH /api/projects/:project_id/jobs/:job_id`（追加分）
+
+認証: Bearer TokenまたはAccess（どちらも無ければ`401 unauthenticated`）。プロジェクトのownerまたはadminのみ編集可
+
+```ts
+interface UpdateJobRequest {
+  name: string | null
+}
+```
+
+Response: `Job`
+
+エラー:
+- `400 validation_error` — `name`が空文字
+- `403 forbidden` — 閲覧はできるがownerでもadminでもない
+- `404 not_found` — 存在しない、そもそも閲覧権限が無い、または`project_id`と`job_id`の親子関係が一致しない
+
+### `DELETE /api/projects/:project_id/jobs/:job_id`（追加分）
+
+認証: Bearer TokenまたはAccess（どちらも無ければ`401 unauthenticated`）。プロジェクトのownerまたはadminのみ削除可
+
+Response: `204 No Content`（jobのmetrics・logs・media_assetsも削除する。media_assetsが参照するR2オブジェクトも削除する）
+
+エラー:
+- `403 forbidden` — 閲覧はできるがownerでもadminでもない
+- `404 not_found` — 存在しない、そもそも閲覧権限が無い、または`project_id`と`job_id`の親子関係が一致しない
+
 ## 8. Metrics
 
 ### `POST /api/projects/:project_id/jobs/:job_id/metrics`
@@ -456,7 +530,7 @@ Response: `Page<Metric>`
 認証: Bearer Token
 
 Request: `multipart/form-data`
-- `file`: バイナリ（画像: `image/png`|`image/jpeg`|`image/webp`、音声: `audio/wav`|`audio/mpeg`、最大25MB）
+- `file`: バイナリ（画像: `image/png`|`image/jpeg`|`image/webp`、音声: `audio/wav`|`audio/mpeg`、最大2048KB = 2,097,152バイト）
 - `kind`: `"image" | "audio"`
 - `step`: number
 - `label`: string

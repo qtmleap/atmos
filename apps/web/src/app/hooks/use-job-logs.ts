@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
-import type { LogLine, Page } from '@/shared/types'
+import { type LogLine, PAGINATION_MAX_LIMIT, type Page } from '@/shared/types'
 import { apiFetch, errorMessage, withQuery } from '../lib/api-client'
 import { jobApiPath } from '../lib/job-paths'
 import {
@@ -12,7 +12,7 @@ import {
 } from '../lib/log-state'
 import { useBatched } from './use-batched'
 
-export const LOGS_PAGE_SIZE = 200
+export const LOGS_PAGE_SIZE = PAGINATION_MAX_LIMIT
 
 export interface JobLogs extends LogState {
   loadOlder: () => void

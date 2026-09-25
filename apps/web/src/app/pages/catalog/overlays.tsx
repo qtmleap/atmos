@@ -1,16 +1,7 @@
-import {
-  ArrowRightIcon,
-  ChevronDownIcon,
-  CircleAlertIcon,
-  CopyIcon,
-  InfoIcon,
-  LockIcon,
-  TriangleAlertIcon,
-} from 'lucide-react'
+import { ChevronDownIcon, CircleAlertIcon, CopyIcon, InfoIcon, LockIcon } from 'lucide-react'
 import type * as React from 'react'
 import { Alert, AlertBody, AlertDescription, AlertTitle } from '../../components/ui/alert'
 import { Avatar, AvatarFallback } from '../../components/ui/avatar'
-import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { dialogStyles } from '../../components/ui/dialog'
 import { popoverStyles } from '../../components/ui/popover'
@@ -88,93 +79,23 @@ export default function OverlaysCatalog() {
       footer={['atmos · コンポーネント層 / 静止見本', '05 / 07 · オーバーレイ']}
     >
       <Specimen
-        title="トークン再発行"
+        title="トークン再発行の確認"
         codes={['.dialog / .dialog-overlay']}
-        note="再発行で旧トークンは自動失効。影を使わず、背景と罫線で区別します。"
         className={cn(dialogStyles.overlay, 'grid place-items-center p-6')}
       >
         <StaticDialog
-          id="token"
-          title="アクセストークンを再発行しますか？"
-          description="現在のトークンは直ちに失効します。SDKで使用中のトークンも、新しいものへの置き換えが必要です。"
-          closeLabel="確認を閉じる"
-          footer={
-            <>
-              <Button variant="outline" data-preview="focus">
-                キャンセル
-              </Button>
-              <Button variant="destructive">再発行する</Button>
-            </>
-          }
-        >
-          <div className="flex items-center justify-between gap-4 text-xs">
-            <span className="text-muted-foreground">現在のトークンの発行日時</span>
-            <time dateTime="2026-09-18T08:30:00Z">2026-09-18 08:30 UTC</time>
-          </div>
-          <Alert variant="destructive">
-            <TriangleAlertIcon aria-hidden="true" />
-            <AlertBody>
-              <AlertTitle>実行中のジョブの送信に影響します</AlertTitle>
-              <AlertDescription>
-                旧トークンを使った以降のデータ送信は認証エラーになります。
-              </AlertDescription>
-            </AlertBody>
-          </Alert>
-        </StaticDialog>
-      </Specimen>
-      <Specimen
-        title="ロール変更"
-        codes={['.dialog-title / .dialog-footer']}
-        note="対象と変更内容を明示。最後の管理者を一般ユーザーには変更できません。"
-        className="grid grid-cols-2 items-start gap-6"
-      >
-        <StaticDialog
-          id="role"
-          title="管理者に変更しますか？"
-          description="佐藤 悠斗さんにメンバーの追加・ロール変更の権限を付与します。"
-          closeLabel="ロール変更の確認を閉じる"
+          id="reissue"
+          role="alertdialog"
+          title="トークンを発行し直しますか？"
+          description="2026年9月24日 09:42 UTC に発行した今のトークン（atmos_...w52G）はすぐに失効し、それを使っている SDK からの送信はできなくなります。"
+          closeLabel="閉じる"
           footer={
             <>
               <Button variant="outline">キャンセル</Button>
-              <Button>変更する</Button>
+              <Button>発行し直す</Button>
             </>
           }
-        >
-          <div className="flex flex-wrap items-center gap-3">
-            <Avatar aria-hidden="true">
-              <AvatarFallback>佐</AvatarFallback>
-            </Avatar>
-            <div>
-              <p>佐藤 悠斗</p>
-              <p className="font-mono text-xs text-muted-foreground">@yuto_s</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="secondary">一般ユーザー</Badge>
-            <ArrowRightIcon aria-label="変更後" className="size-4" />
-            <Badge>管理者</Badge>
-          </div>
-        </StaticDialog>
-        <div className="grid gap-4">
-          <SampleCaption>保存中 / 更新が競合したとき</SampleCaption>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button disabled aria-busy="true">
-              変更中…
-            </Button>
-            <Button variant="outline" disabled>
-              キャンセル
-            </Button>
-          </div>
-          <Alert variant="destructive" role="alert">
-            <CircleAlertIcon aria-hidden="true" />
-            <AlertBody>
-              <AlertTitle>ロールを変更できません</AlertTitle>
-              <AlertDescription>
-                チームには最低1人の管理者が必要です。別のメンバーを管理者に変更してから、もう一度お試しください。
-              </AlertDescription>
-            </AlertBody>
-          </Alert>
-        </div>
+        />
       </Specimen>
       <Specimen
         title="アカウントメニュー"

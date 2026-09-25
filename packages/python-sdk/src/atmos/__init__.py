@@ -18,8 +18,8 @@ run.finish()
 
 from __future__ import annotations
 
-from atmos._run import Run, init
+from atmos._run import Run, Visibility, init
 
 __version__ = "0.1.0"
 
-__all__ = ["Run", "__version__", "init"]
+__all__ = ["Run", "Visibility", "__version__", "init"]

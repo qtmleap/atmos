@@ -42,6 +42,9 @@ export const accessTokens = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     tokenHash: text('token_hash').notNull(),
+    // First and last 4 characters of the plaintext, so the settings page can
+    // tell tokens apart. Null for tokens issued before the column existed.
+    tokenHint: text('token_hint'),
     issuedAt: integer('issued_at', { mode: 'timestamp' }).notNull(),
     revokedAt: integer('revoked_at', { mode: 'timestamp' }),
   },

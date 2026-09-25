@@ -4,6 +4,7 @@
 
 import { Link } from '@tanstack/react-router'
 import { ChevronRightIcon } from 'lucide-react'
+import type * as React from 'react'
 import type { ProjectHeading } from '../../hooks/use-project-jobs'
 import { cn } from '../../lib/utils'
 import { VisibilityBadge } from '../common/visibility-badge'
@@ -13,41 +14,60 @@ export interface ProjectHeaderProps {
   /** null until the project is known; the id stands in. */
   project: ProjectHeading | null
   description: string
+  /** The "…" menu after the owner, for those who can manage the project. */
+  actions?: React.ReactNode
 }
 
-export function ProjectHeader({ projectId, project, description }: ProjectHeaderProps) {
+export interface ProjectBreadcrumbProps {
+  /** Last crumb: the project name, or its id when the name is not known. */
+  current: string
+  /** Set the last crumb in monospace (an id rather than a name). */
+  mono: boolean
+}
+
+/** "プロジェクト / name" above every page under /projects/:projectId. */
+export function ProjectBreadcrumb({ current, mono }: ProjectBreadcrumbProps) {
+  return (
+    <nav aria-label="パンくず">
+      <ol className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <li className="inline-flex items-center gap-2">
+          <Link to="/" className="hover:underline hover:underline-offset-4">
+            プロジェクト
+          </Link>
+          <ChevronRightIcon aria-hidden="true" className="size-4" />
+        </li>
+        <li className="inline-flex items-center gap-2">
+          <span
+            aria-current="page"
+            className={mono ? 'font-mono text-foreground' : 'text-foreground'}
+          >
+            {current}
+          </span>
+        </li>
+      </ol>
+    </nav>
+  )
+}
+
+export function ProjectHeader({ projectId, project, description, actions }: ProjectHeaderProps) {
   const name = project === null ? projectId : project.name
   return (
     <>
-      <nav aria-label="パンくず">
-        <ol className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <li className="inline-flex items-center gap-2">
-            <Link to="/" className="hover:underline hover:underline-offset-4">
-              プロジェクト
-            </Link>
-            <ChevronRightIcon aria-hidden="true" className="size-4" />
-          </li>
-          <li className="inline-flex items-center gap-2">
-            <span
-              aria-current="page"
-              className={project === null ? 'font-mono' : 'text-foreground'}
-            >
-              {name}
-            </span>
-          </li>
-        </ol>
-      </nav>
+      <ProjectBreadcrumb current={name} mono={project === null} />
       <header className="grid gap-4 border-b py-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className={cn('text-2xl leading-8', project === null && 'font-mono')}>{name}</h1>
             {project === null ? null : <VisibilityBadge visibility={project.visibility} />}
           </div>
-          {project === null || project.owner === undefined ? null : (
-            <span className="text-xs text-muted-foreground">
-              所有者 {project.owner.display_name}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {project === null || project.owner === undefined ? null : (
+              <span className="text-xs text-muted-foreground">
+                所有者 {project.owner.display_name}
+              </span>
+            )}
+            {actions}
+          </div>
         </div>
         <p className="leading-[22px] text-muted-foreground">{description}</p>
       </header>

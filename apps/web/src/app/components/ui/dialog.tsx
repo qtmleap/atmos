@@ -10,7 +10,7 @@ import { Button } from './button'
  * apart from the dimmed page.
  */
 const dialogStyles = {
-  overlay: 'bg-black/50',
+  overlay: 'bg-overlay',
   content: 'w-full max-w-lg rounded-lg border bg-background p-6 text-foreground',
   close: 'absolute top-3 right-3 text-muted-foreground',
   title: 'pr-6 text-lg leading-6 font-semibold',
@@ -35,8 +35,13 @@ function DialogContent({
   className,
   children,
   closeLabel = '閉じる',
+  showClose = true,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & { closeLabel?: string }) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  closeLabel?: string
+  /** False for a confirmation, which is closed only through its buttons. */
+  showClose?: boolean
+}) {
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
@@ -56,16 +61,18 @@ function DialogContent({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={dialogStyles.close}
-            aria-label={closeLabel}
-          >
-            <XIcon />
-          </Button>
-        </DialogPrimitive.Close>
+        {showClose ? (
+          <DialogPrimitive.Close asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={dialogStyles.close}
+              aria-label={closeLabel}
+            >
+              <XIcon />
+            </Button>
+          </DialogPrimitive.Close>
+        ) : null}
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
   )
