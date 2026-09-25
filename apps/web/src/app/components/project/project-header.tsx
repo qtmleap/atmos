@@ -4,6 +4,7 @@
 
 import { Link } from '@tanstack/react-router'
 import { ChevronRightIcon } from 'lucide-react'
+import type * as React from 'react'
 import type { ProjectHeading } from '../../hooks/use-project-jobs'
 import { cn } from '../../lib/utils'
 import { VisibilityBadge } from '../common/visibility-badge'
@@ -13,9 +14,11 @@ export interface ProjectHeaderProps {
   /** null until the project is known; the id stands in. */
   project: ProjectHeading | null
   description: string
+  /** The "…" menu after the owner, for those who can manage the project. */
+  actions?: React.ReactNode
 }
 
-export function ProjectHeader({ projectId, project, description }: ProjectHeaderProps) {
+export function ProjectHeader({ projectId, project, description, actions }: ProjectHeaderProps) {
   const name = project === null ? projectId : project.name
   return (
     <>
@@ -43,11 +46,14 @@ export function ProjectHeader({ projectId, project, description }: ProjectHeader
             <h1 className={cn('text-2xl leading-8', project === null && 'font-mono')}>{name}</h1>
             {project === null ? null : <VisibilityBadge visibility={project.visibility} />}
           </div>
-          {project === null || project.owner === undefined ? null : (
-            <span className="text-xs text-muted-foreground">
-              所有者 {project.owner.display_name}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {project === null || project.owner === undefined ? null : (
+              <span className="text-xs text-muted-foreground">
+                所有者 {project.owner.display_name}
+              </span>
+            )}
+            {actions}
+          </div>
         </div>
         <p className="leading-[22px] text-muted-foreground">{description}</p>
       </header>

@@ -1,4 +1,5 @@
 import { Link, useLocation } from '@tanstack/react-router'
+import { JobActions } from '../components/job/job-actions'
 import { JobHeader } from '../components/job/job-header'
 import { JobSections } from '../components/job/job-sections'
 import { JobSidebar } from '../components/job/job-sidebar'
@@ -60,6 +61,15 @@ export default function JobDetailPage() {
         connection={detail.connection}
         now={detail.now}
         lastReceivedAt={detail.lastReceivedAt}
+        actions={
+          <JobActions
+            projectId={projectId}
+            project={detail.project}
+            owner={detail.creator}
+            job={job.job}
+            refresh={job.refresh}
+          />
+        }
       />
       {job.job.status === 'failed' ? <JobFailure lines={detail.logs.lines} /> : null}
       <JobSummary series={detail.metrics.series} config={job.job.config} />

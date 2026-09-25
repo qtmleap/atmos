@@ -43,7 +43,9 @@ import type {
   setupResponseSchema,
   setupStatusSchema,
   updateAvatarResponseSchema,
+  updateJobRequestSchema,
   updateProfileRequestSchema,
+  updateProjectRequestSchema,
   uploadMediaFieldsSchema,
   userSchema,
   userWithEmailSchema,
@@ -191,20 +193,27 @@ export const AVATAR_MAX_BYTES = 2 * 1024 * 1024
 
 // ---------------------------------------------------------------------------
 // §6 Projects
-// GET  /api/projects              PaginationQuery -> Page<Project>
-// GET  /api/projects/:project_id  -> Project
-// POST /api/projects              CreateProjectRequest -> 200 Project (existing) | 201 Project (created)
+// GET    /api/projects              PaginationQuery -> Page<Project>
+// GET    /api/projects/:project_id  -> Project
+// POST   /api/projects              CreateProjectRequest -> 200 Project (existing) | 201 Project (created)
+// PATCH  /api/projects/:project_id  UpdateProjectRequest -> Project
+// DELETE /api/projects/:project_id  -> 204
 // ---------------------------------------------------------------------------
 
 /** `visibility` defaults to "private". */
 export type CreateProjectRequest = z.input<typeof createProjectRequestSchema>
 
+/** At least one of `name` / `visibility` is required. */
+export type UpdateProjectRequest = z.input<typeof updateProjectRequestSchema>
+
 // ---------------------------------------------------------------------------
 // §7 Jobs
-// POST /api/projects/:project_id/jobs                 CreateJobRequest -> 201 Job
-// GET  /api/projects/:project_id/jobs                 ListJobsQuery -> Page<Job>
-// GET  /api/projects/:project_id/jobs/:job_id         -> Job
-// POST /api/projects/:project_id/jobs/:job_id/finish  FinishJobRequest -> Job
+// POST   /api/projects/:project_id/jobs                 CreateJobRequest -> 201 Job
+// GET    /api/projects/:project_id/jobs                 ListJobsQuery -> Page<Job>
+// GET    /api/projects/:project_id/jobs/:job_id         -> Job
+// PATCH  /api/projects/:project_id/jobs/:job_id         UpdateJobRequest -> Job
+// DELETE /api/projects/:project_id/jobs/:job_id         -> 204
+// POST   /api/projects/:project_id/jobs/:job_id/finish  FinishJobRequest -> Job
 // ---------------------------------------------------------------------------
 
 export type CreateJobRequest = z.input<typeof createJobRequestSchema>
@@ -212,6 +221,9 @@ export type CreateJobRequest = z.input<typeof createJobRequestSchema>
 export type ListJobsQuery = z.input<typeof listJobsQuerySchema>
 
 export type FinishJobRequest = z.input<typeof finishJobRequestSchema>
+
+/** `name: null` clears it. */
+export type UpdateJobRequest = z.input<typeof updateJobRequestSchema>
 
 // ---------------------------------------------------------------------------
 // §8 Metrics
