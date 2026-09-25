@@ -6,7 +6,9 @@ from typing import Any
 import httpx
 import pytest
 
+from atmos import _buffering
 from atmos._buffering import BackgroundFlusher
+from atmos._retry import RetryConfig
 from atmos._run import Run
 from tests._support import RecordingTransport
 
@@ -28,6 +30,10 @@ def _make_run(
         job_id=JOB_ID,
         flush_interval=flush_interval,
         batch_size=batch_size,
+        # このファイルのテストは再試行そのものではなくバッファ/flushの挙動を
+        # 見るためのものなので、実際に待たされないよう再試行を無効にしておく
+        # （再試行自体のテストは`test_retry.py`）。
+        retry_config=RetryConfig(max_retries=0),
     )
 
 
@@ -240,3 +246,76 @@ def test_failed_chunk_does_not_stop_the_remaining_chunks() -> None:
         flusher.stop()
 
     assert sent == [1000, 100]
+
+
+def test_background_flush_failure_requeues_the_chunk_for_the_next_flush() -> None:
+    flusher = BackgroundFlusher(flush_interval=60.0, batch_size=10_000)
+    attempts = 0
+    received: list[list[dict[str, Any]]] = []
+
+    def send(items: list[dict[str, Any]]) -> None:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise RuntimeError("boom")
+        received.append(items)
+
+    flusher.start(send_metrics=send, send_logs=lambda items: None)
+    try:
+        flusher.add_metric({"step": 1, "key": "loss", "value": 0.1})
+        flusher.flush(raise_on_error=False)  # 1回目: 失敗し、先頭へ戻される
+        assert flusher._metrics == [{"step": 1, "key": "loss", "value": 0.1}]
+
+        flusher.add_metric({"step": 2, "key": "loss", "value": 0.2})
+        flusher.flush(
+            raise_on_error=False
+        )  # 2回目: 戻した分+新規分が時系列順に送られる
+        assert received == [
+            [
+                {"step": 1, "key": "loss", "value": 0.1},
+                {"step": 2, "key": "loss", "value": 0.2},
+            ]
+        ]
+        assert flusher._metrics == []
+    finally:
+        flusher.stop()
+
+
+def test_final_flush_does_not_requeue_failed_chunks() -> None:
+    """`raise_on_error=True`（`Run.finish()`の最終flush）は失敗した塊を戻さない。"""
+    flusher = BackgroundFlusher(flush_interval=60.0, batch_size=10_000)
+
+    def always_fail(items: list[dict[str, Any]]) -> None:
+        raise RuntimeError("boom")
+
+    flusher.start(send_metrics=always_fail, send_logs=lambda items: None)
+    try:
+        flusher.add_metric({"step": 1, "key": "loss", "value": 0.1})
+        with pytest.raises(RuntimeError):
+            flusher.flush(raise_on_error=True)
+        assert flusher._metrics == []
+    finally:
+        flusher.stop()
+
+
+def test_requeued_items_are_capped_and_drop_the_oldest(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(_buffering, "MAX_BUFFERED_ITEMS", 3)
+    flusher = BackgroundFlusher(flush_interval=60.0, batch_size=10_000)
+
+    def always_fail(items: list[dict[str, Any]]) -> None:
+        raise RuntimeError("boom")
+
+    flusher.start(send_metrics=always_fail, send_logs=lambda items: None)
+    try:
+        for step in range(5):
+            flusher.add_metric({"step": step, "key": "loss", "value": 0.1})
+        with caplog.at_level(logging.WARNING, logger="atmos"):
+            flusher.flush(raise_on_error=False)
+
+        # 上限3件を超えた分は古い(step 0, 1)ものから捨てられ、新しい3件が残る。
+        assert [item["step"] for item in flusher._metrics] == [2, 3, 4]
+        assert any("exceeded" in r.getMessage() for r in caplog.records)
+    finally:
+        flusher.stop()

@@ -14,6 +14,13 @@ metrics・logsはユーザーの呼び出し（`Run.log()` / `Run.log_text()`）
   `raise_on_error=False` で行い、警告ログを出すだけで例外を投げない
   （学習ループをクラッシュさせないため）。一方 `Run.finish()` が呼ぶ最終flush
   だけは `raise_on_error=True` を指定し、失敗を呼び出し側に伝える。
+- 一時的な失敗への再試行自体は`Run._send_metrics`/`_send_logs`（`_run.py`）の
+  内部で行う。ここで例外になった時点は再試行を使い切った後、または対象外の
+  エラーである。`raise_on_error=False`（定期flush・件数flush）の場合、送れなかった
+  塊はデータを失わないようバッファの先頭へ戻し、次回のflushで再送を試みる。
+  ただし際限なく溜まり続けないよう、metrics・logsそれぞれ`MAX_BUFFERED_ITEMS`件を
+  上限に古いものから捨てる（捨てた場合は警告する）。`raise_on_error=True`
+  （`Run.finish()`の最終flush）の場合は戻さず、これまで通り失敗をそのまま送出する。
 - 実際の送信（`_flush_once`のバッファswap+HTTP送信）は`_flush_lock`で直列化する。
   これにより、バックグラウンドスレッドが送信中に`Run.finish()`側の明示的な
   `flush()`が同時に走って二重送信したり、送信中に呼び出し元が`httpx.Client`を
@@ -37,6 +44,10 @@ _SendFn = Callable[[list[dict[str, Any]]], None]
 # （`apps/web/src/shared/types.ts`）とlogsの同名の上限（`apps/web/src/api/routes/logs.ts`）が
 # どちらも1000件なので、それに合わせる。
 MAX_ITEMS_PER_REQUEST = 1000
+
+# 送信に失敗して戻された塊を無制限に溜め続けないための上限（metrics・logsそれぞれ）。
+# 超えた分は古いものから捨てる。
+MAX_BUFFERED_ITEMS = 100_000
 
 
 class BackgroundFlusher:
@@ -117,16 +128,22 @@ class BackgroundFlusher:
             error: Exception | None = None
 
             if metrics and self._send_metrics is not None:
-                metrics_error = self._send(
+                metrics_error, unsent_metrics = self._send(
                     self._send_metrics, metrics, "metrics", raise_on_error
                 )
                 # 最初に発生したエラー（metrics側）を保持する。両方送るのは変えず、
                 # 後続のlogs側のエラーで上書きしないようにするだけ。
                 error = error or metrics_error
+                if unsent_metrics:
+                    self._requeue(unsent_metrics, is_metrics=True)
 
             if logs and self._send_logs is not None:
-                logs_error = self._send(self._send_logs, logs, "logs", raise_on_error)
+                logs_error, unsent_logs = self._send(
+                    self._send_logs, logs, "logs", raise_on_error
+                )
                 error = error or logs_error
+                if unsent_logs:
+                    self._requeue(unsent_logs, is_metrics=False)
 
             if error is not None:
                 raise error
@@ -134,22 +151,25 @@ class BackgroundFlusher:
     @staticmethod
     def _send(
         send: _SendFn, items: list[dict[str, Any]], label: str, raise_on_error: bool
-    ) -> Exception | None:
+    ) -> tuple[Exception | None, list[dict[str, Any]]]:
         """`items`を`MAX_ITEMS_PER_REQUEST`件ずつに分けて送る。
 
         サーバーは1リクエストあたりの件数上限を超えると413でバッチ全体を拒否するため、
-        上限を超えないよう分割する。ある塊の送信に失敗しても残りの塊は送り続け、
-        失敗した塊ごとに警告を出す。`raise_on_error=True`の場合はそれに加えて
-        最初の失敗を呼び出し元へ返す（呼び出し元が再送出できるように）。
+        上限を超えないよう分割する。一時的な失敗への再試行自体は`send`
+        （`Run._send_metrics`等）の内部で行われるため、ここで例外になったものは
+        再試行を使い切った、または再試行の対象外だったエラーである。ある塊の送信に
+        失敗しても残りの塊は送り続け、失敗した塊ごとに警告を出す。
+
+        戻り値は`(raise_on_error=Trueのときに呼び出し元へ返す最初の例外,
+        raise_on_error=Falseのときに呼び出し元がバッファへ戻すべき項目)`。
         """
         first_error: Exception | None = None
+        unsent: list[dict[str, Any]] = []
         for start in range(0, len(items), MAX_ITEMS_PER_REQUEST):
             chunk = items[start : start + MAX_ITEMS_PER_REQUEST]
             try:
                 send(chunk)
-            except (
-                Exception
-            ) as exc:  # 意図的に全例外を捕捉し警告(または呼び出し元への再送)に変換する
+            except Exception as exc:  # 意図的に全例外を捕捉し警告(または呼び出し元への再送/再キュー)に変換する
                 # raise_on_error=Trueの場合でも失敗した痕跡が残るよう警告は必ず出す
                 # （最初のエラーは呼び出し元へ再送する）。
                 logger.warning(
@@ -160,4 +180,33 @@ class BackgroundFlusher:
                 )
                 if raise_on_error:
                     first_error = first_error or exc
-        return first_error
+                else:
+                    # 最終flushではない（バックグラウンドの定期/件数flush）ので、
+                    # データを失わないよう呼び出し元でバッファへ戻してもらう。
+                    unsent.extend(chunk)
+        return first_error, unsent
+
+    def _requeue(self, items: list[dict[str, Any]], *, is_metrics: bool) -> None:
+        """送信できなかった塊をバッファの先頭へ戻す（時系列順を保つ）。
+
+        `items`は戻す対象（失敗した古いデータ）、その後ろに現在のバッファ
+        （戻している間にも追加され得る新しいデータ）を続ける。溜まりすぎないよう
+        `MAX_BUFFERED_ITEMS`件を上限に古いものから捨てる。
+        """
+        label = "metrics" if is_metrics else "logs"
+        with self._lock:
+            current = self._metrics if is_metrics else self._logs
+            combined = items + current
+            if len(combined) > MAX_BUFFERED_ITEMS:
+                dropped = len(combined) - MAX_BUFFERED_ITEMS
+                combined = combined[dropped:]
+                logger.warning(
+                    "atmos: buffered %s exceeded %d items; dropped %d oldest",
+                    label,
+                    MAX_BUFFERED_ITEMS,
+                    dropped,
+                )
+            if is_metrics:
+                self._metrics = combined
+            else:
+                self._logs = combined

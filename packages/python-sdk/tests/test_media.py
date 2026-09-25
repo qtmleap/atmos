@@ -5,6 +5,8 @@ from pathlib import Path
 import httpx
 import pytest
 
+from atmos._media import MEDIA_MAX_BYTES
+from atmos._retry import RetryConfig
 from atmos._run import Run
 from tests._support import RecordingTransport
 
@@ -26,6 +28,10 @@ def _make_run(transport: RecordingTransport) -> Run:
         job_id=JOB_ID,
         flush_interval=10.0,
         batch_size=100,
+        # このファイルのテストは再試行そのものではなくアップロードの挙動を見る
+        # ためのものなので、実際に待たされないよう再試行を無効にしておく
+        # （再試行自体のテストは`test_retry.py`）。
+        retry_config=RetryConfig(max_retries=0),
     )
 
 
@@ -110,6 +116,35 @@ def test_media_send_failure_is_swallowed(tmp_path: Path) -> None:
     try:
         # ネットワークエラーでも例外は伝播しない。
         run.log_image("sample", image_path, step=1)
+    finally:
+        run._flusher.stop()
+        run._client.close()
+
+
+def test_log_image_accepts_file_at_size_limit(tmp_path: Path) -> None:
+    image_path = tmp_path / "sample.png"
+    image_path.write_bytes(b"\0" * MEDIA_MAX_BYTES)
+
+    transport = RecordingTransport()
+    run = _make_run(transport)
+    try:
+        run.log_image("sample", image_path, step=1)
+        assert len(transport.requests) == 1
+    finally:
+        run._flusher.stop()
+        run._client.close()
+
+
+def test_log_audio_rejects_oversized_file_before_upload(tmp_path: Path) -> None:
+    audio_path = tmp_path / "sample.wav"
+    audio_path.write_bytes(b"\0" * (MEDIA_MAX_BYTES + 1))
+
+    transport = RecordingTransport()
+    run = _make_run(transport)
+    try:
+        with pytest.raises(ValueError, match="2048KB"):
+            run.log_audio("sample", audio_path, step=1)
+        assert len(transport.requests) == 0
     finally:
         run._flusher.stop()
         run._client.close()
