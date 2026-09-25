@@ -104,14 +104,15 @@ Cloudflare を使わずに、Bun と PostgreSQL で動かすこともできる�
 - ライブ更新は、プロセスの中の WebSocket で配る。
 - データベースの移行は、起動のたびに自動で適用する。
 
+イメージは Deploy のワークフローが GHCR に公開する。`develop` へのマージで `ghcr.io/qtmleap/atmos:staging`、`master` へのマージで `:latest` と版番号のタグが付く。取得するだけならトークンは要らない。
+
 ```sh
-GITHUB_TOKEN="$(gh auth token)" \
-  POSTGRES_PASSWORD=... INIT_ADMIN_KEY=... \
+POSTGRES_PASSWORD=... INIT_ADMIN_KEY=... \
   AUTH_ISSUER=... AUTH_AUDIENCE=... AUTH_JWKS_URL=... AUTH_JWT_HEADER=... \
-  docker compose -f apps/web/compose.yaml up --build
+  sh -c 'docker compose -f apps/web/compose.yaml pull app && docker compose -f apps/web/compose.yaml up -d'
 ```
 
-`GITHUB_TOKEN` は依存パッケージを GitHub Packages から取得するために使う。
+タグを変えるときは `ATMOS_TAG=staging` のように指定する。手元のソースからビルドするときは `up --build` を使い、`GITHUB_TOKEN="$(gh auth token)"` も渡す。依存パッケージの一つが GitHub Packages にあるため。
 
 認証には OIDC の ID トークン（JWT）を使う。認証プロキシがリクエストに付けたトークンを、`AUTH_JWKS_URL` の公開鍵で検証する。設定する環境変数は次のとおり。
 

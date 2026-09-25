@@ -1,14 +1,20 @@
 # Self-hosted deployment (Dockerfile, src/server/): PostgreSQL plus the atmos
-# app, both built and run from this directory. Every AUTH_*/ACCESS_* var is
-# read from the shell environment (or your own env file passed to `docker
-# compose --env-file`) — no env example file is provided here; see
-# src/server/config.ts for what each one means and which combination it
-# requires.
+# app. Every AUTH_*/ACCESS_* var is read from the shell environment (or your
+# own env file passed to `docker compose --env-file`) — no env example file is
+# provided here; see src/server/config.ts for what each one means and which
+# combination it requires.
 #
-# GITHUB_TOKEN (read:packages against qtmleap/mock-diff-viewer — the same
-# token `bun install` already needs, see bunfig.toml) must also be exported
-# before building: the Dockerfile's `bun install` step reads it as a build
-# secret, not a plain build arg, so it never lands in an image layer.
+# The app image is published to GHCR by .github/workflows/deployment.yaml
+# (:staging from develop, :latest and :<version> from master), so running it
+# needs no token:
+#
+#   POSTGRES_PASSWORD=... ACCESS_TEAM_DOMAIN=... ACCESS_AUD=... \
+#     docker compose -f apps/web/compose.yaml pull app && ... up -d
+#
+# Building from source instead (`up --build`) needs GITHUB_TOKEN with
+# read:packages against qtmleap/mock-diff-viewer (see bunfig.toml). The
+# Dockerfile's `bun install` step reads it as a build secret, not a plain
+# build arg, so it never lands in an image layer:
 #
 #   GITHUB_TOKEN="$(gh auth token)" \
 #     POSTGRES_PASSWORD=... ACCESS_TEAM_DOMAIN=... ACCESS_AUD=... \
@@ -30,6 +36,9 @@ services:
       retries: 10
 
   app:
+    # Published by .github/workflows/deployment.yaml. `docker compose pull`
+    # fetches it without any token; `up --build` builds it locally instead.
+    image: ghcr.io/qtmleap/atmos:${ATMOS_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
