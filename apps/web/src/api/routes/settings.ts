@@ -1,7 +1,7 @@
 // docs/SPEC.md §5 — Settings: profile, avatar upload, access tokens.
 import { and, eq, isNull } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { accessTokens, createDb, users } from '../../db/schema'
+import { accessTokens, users } from '#schema'
 import { updateProfileRequestSchema } from '../../shared/schemas'
 import {
   type AccessTokenCreated,
@@ -20,16 +20,17 @@ import {
 import { ApiError, badRequest, conflict, notFound, payloadTooLarge, readJson } from '../lib/errors'
 import { newId, now, toIsoString } from '../lib/ids'
 import { avatarPath, toUserWithEmail } from '../lib/serialize'
+import { type AppEnv, getPlatform } from '../platform/context'
 
-export const settingsRoutes = new Hono<{ Bindings: CloudflareBindings }>()
+export const settingsRoutes = new Hono<AppEnv>()
 
 const isAvatarContentType = (value: string): value is AvatarContentType =>
   AVATAR_CONTENT_TYPES.some((allowed) => allowed === value)
 
 settingsRoutes.patch('/settings/profile', async (c) => {
-  const user = await requireAccessUser(c.env, c.req.raw)
+  const user = await requireAccessUser(getPlatform(c), c.req.raw)
   const body = await readJson(c.req.raw, updateProfileRequestSchema)
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
 
   if (body.handle !== undefined && body.handle !== user.handle) {
     const existing = await db.query.users.findFirst({
@@ -49,7 +50,7 @@ settingsRoutes.patch('/settings/profile', async (c) => {
 })
 
 settingsRoutes.put('/settings/avatar', async (c) => {
-  const user = await requireAccessUser(c.env, c.req.raw)
+  const user = await requireAccessUser(getPlatform(c), c.req.raw)
   const body = await c.req.parseBody()
   const file = body.file
   if (!(file instanceof File)) {
@@ -65,9 +66,9 @@ settingsRoutes.put('/settings/avatar', async (c) => {
   }
 
   const key = `avatars/${user.id}`
-  await c.env.BUCKET.put(key, bytes, { httpMetadata: { contentType: file.type } })
+  await getPlatform(c).storage.put(key, bytes, { contentType: file.type })
   if (user.avatarKey !== key) {
-    await createDb(c.env.DB).update(users).set({ avatarKey: key }).where(eq(users.id, user.id))
+    await getPlatform(c).db.update(users).set({ avatarKey: key }).where(eq(users.id, user.id))
   }
 
   const response: UpdateAvatarResponse = { avatar_url: avatarPath(user.handle) }
@@ -75,8 +76,8 @@ settingsRoutes.put('/settings/avatar', async (c) => {
 })
 
 settingsRoutes.get('/settings/tokens', async (c) => {
-  const user = await requireAccessUser(c.env, c.req.raw)
-  const db = createDb(c.env.DB)
+  const user = await requireAccessUser(getPlatform(c), c.req.raw)
+  const db = getPlatform(c).db
 
   const active = await db.query.accessTokens.findFirst({
     where: and(eq(accessTokens.userId, user.id), isNull(accessTokens.revokedAt)),
@@ -98,8 +99,7 @@ settingsRoutes.get('/settings/tokens', async (c) => {
 })
 
 settingsRoutes.post('/settings/tokens', async (c) => {
-  const user = await requireAccessUser(c.env, c.req.raw)
-  const db = createDb(c.env.DB)
+  const user = await requireAccessUser(getPlatform(c), c.req.raw)
   const issuedAt = now()
 
   const token = generateAccessToken()
@@ -114,12 +114,12 @@ settingsRoutes.post('/settings/tokens', async (c) => {
   // A new token supersedes whatever was active before. The revoke and the
   // insert run as one batch (one round trip, one transaction) so concurrent
   // requests cannot leave two active tokens behind.
-  await db.batch([
-    db
+  await getPlatform(c).batch((tx) => [
+    tx
       .update(accessTokens)
       .set({ revokedAt: issuedAt })
       .where(and(eq(accessTokens.userId, user.id), isNull(accessTokens.revokedAt))),
-    db.insert(accessTokens).values(row),
+    tx.insert(accessTokens).values(row),
   ])
 
   const response: AccessTokenCreated = {
@@ -133,8 +133,8 @@ settingsRoutes.post('/settings/tokens', async (c) => {
 })
 
 settingsRoutes.delete('/settings/tokens', async (c) => {
-  const user = await requireAccessUser(c.env, c.req.raw)
-  const db = createDb(c.env.DB)
+  const user = await requireAccessUser(getPlatform(c), c.req.raw)
+  const db = getPlatform(c).db
 
   // Revoke every active token of the user, not just the first one found.
   const revoked = await db

@@ -11,7 +11,9 @@
 // index.html: the SPA itself decides what to show.
 import { and, eq } from 'drizzle-orm'
 import type { MiddlewareHandler } from 'hono'
-import { createDb, jobs, projects, users } from '../../db/schema'
+import { type Db, jobs, projects, users } from '#schema'
+import { type AppEnv, getPlatform } from '../platform/context'
+import type { StaticAssets } from '../platform/types'
 
 export const SITE_NAME = 'atmos'
 
@@ -63,12 +65,7 @@ export const matchOgpTarget = (pathname: string): OgpTarget | null => {
   return null
 }
 
-const lookupMeta = async (
-  env: CloudflareBindings,
-  target: OgpTarget,
-  origin: string,
-): Promise<OgpMeta | null> => {
-  const db = createDb(env.DB)
+const lookupMeta = async (db: Db, target: OgpTarget, origin: string): Promise<OgpMeta | null> => {
   switch (target.kind) {
     case 'project': {
       const project = await db.query.projects.findFirst({
@@ -175,26 +172,24 @@ export const rewriteHtmlWithOgp = (html: Response, meta: OgpMeta, url: string): 
   return new Response(rewritten.body, { status: rewritten.status, headers })
 }
 
-/** index.html of the SPA, fetched through the ASSETS binding. */
-export const fetchIndexHtml = (env: CloudflareBindings, requestUrl: string): Promise<Response> =>
-  env.ASSETS.fetch(new Request(new URL('/', requestUrl), { method: 'GET' }))
+/** index.html of the SPA, fetched through the static assets (the ASSETS binding on Cloudflare). */
+export const fetchIndexHtml = (assets: StaticAssets, requestUrl: string): Promise<Response> =>
+  assets.fetch(new Request(new URL('/', requestUrl), { method: 'GET' }))
 
-export const ogpMiddleware: MiddlewareHandler<{ Bindings: CloudflareBindings }> = async (
-  c,
-  next,
-) => {
+export const ogpMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
   const target = c.req.method === 'GET' ? matchOgpTarget(c.req.path) : null
   if (target === null) {
     await next()
     return
   }
-  const html = await fetchIndexHtml(c.env, c.req.url)
+  const platform = getPlatform(c)
+  const html = await fetchIndexHtml(platform.assets, c.req.url)
   const contentType = html.headers.get('Content-Type')
   if (!html.ok || contentType === null || !contentType.startsWith('text/html')) {
     return html
   }
   const url = new URL(c.req.url)
-  const meta = await lookupMeta(c.env, target, url.origin).catch((error: unknown) => {
+  const meta = await lookupMeta(platform.db, target, url.origin).catch((error: unknown) => {
     console.error('OGP lookup failed', error)
     return null
   })

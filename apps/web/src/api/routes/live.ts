@@ -12,12 +12,14 @@
 // (404/401/403) rather than an opened-then-closed socket.
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { createDb, type Db, type JobRow, jobs, type ProjectRow, projects } from '../../db/schema'
+import { type Db, type JobRow, jobs, type ProjectRow, projects } from '#schema'
 import { assertCanViewProject, resolveViewer } from '../lib/auth'
 import { notFound } from '../lib/errors'
 import { connectLive } from '../lib/live'
+import { type AppEnv, getPlatform } from '../platform/context'
+import type { Platform } from '../platform/types'
 
-export const liveRoutes = new Hono<{ Bindings: CloudflareBindings }>()
+export const liveRoutes = new Hono<AppEnv>()
 
 const findProjectAndJob = async (
   db: Db,
@@ -44,14 +46,13 @@ const findProjectAndJob = async (
  * non-owner. Resolves to the job on success.
  */
 export const checkLiveAccess = async (
-  env: CloudflareBindings,
+  platform: Pick<Platform, 'auth' | 'db'>,
   request: Request,
   projectId: string,
   jobId: string,
 ): Promise<JobRow> => {
-  const db = createDb(env.DB)
-  const { project, job } = await findProjectAndJob(db, projectId, jobId)
-  const viewer = await resolveViewer(env, request)
+  const { project, job } = await findProjectAndJob(platform.db, projectId, jobId)
+  const viewer = await resolveViewer(platform, request)
   assertCanViewProject(project, viewer)
   return job
 }
@@ -62,6 +63,6 @@ liveRoutes.get('/', async (c) => {
   if (projectId === undefined || jobId === undefined) {
     throw notFound('job not found')
   }
-  const job = await checkLiveAccess(c.env, c.req.raw, projectId, jobId)
-  return connectLive(c.env, job.id, c.req.raw)
+  const job = await checkLiveAccess(getPlatform(c), c.req.raw, projectId, jobId)
+  return connectLive(getPlatform(c).live, job.id, c.req.raw)
 })

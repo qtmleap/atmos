@@ -3,7 +3,6 @@ import dayjs from 'dayjs'
 import { and, asc, eq, gte } from 'drizzle-orm'
 import { Hono } from 'hono'
 import {
-  createDb,
   type Db,
   type JobRow,
   jobs,
@@ -11,7 +10,7 @@ import {
   metrics,
   type ProjectRow,
   projects,
-} from '../../db/schema'
+} from '#schema'
 import { ingestMetricsRequestSchema, listMetricsQuerySchema } from '../../shared/schemas'
 import { INGEST_METRICS_MAX_ITEMS, type Metric } from '../../shared/types'
 import {
@@ -24,15 +23,16 @@ import { notFound, payloadTooLarge, readJson, validate } from '../lib/errors'
 import { now, serialIdToString, toIsoString } from '../lib/ids'
 import { notifyLiveMany } from '../lib/live'
 import { decodeSerialCursor, encodeSerialCursor, serialCondition, toPage } from '../lib/pagination'
+import { type AppEnv, getPlatform } from '../platform/context'
 
-export const metricsRoutes = new Hono<{ Bindings: CloudflareBindings }>()
+export const metricsRoutes = new Hono<AppEnv>()
 
 /**
  * D1 allows at most 100 bound parameters per SQL statement. Each metric row
  * binds 5 (job_id, step, key, value, logged_at; `id` is emitted as a literal
  * `null` for AUTOINCREMENT), so a single INSERT fails above 20 rows. Rows are
- * split into chunks of this size and sent together with `db.batch`, which is
- * one round trip and runs as a single transaction.
+ * split into chunks of this size and sent together with `platform.batch`,
+ * which is one round trip and runs as a single transaction.
  */
 const METRICS_INSERT_CHUNK_ROWS = 16
 
@@ -71,8 +71,8 @@ const findScopedProjectAndJob = async (
 
 // POST /api/projects/:project_id/jobs/:job_id/metrics — Bearer token, batch insert.
 metricsRoutes.post('/:project_id/jobs/:job_id/metrics', async (c) => {
-  const user = await requireBearerUser(c.env, c.req.raw)
-  const db = createDb(c.env.DB)
+  const user = await requireBearerUser(getPlatform(c), c.req.raw)
+  const db = getPlatform(c).db
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, c.req.param('project_id')),
   })
@@ -97,31 +97,33 @@ metricsRoutes.post('/:project_id/jobs/:job_id/metrics', async (c) => {
     value: item.value,
     loggedAt: item.logged_at === undefined ? receivedAt : dayjs(item.logged_at).toDate(),
   }))
-  const [first, ...rest] = chunk(values, METRICS_INSERT_CHUNK_ROWS).map((rows) =>
-    db.insert(metrics).values(rows).returning(),
-  )
-  if (first !== undefined) {
-    const inserted = (await db.batch([first, ...rest])).flat()
-    c.executionCtx.waitUntil(
-      notifyLiveMany(
-        c.env,
-        job.id,
-        inserted.map((row) => ({ type: 'metric', data: toMetric(row) })),
+  const platform = getPlatform(c)
+  const inserted = (
+    await platform.batch((tx) =>
+      chunk(values, METRICS_INSERT_CHUNK_ROWS).map((rows) =>
+        tx.insert(metrics).values(rows).returning(),
       ),
     )
-  }
+  ).flat()
+  platform.waitUntil(
+    notifyLiveMany(
+      platform.live,
+      job.id,
+      inserted.map((row) => ({ type: 'metric', data: toMetric(row) })),
+    ),
+  )
   return c.json({ accepted: values.length }, 202)
 })
 
 // GET /api/projects/:project_id/jobs/:job_id/metrics
 metricsRoutes.get('/:project_id/jobs/:job_id/metrics', async (c) => {
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
   const { project, job } = await findScopedProjectAndJob(
     db,
     c.req.param('project_id'),
     c.req.param('job_id'),
   )
-  const viewer = await resolveViewer(c.env, c.req.raw)
+  const viewer = await resolveViewer(getPlatform(c), c.req.raw)
   assertCanViewProject(project, viewer)
   const query = validate(listMetricsQuerySchema, c.req.query())
   const cursorCondition =

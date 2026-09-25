@@ -22,8 +22,7 @@
 //     .limit(limit + 1)
 //   return c.json(toPage(rows, limit, toProject, (r) => encodeKeysetCursor(r.createdAt, r.id)))
 import dayjs from 'dayjs'
-import { and, eq, gt, lt, or, type SQL } from 'drizzle-orm'
-import type { AnySQLiteColumn } from 'drizzle-orm/sqlite-core'
+import { and, type Column, eq, gt, lt, or, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { limitSchema, paginationQuerySchema } from '../../shared/schemas'
 import type { Page } from '../../shared/types'
@@ -97,8 +96,8 @@ export const decodeKeysetCursor = (cursor: string): KeysetCursor => {
  * `.orderBy(desc(at), desc(id))` for 'desc' or `.orderBy(asc(at), asc(id))` for 'asc'.
  */
 export const keysetCondition = (
-  atColumn: AnySQLiteColumn,
-  idColumn: AnySQLiteColumn,
+  atColumn: Column,
+  idColumn: Column,
   cursor: KeysetCursor,
   direction: SortDirection,
 ): SQL | undefined => {
@@ -123,7 +122,7 @@ export const decodeSerialCursor = (cursor: string): number => {
 
 /** WHERE condition for rows after `cursorId` when ordering by `idColumn` in `direction`. */
 export const serialCondition = (
-  idColumn: AnySQLiteColumn,
+  idColumn: Column,
   cursorId: number,
   direction: SortDirection,
 ): SQL => (direction === 'desc' ? lt(idColumn, cursorId) : gt(idColumn, cursorId))

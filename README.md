@@ -95,6 +95,39 @@ bunx wrangler secret put INIT_ADMIN_KEY --env staging
 bunx wrangler secret put INIT_ADMIN_KEY --env production
 ```
 
+## 自前のサーバで動かす
+
+Cloudflare を使わずに、Bun と PostgreSQL で動かすこともできる。Docker で動かす手順は次のとおり。
+
+- 構成は `apps/web/compose.yaml`、イメージは `apps/web/Dockerfile` に書いてある。
+- アップロードしたファイルは、コンテナの `/data`（compose のボリューム）に保存する。
+- ライブ更新は、プロセスの中の WebSocket で配る。
+- データベースの移行は、起動のたびに自動で適用する。
+
+```sh
+GITHUB_TOKEN="$(gh auth token)" \
+  POSTGRES_PASSWORD=... INIT_ADMIN_KEY=... \
+  AUTH_ISSUER=... AUTH_AUDIENCE=... AUTH_JWKS_URL=... AUTH_JWT_HEADER=... \
+  docker compose -f apps/web/compose.yaml up --build
+```
+
+`GITHUB_TOKEN` は依存パッケージを GitHub Packages から取得するために使う。
+
+認証には OIDC の ID トークン（JWT）を使う。認証プロキシがリクエストに付けたトークンを、`AUTH_JWKS_URL` の公開鍵で検証する。設定する環境変数は次のとおり。
+
+- 必須
+  - `AUTH_ISSUER`
+  - `AUTH_AUDIENCE`
+  - `AUTH_JWKS_URL`
+- 任意
+  - トークンの置き場所: `AUTH_JWT_HEADER`（ヘッダ）または `AUTH_JWT_COOKIE`（Cookie）
+  - メールアドレスのクレーム名: `AUTH_EMAIL_CLAIM`（既定は `email`）
+  - 署名方式: `AUTH_ALGORITHMS`（既定は `RS256`）
+
+Cloudflare Access をそのまま使う場合は、上の代わりに `ACCESS_TEAM_DOMAIN` と `ACCESS_AUD` を設定すればよい。
+
+PostgreSQL 用のスキーマは `apps/web/src/db/pg/schema.ts` にある。D1 用の `src/db/schema.ts` を変えたときは、こちらも同じように直す。そのあと `bun run db:generate:pg` で移行ファイルを作る。PostgreSQL 用のテストは `bun run test:pg` で走る。
+
 ## ブランチと CI
 
 作業は機能ブランチで行い、`develop` へ PR を出す。`develop` から `master` への PR がリリースになる。

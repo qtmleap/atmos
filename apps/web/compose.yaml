@@ -1,0 +1,74 @@
+# Self-hosted deployment (Dockerfile, src/server/): PostgreSQL plus the atmos
+# app, both built and run from this directory. Every AUTH_*/ACCESS_* var is
+# read from the shell environment (or your own env file passed to `docker
+# compose --env-file`) — no env example file is provided here; see
+# src/server/config.ts for what each one means and which combination it
+# requires.
+#
+# GITHUB_TOKEN (read:packages against qtmleap/mock-diff-viewer — the same
+# token `bun install` already needs, see bunfig.toml) must also be exported
+# before building: the Dockerfile's `bun install` step reads it as a build
+# secret, not a plain build arg, so it never lands in an image layer.
+#
+#   GITHUB_TOKEN="$(gh auth token)" \
+#     POSTGRES_PASSWORD=... ACCESS_TEAM_DOMAIN=... ACCESS_AUD=... \
+#     docker compose -f apps/web/compose.yaml up --build
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: atmos
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: atmos
+    volumes:
+      - atmos-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atmos -d atmos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      secrets:
+        - github_token
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${PORT:-8787}:8787"
+    environment:
+      # Fixed by this compose file, not read from the shell.
+      - PORT=8787
+      - DATABASE_URL=postgres://atmos:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/atmos
+      - DATA_DIR=/data
+      # Bare names (no `=`), so a var the shell does not set stays *unset* in
+      # the container instead of becoming an empty string — INIT_ADMIN_KEY
+      # and every AUTH_*/ACCESS_* var is optional in src/server/config.ts,
+      # and an empty string fails its `.nonempty()` validation where
+      # `undefined` would not. Cloudflare Access shortcut:
+      - INIT_ADMIN_KEY
+      - ACCESS_TEAM_DOMAIN
+      - ACCESS_AUD
+      # ...or a generic OIDC provider, used only when the two above are unset:
+      - AUTH_ISSUER
+      - AUTH_AUDIENCE
+      - AUTH_JWKS_URL
+      - AUTH_JWT_HEADER
+      - AUTH_JWT_COOKIE
+      - AUTH_EMAIL_CLAIM
+      - AUTH_ALGORITHMS
+    volumes:
+      - atmos-data:/data
+
+volumes:
+  atmos-postgres:
+  atmos-data:
+
+secrets:
+  github_token:
+    environment: GITHUB_TOKEN
