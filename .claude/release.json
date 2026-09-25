@@ -2,9 +2,7 @@
 	"schemaVersion": 1,
 	"version": {
 		"source": "apps/web/package.json",
-		"derivedFiles": [
-			"packages/python-sdk/pyproject.toml"
-		],
+		"derivedFiles": ["packages/python-sdk/pyproject.toml"],
 		"bumpCommand": null
 	},
 	"branches": {
