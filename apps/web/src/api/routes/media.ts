@@ -94,7 +94,7 @@ mediaRoutes.post('/', async (c) => {
   })
 
   if (file.size > MEDIA_MAX_BYTES) {
-    throw payloadTooLarge('file exceeds the 25MB limit')
+    throw payloadTooLarge('file exceeds the 2048KB limit')
   }
   const allowedTypes: readonly string[] = MEDIA_CONTENT_TYPES[fields.kind]
   if (!allowedTypes.includes(file.type)) {
