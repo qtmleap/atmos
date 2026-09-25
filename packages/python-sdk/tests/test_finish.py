@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from atmos._retry import RetryConfig
 from atmos._run import Run
 from tests._support import RecordingTransport
 
@@ -26,6 +27,10 @@ def _make_run(transport: RecordingTransport, *, flush_interval: float = 10.0) ->
         job_id=JOB_ID,
         flush_interval=flush_interval,
         batch_size=100,
+        # このファイルのテストは再試行そのものではなく最終flush/finishの挙動を
+        # 見るためのものなので、実際に待たされないよう再試行を無効にしておく
+        # （再試行自体のテストは`test_retry.py`）。
+        retry_config=RetryConfig(max_retries=0),
     )
 
 
@@ -120,6 +125,7 @@ def test_finish_raises_finish_error_chained_to_flush_error() -> None:
         job_id=JOB_ID,
         flush_interval=60.0,
         batch_size=100,
+        retry_config=RetryConfig(max_retries=0),
     )
     run.log({"loss": 0.1}, step=1)
 
@@ -127,3 +133,39 @@ def test_finish_raises_finish_error_chained_to_flush_error() -> None:
         run.finish()
 
     assert isinstance(info.value.__cause__, httpx.ConnectError)
+
+
+def test_with_block_calls_finish_finished_on_normal_exit() -> None:
+    transport = RecordingTransport()
+    run = _make_run(transport)
+
+    with run as ctx:
+        assert ctx is run
+        ctx.log({"loss": 0.1}, step=1)
+
+    assert run._finished
+    assert [r.path for r in transport.requests] == [METRICS_PATH, FINISH_PATH]
+    assert transport.requests[-1].json == {"status": "finished"}
+
+
+def test_with_block_calls_finish_failed_and_reraises_the_original_exception() -> None:
+    transport = RecordingTransport()
+    run = _make_run(transport)
+
+    with pytest.raises(RuntimeError, match="boom"), run:
+        raise RuntimeError("boom")
+
+    assert run._finished
+    assert transport.requests[-1].path == FINISH_PATH
+    assert transport.requests[-1].json == {"status": "failed"}
+
+
+def test_with_block_preserves_original_exception_when_finish_itself_fails() -> None:
+    transport = RecordingTransport()
+    transport.fail("POST", FINISH_PATH)
+    run = _make_run(transport)
+
+    # finish()自体も失敗するが、withブロックから伝播するのは元の例外であり、
+    # finish()の失敗(httpx.ConnectError)ではない。
+    with pytest.raises(RuntimeError, match="boom"), run:
+        raise RuntimeError("boom")
