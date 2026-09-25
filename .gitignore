@@ -15,7 +15,8 @@ Thumbs.db
 .envrc
 
 # === Agents ===
-.claude/
+.claude/*
+!.claude/release.json
 .codex/
 
 # === Act (GitHub Actions local runner) ===

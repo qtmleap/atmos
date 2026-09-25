@@ -20,6 +20,6 @@ from __future__ import annotations
 
 from atmos._run import Run, Visibility, init
 
-__version__ = "0.1.0"
+__version__ = "0.1.2"
 
 __all__ = ["Run", "Visibility", "__version__", "init"]
