@@ -8,8 +8,15 @@
 // waits for the JobLive Durable Object to relay the message it received from
 // `notifyLive` — see __tests__/routes/live.test.ts for the same pattern.
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { eq } from 'drizzle-orm'
 import { now } from '../../src/api/lib/ids'
-import { jobSchema, liveMessageSchema, pageSchema } from '../../src/shared/schemas'
+import { createDb, logs, mediaAssets, metrics } from '../../src/db/schema'
+import {
+  jobSchema,
+  liveMessageSchema,
+  mediaAssetSchema,
+  pageSchema,
+} from '../../src/shared/schemas'
 import { insertAccessToken, insertJob, insertProject, insertUser } from '../helpers/fixtures'
 import { expectShape, jsonError, jsonShaped } from '../helpers/http'
 import { createRouteTestEnv, type RouteTestEnv } from './test-env'
@@ -284,5 +291,307 @@ describe('POST /api/projects/:project_id/jobs/:job_id/finish', () => {
     })
     expect(res.status).toBe(400)
     await jsonError(res, 'validation_error')
+  })
+})
+
+describe('PATCH /api/projects/:project_id/jobs/:job_id', () => {
+  const patch = (
+    dispatch: RouteTestEnv['dispatch'],
+    projectId: string,
+    jobId: string,
+    headers: HeadersInit,
+    body: unknown,
+  ) =>
+    dispatch(`/api/projects/${projectId}/jobs/${jobId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify(body),
+    })
+
+  test('the project owner renames a job, via a Bearer token', async () => {
+    const { dispatch, env } = testEnv()
+    const owner = await insertUser(env.DB)
+    const project = await insertProject(env.DB, owner)
+    const job = await insertJob(env.DB, project, { name: 'before' })
+    const token = await insertAccessToken(env.DB, owner)
+
+    const res = await patch(dispatch, project.id, job.id, bearer(token), { name: 'after' })
+    expect(res.status).toBe(200)
+    expect((await jsonShaped(jobSchema, res)).name).toBe('after')
+  })
+
+  test('name: null clears the name', async () => {
+    const { dispatch, env } = testEnv()
+    const owner = await insertUser(env.DB)
+    const project = await insertProject(env.DB, owner)
+    const job = await insertJob(env.DB, project, { name: 'has-a-name' })
+    const token = await insertAccessToken(env.DB, owner)
+
+    const res = await patch(dispatch, project.id, job.id, bearer(token), { name: null })
+    expect(res.status).toBe(200)
+    expect((await jsonShaped(jobSchema, res)).name).toBeNull()
+  })
+
+  test('an admin may rename a job in a project they do not own', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'job-patch-admin-owner@example.com' })
+    const project = await insertProject(env.DB, owner)
+    const job = await insertJob(env.DB, project, { name: 'before' })
+    const admin = await insertUser(env.DB, {
+      cfAccessEmail: 'job-patch-admin-viewer@example.com',
+      role: 'admin',
+    })
+
+    const res = await patch(
+      dispatch,
+      project.id,
+      job.id,
+      { 'Cf-Access-Jwt-Assertion': await access.sign({ email: admin.cfAccessEmail }) },
+      { name: 'renamed-by-admin' },
+    )
+    expect(res.status).toBe(200)
+    expect((await jsonShaped(jobSchema, res)).name).toBe('renamed-by-admin')
+  })
+
+  test('the owner may edit via the CF_Authorization cookie, same-origin only', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'job-patch-cookie-owner@example.com' })
+    const project = await insertProject(env.DB, owner)
+    const job = await insertJob(env.DB, project, { name: 'before' })
+    const cookie = `CF_Authorization=${await access.sign({ email: owner.cfAccessEmail })}`
+
+    const sameOrigin = await dispatch(`/api/projects/${project.id}/jobs/${job.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: cookie,
+        'Sec-Fetch-Site': 'same-origin',
+      },
+      body: JSON.stringify({ name: 'cookie-after' }),
+    })
+    expect(sameOrigin.status).toBe(200)
+    expect((await jsonShaped(jobSchema, sameOrigin)).name).toBe('cookie-after')
+
+    const crossSite = await dispatch(`/api/projects/${project.id}/jobs/${job.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: cookie,
+        'Sec-Fetch-Site': 'cross-site',
+      },
+      body: JSON.stringify({ name: 'should-not-apply' }),
+    })
+    expect(crossSite.status).toBe(401)
+    await jsonError(crossSite, 'unauthenticated')
+  })
+
+  test('403 for a signed-in stranger who can view but not manage the project', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, {
+      cfAccessEmail: 'job-patch-stranger-owner@example.com',
+    })
+    const project = await insertProject(env.DB, owner, { visibility: 'public' })
+    const job = await insertJob(env.DB, project)
+    const stranger = await insertUser(env.DB, { cfAccessEmail: 'job-patch-stranger@example.com' })
+
+    const res = await patch(
+      dispatch,
+      project.id,
+      job.id,
+      { 'Cf-Access-Jwt-Assertion': await access.sign({ email: stranger.cfAccessEmail }) },
+      { name: 'hijacked' },
+    )
+    expect(res.status).toBe(403)
+    await jsonError(res, 'forbidden')
+  })
+
+  test('404 for a signed-in stranger who cannot even view a private project', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'job-patch-hidden-owner@example.com' })
+    const project = await insertProject(env.DB, owner, { visibility: 'private' })
+    const job = await insertJob(env.DB, project)
+    const stranger = await insertUser(env.DB, {
+      cfAccessEmail: 'job-patch-hidden-stranger@example.com',
+    })
+
+    const res = await patch(
+      dispatch,
+      project.id,
+      job.id,
+      { 'Cf-Access-Jwt-Assertion': await access.sign({ email: stranger.cfAccessEmail }) },
+      { name: 'hijacked' },
+    )
+    expect(res.status).toBe(404)
+    await jsonError(res, 'not_found')
+  })
+
+  test('404 when project_id and job_id do not belong together', async () => {
+    const { dispatch, env } = testEnv()
+    const owner = await insertUser(env.DB)
+    const projectA = await insertProject(env.DB, owner)
+    const projectB = await insertProject(env.DB, owner)
+    const job = await insertJob(env.DB, projectA)
+    const token = await insertAccessToken(env.DB, owner)
+
+    const res = await patch(dispatch, projectB.id, job.id, bearer(token), { name: 'x' })
+    expect(res.status).toBe(404)
+    await jsonError(res, 'not_found')
+  })
+
+  test('401 with neither a Bearer token nor an Access identity', async () => {
+    const { dispatch, env } = testEnv()
+    const owner = await insertUser(env.DB)
+    const project = await insertProject(env.DB, owner)
+    const job = await insertJob(env.DB, project)
+
+    const res = await patch(dispatch, project.id, job.id, {}, { name: 'x' })
+    expect(res.status).toBe(401)
+    await jsonError(res, 'unauthenticated')
+  })
+
+  test('400 validation_error for an empty-string name', async () => {
+    const { dispatch, env } = testEnv()
+    const owner = await insertUser(env.DB)
+    const project = await insertProject(env.DB, owner)
+    const job = await insertJob(env.DB, project)
+    const token = await insertAccessToken(env.DB, owner)
+
+    const res = await patch(dispatch, project.id, job.id, bearer(token), { name: '' })
+    expect(res.status).toBe(400)
+    await jsonError(res, 'validation_error')
+  })
+})
+
+describe('DELETE /api/projects/:project_id/jobs/:job_id', () => {
+  const del = (
+    dispatch: RouteTestEnv['dispatch'],
+    projectId: string,
+    jobId: string,
+    headers: HeadersInit,
+  ) => dispatch(`/api/projects/${projectId}/jobs/${jobId}`, { method: 'DELETE', headers })
+
+  test(
+    'the owner deletes the job, cascading its metrics/logs/media and their R2 objects',
+    async () => {
+      const { dispatch, env } = testEnv()
+      const owner = await insertUser(env.DB)
+      const project = await insertProject(env.DB, owner)
+      const job = await insertJob(env.DB, project)
+      const otherJob = await insertJob(env.DB, project)
+      const token = await insertAccessToken(env.DB, owner)
+      const db = createDb(env.DB)
+
+      await db
+        .insert(metrics)
+        .values({ jobId: job.id, step: 1, key: 'loss', value: 0.1, loggedAt: now() })
+      await db
+        .insert(logs)
+        .values({ jobId: job.id, stream: 'stdout', message: 'hello', loggedAt: now() })
+      // A sibling job's data must survive the deletion of `job`.
+      await db
+        .insert(metrics)
+        .values({ jobId: otherJob.id, step: 1, key: 'loss', value: 0.2, loggedAt: now() })
+
+      const form = new FormData()
+      form.set(
+        'file',
+        new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'x.png', { type: 'image/png' }),
+      )
+      form.set('kind', 'image')
+      form.set('step', '1')
+      form.set('label', 'sample')
+      const uploadRes = await dispatch(`/api/projects/${project.id}/jobs/${job.id}/media`, {
+        method: 'POST',
+        headers: bearer(token),
+        body: form,
+      })
+      expect(uploadRes.status).toBe(201)
+      const asset = await jsonShaped(mediaAssetSchema, uploadRes)
+      const r2Key = `media/${job.id}/${asset.id}`
+      expect(await env.BUCKET.get(r2Key)).not.toBeNull()
+
+      const res = await del(dispatch, project.id, job.id, bearer(token))
+      expect(res.status).toBe(204)
+
+      expect(await db.$count(metrics, eq(metrics.jobId, job.id))).toBe(0)
+      expect(await db.$count(logs, eq(logs.jobId, job.id))).toBe(0)
+      expect(await db.$count(mediaAssets, eq(mediaAssets.jobId, job.id))).toBe(0)
+      expect(await env.BUCKET.get(r2Key)).toBeNull()
+      expect(await db.$count(metrics, eq(metrics.jobId, otherJob.id))).toBe(1)
+
+      const missing = await dispatch(`/api/projects/${project.id}/jobs/${job.id}`)
+      expect(missing.status).toBe(404)
+    },
+    TIMEOUT,
+  )
+
+  test('an admin may delete a job in a project they do not own', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'job-del-admin-owner@example.com' })
+    const project = await insertProject(env.DB, owner)
+    const job = await insertJob(env.DB, project)
+    const admin = await insertUser(env.DB, {
+      cfAccessEmail: 'job-del-admin-viewer@example.com',
+      role: 'admin',
+    })
+
+    const res = await del(dispatch, project.id, job.id, {
+      'Cf-Access-Jwt-Assertion': await access.sign({ email: admin.cfAccessEmail }),
+    })
+    expect(res.status).toBe(204)
+  })
+
+  test('403 for a signed-in stranger who can view but not manage the project', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'job-del-stranger-owner@example.com' })
+    const project = await insertProject(env.DB, owner, { visibility: 'public' })
+    const job = await insertJob(env.DB, project)
+    const stranger = await insertUser(env.DB, { cfAccessEmail: 'job-del-stranger@example.com' })
+
+    const res = await del(dispatch, project.id, job.id, {
+      'Cf-Access-Jwt-Assertion': await access.sign({ email: stranger.cfAccessEmail }),
+    })
+    expect(res.status).toBe(403)
+    await jsonError(res, 'forbidden')
+  })
+
+  test('404 for a signed-in stranger who cannot even view a private project', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB, { cfAccessEmail: 'job-del-hidden-owner@example.com' })
+    const project = await insertProject(env.DB, owner, { visibility: 'private' })
+    const job = await insertJob(env.DB, project)
+    const stranger = await insertUser(env.DB, {
+      cfAccessEmail: 'job-del-hidden-stranger@example.com',
+    })
+
+    const res = await del(dispatch, project.id, job.id, {
+      'Cf-Access-Jwt-Assertion': await access.sign({ email: stranger.cfAccessEmail }),
+    })
+    expect(res.status).toBe(404)
+    await jsonError(res, 'not_found')
+  })
+
+  test('404 when project_id and job_id do not belong together', async () => {
+    const { dispatch, env } = testEnv()
+    const owner = await insertUser(env.DB)
+    const projectA = await insertProject(env.DB, owner)
+    const projectB = await insertProject(env.DB, owner)
+    const job = await insertJob(env.DB, projectA)
+    const token = await insertAccessToken(env.DB, owner)
+
+    const res = await del(dispatch, projectB.id, job.id, bearer(token))
+    expect(res.status).toBe(404)
+    await jsonError(res, 'not_found')
+  })
+
+  test('401 with neither a Bearer token nor an Access identity', async () => {
+    const { dispatch, env } = testEnv()
+    const owner = await insertUser(env.DB)
+    const project = await insertProject(env.DB, owner)
+    const job = await insertJob(env.DB, project)
+
+    const res = await del(dispatch, project.id, job.id, {})
+    expect(res.status).toBe(401)
+    await jsonError(res, 'unauthenticated')
   })
 })

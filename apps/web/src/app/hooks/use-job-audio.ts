@@ -1,7 +1,7 @@
-// Playback of one audio sample of a job, behind a play/pause button and a
-// position slider (components/job/audio-list.tsx). The <audio> element is
-// created on mount with preload="metadata": the header is fetched so the row
-// can show the clip's length ("0:00 / 0:08"), the samples only on play.
+// Playback of one audio sample of a job, behind a play/pause button and its
+// waveform (components/job/audio-list.tsx). The <audio> element is created
+// once `url` is known, with preload="metadata" so the length shows before
+// playing. A null `url` (the clip is still being fetched) makes it a no-op.
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 export type AudioPhase = 'idle' | 'loading' | 'playing' | 'paused' | 'error'
@@ -18,16 +18,16 @@ export interface AudioPlayer {
   toggleMuted: () => void
 }
 
-export function useJobAudio(url: string): AudioPlayer {
+export function useJobAudio(url: string | null): AudioPlayer {
   const element = useRef<HTMLAudioElement | null>(null)
   const [phase, setPhase] = useState<AudioPhase>('idle')
   const [position, setPosition] = useState(0)
   const [duration, setDuration] = useState(Number.NaN)
   const [muted, setMuted] = useState(false)
 
-  const ensure = useCallback((): HTMLAudioElement => {
+  const ensure = useCallback((): HTMLAudioElement | null => {
     const existing = element.current
-    if (existing !== null) {
+    if (existing !== null || url === null) {
       return existing
     }
     const audio = new Audio(url)
@@ -70,6 +70,9 @@ export function useJobAudio(url: string): AudioPlayer {
 
   const toggle = useCallback(() => {
     const audio = ensure()
+    if (audio === null) {
+      return
+    }
     if (audio.paused) {
       setPhase('loading')
       audio.play().catch(() => setPhase('error'))
@@ -81,6 +84,9 @@ export function useJobAudio(url: string): AudioPlayer {
   const seek = useCallback(
     (seconds: number) => {
       const audio = ensure()
+      if (audio === null) {
+        return
+      }
       audio.currentTime = seconds
       setPosition(seconds)
     },
@@ -89,6 +95,9 @@ export function useJobAudio(url: string): AudioPlayer {
 
   const toggleMuted = useCallback(() => {
     const audio = ensure()
+    if (audio === null) {
+      return
+    }
     audio.muted = !audio.muted
     setMuted(audio.muted)
   }, [ensure])

@@ -63,19 +63,32 @@ class RecordingTransport(httpx.BaseTransport):
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
         self.requests: list[RecordedRequest] = []
-        self._fail_paths: set[str] = set()
+        self._fail_paths: dict[str, int | None] = {}
         self._responses: dict[tuple[str, str], httpx.Response] = {}
 
-    def fail(self, method: str, path: str) -> None:
-        """このパスへのリクエストは接続エラーとして扱う（実際に送信しない）。"""
-        self._fail_paths.add(f"{method.upper()} {path}")
+    def fail(self, method: str, path: str, *, times: int | None = None) -> None:
+        """このパスへのリクエストは接続エラーとして扱う（実際に送信しない）。
+
+        `times`を指定するとその回数だけ失敗した後は通常どおり応答する
+        （再試行の末に成功する場合のテスト用）。省略時は無期限に失敗し続ける。
+        """
+        self._fail_paths[f"{method.upper()} {path}"] = times
 
     def respond(self, method: str, path: str, response: httpx.Response) -> None:
         self._responses[(method.upper(), path)] = response
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         key = f"{request.method.upper()} {request.url.path}"
-        if key in self._fail_paths:
+        with self._lock:
+            should_fail = key in self._fail_paths
+            if should_fail:
+                remaining = self._fail_paths[key]
+                if remaining is not None:
+                    if remaining <= 1:
+                        del self._fail_paths[key]
+                    else:
+                        self._fail_paths[key] = remaining - 1
+        if should_fail:
             raise httpx.ConnectError("simulated connection failure", request=request)
 
         recorded = RecordedRequest(request)

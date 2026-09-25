@@ -11,7 +11,7 @@ export const JOBS_PAGE_SIZE = 50
 
 /** What the heading needs of the project. */
 export type ProjectHeading = Pick<Project, 'id' | 'name' | 'visibility'> &
-  Partial<Pick<Project, 'owner'>>
+  Partial<Pick<Project, 'owner' | 'job_count'>>
 
 export interface ProjectJobs {
   filter: StatusFilter
@@ -30,11 +30,17 @@ export interface ProjectJobs {
 export function useProjectHeading(projectId: string): {
   project: ProjectHeading | null
   error: string | null
+  /** HTTP status of a failed project load (401, 403, 404 become full-page errors). */
+  status: number | null
 } {
   const location = useLocation()
   const fetched = useProject(projectId)
   const linked = readProjectLinkState(location.state, projectId)
-  return { project: fetched.project === null ? linked : fetched.project, error: fetched.error }
+  return {
+    project: fetched.project === null ? linked : fetched.project,
+    error: fetched.error,
+    status: fetched.status,
+  }
 }
 
 export function useProjectJobs(projectId: string): ProjectJobs {

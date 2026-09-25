@@ -1,11 +1,8 @@
-import { useId, useMemo, useState } from 'react'
+import { useState } from 'react'
 import type { MediaAsset } from '@/shared/types'
-import { assetsAtStep, mediaSteps, nearestStep } from '../../lib/media'
 import { formatStep } from '../../lib/metrics'
-import { Button } from '../ui/button'
 import { Skeleton } from '../ui/skeleton'
 import { ImageViewer } from './image-viewer'
-import { StepSlider } from './step-slider'
 import { WidgetHeader } from './widget-header'
 
 /** Three-up grid of thumbnails; each child is a `<figure>`. */
@@ -67,24 +64,14 @@ export function GalleryThumb({ asset, onOpen }: { asset: MediaAsset; onOpen: () 
 }
 
 export interface ImageGalleryProps {
+  /** The images at `step`, in logging order. */
   images: MediaAsset[]
+  step: number | undefined
 }
 
-/**
- * The images of one step, three abreast, with a slider over the steps that
- * have images. Opens the latest step and stays there while new steps arrive.
- */
-export function ImageGallery({ images }: ImageGalleryProps) {
-  const steps = useMemo(() => mediaSteps(images), [images])
-  const [chosen, setChosen] = useState<number | null>(null)
+/** The images of the step chosen on the media tab, three abreast. */
+export function ImageGallery({ images, step }: ImageGalleryProps) {
   const [open, setOpen] = useState<MediaAsset | null>(null)
-  const sliderId = useId()
-  const latest = steps.at(-1)
-  const step = chosen !== null && steps.includes(chosen) ? chosen : latest
-  const shown = useMemo(
-    () => (step === undefined ? [] : assetsAtStep(images, step)),
-    [images, step],
-  )
   return (
     <div>
       <WidgetHeader
@@ -96,31 +83,15 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           </span>
         }
       />
-      <StepSlider
-        id={sliderId}
-        label="ステップ"
-        steps={steps}
-        value={step === undefined ? null : step}
-        onChange={(value) => {
-          const snapped = nearestStep(steps, value)
-          if (snapped !== null) {
-            setChosen(snapped)
-          }
-        }}
-        readout={step === undefined ? '—' : formatStep(step)}
-      />
-      <Gallery>
-        {shown.map((asset) => (
-          <GalleryThumb key={asset.id} asset={asset} onOpen={() => setOpen(asset)} />
-        ))}
-      </Gallery>
-      {step !== undefined && step !== latest && latest !== undefined ? (
-        <div className="flex justify-end pb-4">
-          <Button variant="secondary" onClick={() => setChosen(null)}>
-            最新のステップへ
-          </Button>
-        </div>
-      ) : null}
+      {images.length === 0 ? (
+        <p className="py-8 text-xs text-muted-foreground">このステップの画像はありません。</p>
+      ) : (
+        <Gallery>
+          {images.map((asset) => (
+            <GalleryThumb key={asset.id} asset={asset} onOpen={() => setOpen(asset)} />
+          ))}
+        </Gallery>
+      )}
       <ImageViewer asset={open} onClose={() => setOpen(null)} />
     </div>
   )

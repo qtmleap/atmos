@@ -5,9 +5,15 @@
 // wire type `Project` (src/shared/types.ts) does not carry. They are sent as
 // the extra fields `job_count` and `updated_at` so the numbers exist once the
 // type grows them; until then the page simply ignores them.
-import type { CreateProjectRequest, Project } from '../../src/shared/types'
-import { ME } from './me'
-import { type FixtureHandler, json, notFound, paginate } from './respond'
+import type {
+  CreateProjectRequest,
+  Project,
+  UpdateProjectRequest,
+  Visibility,
+} from '../../src/shared/types'
+import { VISIBILITIES } from '../../src/shared/types'
+import { isSignedOut, ME } from './me'
+import { apiError, type FixtureHandler, json, noContent, notFound, paginate } from './respond'
 import { ownerOf } from './users'
 
 export interface FixtureProject extends Project {
@@ -49,7 +55,7 @@ const LISTED: readonly FixtureProject[] = [
   project(
     'prj_sdxl_lora',
     '画像生成 / SDXL LoRA',
-    'private',
+    'internal',
     'aoi_ml',
     186,
     '2026-09-24T14:18:00Z',
@@ -112,7 +118,7 @@ const LISTED: readonly FixtureProject[] = [
   project(
     'prj_anime_lora',
     '画像生成 / アニメ調 LoRA',
-    'private',
+    'internal',
     'ren_t',
     112,
     '2026-09-23T18:35:00Z',
@@ -171,41 +177,217 @@ const MORE: readonly FixtureProject[] = [
 
 const PROJECTS: readonly FixtureProject[] = [...LISTED, ...MORE]
 
-export const findProject = (id: string): FixtureProject | undefined =>
-  PROJECTS.find((row) => row.id === id)
+/**
+ * Reachable by URL but never listed: prj_internal_asr is members-only
+ * (signin-required.html, `?scenario=signed-out`), prj_private_other is
+ * someone else's private project that 田中 美咲 may not open (forbidden.html).
+ * Admins can open private projects in the real API; the fixture keeps this one
+ * closed so the 403 page has somewhere to be seen.
+ */
+const UNLISTED: readonly FixtureProject[] = [
+  project(
+    'prj_internal_asr',
+    '音声認識 / 社内評価セット',
+    'internal',
+    'aoi_ml',
+    47,
+    '2026-09-20T10:15:00Z',
+    '2026-09-02T09:00:00Z',
+  ),
+  project(
+    'prj_private_other',
+    '画像生成 / 社外秘データ',
+    'private',
+    'ren_t',
+    12,
+    '2026-09-19T17:42:00Z',
+    '2026-09-09T09:00:00Z',
+  ),
+]
 
-export const listProjects: FixtureHandler = ({ url }) =>
-  json(paginate(PROJECTS, url, LISTED.length))
+const FORBIDDEN: ReadonlySet<string> = new Set(['prj_private_other'])
 
-/** GET /api/projects/:project_id — the heading of project-jobs.html and friends. */
-export const getProject: FixtureHandler = ({ params }) => {
-  const project = params.project_id === undefined ? undefined : findProject(params.project_id)
-  return project === undefined ? notFound('project') : json(project)
+/**
+ * Projects made through POST /api/projects since the dev server started.
+ * Unlike the rest of the fixtures (see admin.ts's own note), these are kept:
+ * the "新規プロジェクト" dialog navigates straight to the new project's page,
+ * which has to find it, and the list should show it afterwards too.
+ */
+const CREATED: FixtureProject[] = []
+
+/**
+ * PATCH /api/projects/:project_id overlay: name/visibility written since the
+ * dev server started, kept apart from the static rows like CREATED above so
+ * a rename/re-visibility survives a re-render of the same page.
+ */
+const EDITED: Map<string, Partial<Pick<FixtureProject, 'name' | 'visibility'>>> = new Map()
+
+/** DELETE /api/projects/:project_id overlay: ids removed since the dev server started. */
+const DELETED: Set<string> = new Set()
+
+const withOverlay = (project: FixtureProject): FixtureProject => {
+  const edit = EDITED.get(project.id)
+  return edit === undefined ? project : { ...project, ...edit }
 }
+
+export const findProject = (id: string): FixtureProject | undefined => {
+  if (DELETED.has(id)) {
+    return undefined
+  }
+  const found = [...CREATED, ...PROJECTS, ...UNLISTED].find((row) => row.id === id)
+  return found === undefined ? undefined : withOverlay(found)
+}
+
+/**
+ * Scenario `signed-out` lists the public projects only (projects-signed-out.html,
+ * six rows on one page); `empty` lists none (the empty state of projects.html).
+ */
+export const listProjects: FixtureHandler = ({ url, scenario }) => {
+  if (scenario === 'empty') {
+    return json(paginate([], url))
+  }
+  const rows = [...CREATED, ...PROJECTS].filter((row) => !DELETED.has(row.id)).map(withOverlay)
+  return json(
+    paginate(
+      isSignedOut(scenario) ? rows.filter((row) => row.visibility === 'public') : rows,
+      url,
+      LISTED.length,
+    ),
+  )
+}
+
+/**
+ * GET /api/projects/:project_id — the heading of project-jobs.html and friends.
+ * 404 when there is no such project, 401 for a signed-out visitor on anything
+ * but a public one, 403 for a project the signed-in user may not open.
+ */
+export const getProject: FixtureHandler = ({ params, scenario }) => {
+  const project = params.project_id === undefined ? undefined : findProject(params.project_id)
+  if (project === undefined) {
+    return notFound('project')
+  }
+  if (isSignedOut(scenario) && project.visibility !== 'public') {
+    return apiError(401, 'unauthenticated', 'sign in to view this project')
+  }
+  if (FORBIDDEN.has(project.id)) {
+    return apiError(403, 'forbidden', 'no access to this project')
+  }
+  return json(project)
+}
+
+const isVisibility = (value: unknown): value is Visibility =>
+  VISIBILITIES.some((visibility) => visibility === value)
 
 const isCreateProjectRequest = (value: unknown): value is CreateProjectRequest =>
   typeof value === 'object' &&
   value !== null &&
   'name' in value &&
   typeof value.name === 'string' &&
-  value.name !== ''
+  value.name !== '' &&
+  (!('visibility' in value) || value.visibility === undefined || isVisibility(value.visibility))
 
-/** Answers like a create (201) but keeps nothing: the fixtures are read-only. */
+/**
+ * Creates for real, unlike the rest of the fixtures: the web UI's "新規プロジェクト"
+ * dialog needs the project it just made to actually be there afterwards, not a
+ * 201 that vanishes on the next request. 409 `conflict` on a name the
+ * signed-in owner already has, mirroring the real API
+ * (src/api/routes/projects.ts).
+ */
 export const createProject: FixtureHandler = async ({ json: body }) => {
   const request = await body()
   if (!isCreateProjectRequest(request)) {
-    return json({ error: { code: 'validation_error', message: 'name is required' } }, 400)
+    return apiError(400, 'validation_error', 'name is required')
   }
-  const existing = PROJECTS.find((row) => row.name === request.name)
+  const existing = [...CREATED, ...PROJECTS].find(
+    (row) => row.owner.handle === ME.handle && row.name === request.name,
+  )
   if (existing !== undefined) {
-    return json(existing)
+    return apiError(409, 'conflict', 'a project with this name already exists')
   }
-  const created: Project = {
-    id: 'prj_fixture_new',
+  const created: FixtureProject = {
+    id: `prj_fixture_${CREATED.length + 1}`,
     name: request.name,
-    visibility: request.visibility === 'public' ? 'public' : 'private',
+    visibility: request.visibility === undefined ? 'private' : request.visibility,
     owner: ownerOf(ME.handle),
     created_at: '2026-09-24T14:32:00Z',
+    job_count: 0,
+    updated_at: '2026-09-24T14:32:00Z',
   }
+  CREATED.push(created)
   return json(created, 201)
+}
+
+const isUpdateProjectRequest = (value: unknown): value is UpdateProjectRequest => {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  const name = 'name' in value ? value.name : undefined
+  const visibility = 'visibility' in value ? value.visibility : undefined
+  if (name !== undefined && (typeof name !== 'string' || name === '')) {
+    return false
+  }
+  if (visibility !== undefined && !isVisibility(visibility)) {
+    return false
+  }
+  return name !== undefined || visibility !== undefined
+}
+
+/**
+ * Persists into the EDITED overlay, like createProject persists into CREATED:
+ * the web UI navigates back to the project after saving, and the renamed/
+ * re-visibilitied project has to still read that way. 409 `conflict` on a
+ * name collision with another project of the same owner, mirroring the real
+ * API (src/api/routes/projects.ts).
+ */
+export const updateProject: FixtureHandler = async ({ params, scenario, json: body }) => {
+  const project = params.project_id === undefined ? undefined : findProject(params.project_id)
+  if (project === undefined) {
+    return notFound('project')
+  }
+  if (isSignedOut(scenario)) {
+    return apiError(401, 'unauthenticated', 'sign in to edit this project')
+  }
+  if (FORBIDDEN.has(project.id)) {
+    return apiError(403, 'forbidden', 'no access to this project')
+  }
+  const request = await body()
+  if (!isUpdateProjectRequest(request)) {
+    return apiError(400, 'validation_error', 'at least one of name or visibility is required')
+  }
+  if (request.name !== undefined && request.name !== project.name) {
+    const collision = [...CREATED, ...PROJECTS]
+      .filter((row) => !DELETED.has(row.id) && row.id !== project.id)
+      .map(withOverlay)
+      .find((row) => row.owner.handle === project.owner.handle && row.name === request.name)
+    if (collision !== undefined) {
+      return apiError(409, 'conflict', 'a project with this name already exists')
+    }
+  }
+  EDITED.set(project.id, {
+    ...EDITED.get(project.id),
+    ...(request.name === undefined ? {} : { name: request.name }),
+    ...(request.visibility === undefined ? {} : { visibility: request.visibility }),
+  })
+  const updated = findProject(project.id)
+  return updated === undefined ? notFound('project') : json(updated)
+}
+
+/**
+ * Marks the project deleted in the DELETED overlay, like updateProject
+ * persists into EDITED: the web UI navigates away and the project must stop
+ * being found afterwards, list included.
+ */
+export const deleteProject: FixtureHandler = ({ params, scenario }) => {
+  const project = params.project_id === undefined ? undefined : findProject(params.project_id)
+  if (project === undefined) {
+    return notFound('project')
+  }
+  if (isSignedOut(scenario)) {
+    return apiError(401, 'unauthenticated', 'sign in to delete this project')
+  }
+  if (FORBIDDEN.has(project.id)) {
+    return apiError(403, 'forbidden', 'no access to this project')
+  }
+  DELETED.add(project.id)
+  return noContent()
 }

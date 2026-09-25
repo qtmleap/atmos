@@ -1,8 +1,10 @@
 // docs/SPEC.md §1 Project and §6 Projects.
 //
-// GET  /api/projects              paginationQuerySchema -> pageSchema(projectSchema)
-// GET  /api/projects/:project_id  -> projectSchema
-// POST /api/projects              createProjectRequestSchema -> 200 | 201 projectSchema
+// GET    /api/projects              paginationQuerySchema -> pageSchema(projectSchema)
+// GET    /api/projects/:project_id  -> projectSchema
+// POST   /api/projects              createProjectRequestSchema -> 200 | 201 projectSchema
+// PATCH  /api/projects/:project_id  updateProjectRequestSchema -> projectSchema
+// DELETE /api/projects/:project_id  -> 204
 import { z } from 'zod'
 import { isoDateTimeSchema, uuidSchema, visibilitySchema } from './common'
 import { handleSchema } from './users'
@@ -30,3 +32,13 @@ export const createProjectRequestSchema = z.object({
   /** Defaults to "private". */
   visibility: visibilitySchema.default('private'),
 })
+
+/** At least one of `name` / `visibility` is required; the same `name` rule as create. */
+export const updateProjectRequestSchema = z
+  .object({
+    name: z.string().nonempty().optional(),
+    visibility: visibilitySchema.optional(),
+  })
+  .refine((body) => body.name !== undefined || body.visibility !== undefined, {
+    message: 'at least one of name or visibility is required',
+  })

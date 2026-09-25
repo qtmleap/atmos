@@ -2,18 +2,21 @@
 import { and, desc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { createDb, type ProjectRow, projects, type UserRow, users } from '../../db/schema'
-import { createProjectRequestSchema } from '../../shared/schemas'
+import { createProjectRequestSchema, updateProjectRequestSchema } from '../../shared/schemas'
 import type { Project } from '../../shared/types'
 import {
   assertCanViewProject,
+  canManageProject,
+  canViewProject,
   projectVisibilityCondition,
   readBearerToken,
   requireAccessUser,
   requireBearerUser,
   resolveViewer,
 } from '../lib/auth'
-import { conflict, notFound, readJson } from '../lib/errors'
+import { conflict, forbidden, notFound, readJson } from '../lib/errors'
 import { newId, now, toIsoString } from '../lib/ids'
+import { deleteProjectMedia } from '../lib/media-cleanup'
 import {
   decodeKeysetCursor,
   encodeKeysetCursor,
@@ -119,4 +122,80 @@ projectsRoutes.post('/', async (c) => {
   }
   await db.insert(projects).values(created)
   return c.json(toProject(created, user), 201)
+})
+
+/** project_id lookup shared by PATCH/DELETE, with its owner for the response and 409 check. */
+const findProjectWithOwner = async (
+  db: ReturnType<typeof createDb>,
+  projectId: string,
+): Promise<{ project: ProjectRow; owner: UserRow } | null> => {
+  const rows = await db
+    .select({ project: projects, owner: users })
+    .from(projects)
+    .innerJoin(users, eq(projects.ownerId, users.id))
+    .where(eq(projects.id, projectId))
+    .limit(1)
+  const row = rows[0]
+  return row === undefined ? null : row
+}
+
+// PATCH /api/projects/:project_id (追加分) — the owner or an admin edits name
+// and/or visibility. Same two credentials as POST; a missing/invalid one is
+// 401 from requireBearerUser / requireAccessUser. A project the caller cannot
+// even view is reported as 404, one they can view but not manage as 403
+// (docs/SPEC.md §6/§7 canManageProject convention).
+projectsRoutes.patch('/:project_id', async (c) => {
+  const viaBearer = readBearerToken(c.req.raw) !== null
+  const user = viaBearer
+    ? await requireBearerUser(c.env, c.req.raw)
+    : await requireAccessUser(c.env, c.req.raw)
+  const db = createDb(c.env.DB)
+  const found = await findProjectWithOwner(db, c.req.param('project_id'))
+  if (found === null || !canViewProject(found.project, user)) {
+    throw notFound('project not found')
+  }
+  if (!canManageProject(found.project, user)) {
+    throw forbidden('only the owner or an admin may edit this project')
+  }
+  const body = await readJson(c.req.raw, updateProjectRequestSchema)
+  if (body.name !== undefined && body.name !== found.project.name) {
+    const existing = await db.query.projects.findFirst({
+      where: and(eq(projects.ownerId, found.project.ownerId), eq(projects.name, body.name)),
+    })
+    if (existing !== undefined && existing.id !== found.project.id) {
+      throw conflict('a project with this name already exists')
+    }
+  }
+  const updated: ProjectRow = {
+    ...found.project,
+    name: body.name === undefined ? found.project.name : body.name,
+    visibility: body.visibility === undefined ? found.project.visibility : body.visibility,
+  }
+  await db
+    .update(projects)
+    .set({ name: updated.name, visibility: updated.visibility })
+    .where(eq(projects.id, updated.id))
+  return c.json(toProject(updated, found.owner))
+})
+
+// DELETE /api/projects/:project_id (追加分) — the owner or an admin deletes
+// the project along with its jobs, metrics, logs and media (D1 cascades
+// jobs/metrics/logs/media_assets on the project/job foreign keys; R2 objects
+// are not part of that cascade and are removed explicitly first).
+projectsRoutes.delete('/:project_id', async (c) => {
+  const viaBearer = readBearerToken(c.req.raw) !== null
+  const user = viaBearer
+    ? await requireBearerUser(c.env, c.req.raw)
+    : await requireAccessUser(c.env, c.req.raw)
+  const db = createDb(c.env.DB)
+  const found = await findProjectWithOwner(db, c.req.param('project_id'))
+  if (found === null || !canViewProject(found.project, user)) {
+    throw notFound('project not found')
+  }
+  if (!canManageProject(found.project, user)) {
+    throw forbidden('only the owner or an admin may delete this project')
+  }
+  await deleteProjectMedia(c.env.BUCKET, db, found.project.id)
+  await db.delete(projects).where(eq(projects.id, found.project.id))
+  return c.body(null, 204)
 })

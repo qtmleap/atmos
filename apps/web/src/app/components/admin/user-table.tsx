@@ -4,7 +4,12 @@
 import { SearchIcon } from 'lucide-react'
 import type { Role, UserWithEmail } from '@/shared/types'
 import { ROLES } from '@/shared/types'
-import { isRole, isRoleFilter, type RoleFilter } from '../../hooks/use-admin-users'
+import {
+  isRole,
+  isRoleFilter,
+  type RoleFilter,
+  type RoleUpdateError,
+} from '../../hooks/use-admin-users'
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 import { Input } from '../ui/input'
 import { NativeSelect, NativeSelectOption } from '../ui/native-select'
@@ -74,10 +79,18 @@ export interface UserTableProps {
   /** Marked 「（自分）」 in the list. */
   currentUserId: string
   updatingUserId: string | null
+  /** A refused role change, shown under that row's select. */
+  roleError: RoleUpdateError | null
   onRoleChange: (userId: string, role: Role) => void
 }
 
-export function UserTable({ users, currentUserId, updatingUserId, onRoleChange }: UserTableProps) {
+export function UserTable({
+  users,
+  currentUserId,
+  updatingUserId,
+  roleError,
+  onRoleChange,
+}: UserTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -88,53 +101,67 @@ export function UserTable({ users, currentUserId, updatingUserId, onRoleChange }
         </TableRow>
       </TableHeader>
       <TableBody>
-        {users.map((user) => (
-          <TableRow key={user.id}>
-            <TableCell className="py-[5px]">
-              <div className="flex items-center gap-3">
-                <Avatar aria-hidden="true">
-                  <AvatarImage
-                    src={user.avatar_url === null ? undefined : user.avatar_url}
-                    alt=""
-                  />
-                  <AvatarFallback>{user.display_name.slice(0, 1)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p>
-                    {user.display_name}
-                    {user.id === currentUserId ? (
-                      <span className="text-xs text-muted-foreground">（自分）</span>
-                    ) : null}
-                  </p>
-                  <p className="font-mono text-xs text-muted-foreground">@{user.handle}</p>
+        {users.map((user) => {
+          const error = roleError?.userId === user.id ? roleError.message : null
+          const errorId = `role-error-${user.id}`
+          return (
+            <TableRow key={user.id}>
+              <TableCell className="py-[5px]">
+                <div className="flex items-center gap-3">
+                  <Avatar aria-hidden="true">
+                    <AvatarImage
+                      src={user.avatar_url === null ? undefined : user.avatar_url}
+                      alt=""
+                    />
+                    <AvatarFallback>{user.display_name.slice(0, 1)}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p>
+                      {user.display_name}
+                      {user.id === currentUserId ? (
+                        <span className="text-xs text-muted-foreground">（自分）</span>
+                      ) : null}
+                    </p>
+                    <p className="font-mono text-xs text-muted-foreground">@{user.handle}</p>
+                  </div>
                 </div>
-              </div>
-            </TableCell>
-            <TableCell className="py-[5px] text-xs">{user.cf_access_email}</TableCell>
-            <TableCell className="py-[5px]">
-              <Select
-                value={user.role}
-                disabled={updatingUserId === user.id}
-                onValueChange={(value) => {
-                  if (isRole(value)) {
-                    onRoleChange(user.id, value)
-                  }
-                }}
-              >
-                <SelectTrigger className="w-[140px]" aria-label={`${user.display_name}のロール`}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLES.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {ROLE_NAMES[role]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </TableCell>
-          </TableRow>
-        ))}
+              </TableCell>
+              <TableCell className="py-[5px] text-xs">{user.cf_access_email}</TableCell>
+              <TableCell className="py-[5px]">
+                <Select
+                  value={user.role}
+                  disabled={updatingUserId === user.id}
+                  onValueChange={(value) => {
+                    if (isRole(value)) {
+                      onRoleChange(user.id, value)
+                    }
+                  }}
+                >
+                  <SelectTrigger
+                    className="w-[140px]"
+                    aria-label={`${user.display_name}のロール`}
+                    aria-invalid={error !== null ? true : undefined}
+                    aria-describedby={error !== null ? errorId : undefined}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLES.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {ROLE_NAMES[role]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {error !== null ? (
+                  <p id={errorId} role="alert" className="text-xs text-destructive">
+                    {error}
+                  </p>
+                ) : null}
+              </TableCell>
+            </TableRow>
+          )
+        })}
       </TableBody>
     </Table>
   )

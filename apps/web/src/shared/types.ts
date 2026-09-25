@@ -15,6 +15,7 @@ import type { z } from 'zod'
 import type {
   accessTokenCreatedSchema,
   accessTokenSchema,
+  accessTokenStatusSchema,
   adminCreateUserRequestSchema,
   adminUpdateUserRequestSchema,
   createJobRequestSchema,
@@ -43,7 +44,9 @@ import type {
   setupResponseSchema,
   setupStatusSchema,
   updateAvatarResponseSchema,
+  updateJobRequestSchema,
   updateProfileRequestSchema,
+  updateProjectRequestSchema,
   uploadMediaFieldsSchema,
   userSchema,
   userWithEmailSchema,
@@ -139,6 +142,9 @@ export type AccessToken = z.output<typeof accessTokenSchema>
 /** Only the response right after issuing carries the plaintext token. */
 export type AccessTokenCreated = z.output<typeof accessTokenCreatedSchema>
 
+/** `GET /api/settings/tokens`: `active` is null when the user has no current token. */
+export type AccessTokenStatus = z.output<typeof accessTokenStatusSchema>
+
 // ---------------------------------------------------------------------------
 // §2 Setup — GET /api/setup, POST /api/setup
 // ---------------------------------------------------------------------------
@@ -174,6 +180,7 @@ export type AdminUpdateUserRequest = z.input<typeof adminUpdateUserRequestSchema
 // §5 Settings
 // PATCH  /api/settings/profile  UpdateProfileRequest -> UserWithEmail
 // PUT    /api/settings/avatar   multipart `file` -> UpdateAvatarResponse
+// GET    /api/settings/tokens   -> AccessTokenStatus
 // POST   /api/settings/tokens   -> 201 AccessTokenCreated
 // DELETE /api/settings/tokens   -> 204
 // ---------------------------------------------------------------------------
@@ -191,20 +198,27 @@ export const AVATAR_MAX_BYTES = 2 * 1024 * 1024
 
 // ---------------------------------------------------------------------------
 // §6 Projects
-// GET  /api/projects              PaginationQuery -> Page<Project>
-// GET  /api/projects/:project_id  -> Project
-// POST /api/projects              CreateProjectRequest -> 200 Project (existing) | 201 Project (created)
+// GET    /api/projects              PaginationQuery -> Page<Project>
+// GET    /api/projects/:project_id  -> Project
+// POST   /api/projects              CreateProjectRequest -> 200 Project (existing) | 201 Project (created)
+// PATCH  /api/projects/:project_id  UpdateProjectRequest -> Project
+// DELETE /api/projects/:project_id  -> 204
 // ---------------------------------------------------------------------------
 
 /** `visibility` defaults to "private". */
 export type CreateProjectRequest = z.input<typeof createProjectRequestSchema>
 
+/** At least one of `name` / `visibility` is required. */
+export type UpdateProjectRequest = z.input<typeof updateProjectRequestSchema>
+
 // ---------------------------------------------------------------------------
 // §7 Jobs
-// POST /api/projects/:project_id/jobs                 CreateJobRequest -> 201 Job
-// GET  /api/projects/:project_id/jobs                 ListJobsQuery -> Page<Job>
-// GET  /api/projects/:project_id/jobs/:job_id         -> Job
-// POST /api/projects/:project_id/jobs/:job_id/finish  FinishJobRequest -> Job
+// POST   /api/projects/:project_id/jobs                 CreateJobRequest -> 201 Job
+// GET    /api/projects/:project_id/jobs                 ListJobsQuery -> Page<Job>
+// GET    /api/projects/:project_id/jobs/:job_id         -> Job
+// PATCH  /api/projects/:project_id/jobs/:job_id         UpdateJobRequest -> Job
+// DELETE /api/projects/:project_id/jobs/:job_id         -> 204
+// POST   /api/projects/:project_id/jobs/:job_id/finish  FinishJobRequest -> Job
 // ---------------------------------------------------------------------------
 
 export type CreateJobRequest = z.input<typeof createJobRequestSchema>
@@ -212,6 +226,9 @@ export type CreateJobRequest = z.input<typeof createJobRequestSchema>
 export type ListJobsQuery = z.input<typeof listJobsQuerySchema>
 
 export type FinishJobRequest = z.input<typeof finishJobRequestSchema>
+
+/** `name: null` clears it. */
+export type UpdateJobRequest = z.input<typeof updateJobRequestSchema>
 
 // ---------------------------------------------------------------------------
 // §8 Metrics
@@ -243,7 +260,7 @@ export const MEDIA_CONTENT_TYPES = {
   image: ['image/png', 'image/jpeg', 'image/webp'],
   audio: ['audio/wav', 'audio/mpeg'],
 } as const satisfies Record<MediaKind, readonly string[]>
-export const MEDIA_MAX_BYTES = 25 * 1024 * 1024
+export const MEDIA_MAX_BYTES = 2048 * 1024
 
 export type ListMediaQuery = z.input<typeof listMediaQuerySchema>
 

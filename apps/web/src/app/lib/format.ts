@@ -78,6 +78,14 @@ export const VISIBILITY_LABELS: Record<Visibility, string> = {
   private: '非公開',
 }
 
+/** One-line explanation of each tier, as designs/pages/projects-new.html and the
+ *  "公開範囲について" popover of designs/components/overlays.html word it. */
+export const VISIBILITY_DESCRIPTIONS: Record<Visibility, string> = {
+  public: 'ログインしていない人も、ジョブやメトリクスを閲覧できます。',
+  internal: 'ログインしているメンバーなら誰でも閲覧できます。',
+  private: '所有者と管理者だけが閲覧できます。',
+}
+
 /** A job's display name; unnamed jobs show the head of their id. */
 export const jobDisplayName = (job: { id: string; name: string | null }): string =>
   job.name === null || job.name === '' ? `名前なし ${job.id.slice(0, 8)}` : job.name

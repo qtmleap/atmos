@@ -1,9 +1,11 @@
 import { Link } from '@tanstack/react-router'
+import type * as React from 'react'
 import type { Job, ProjectOwner } from '@/shared/types'
 import type { LiveConnection } from '../../hooks/use-job-live'
 import type { LinkedProject } from '../../hooks/use-job-project'
 import { describeJob } from '../../lib/config'
 import { formatDuration, jobDisplayName, STATUS_LABELS } from '../../lib/format'
+import { ENDED_NOTES } from '../../lib/job-phase'
 import { Status } from '../ui/status'
 import { formatUtcClock, formatUtcDateTime } from './format-utc'
 import { ConnectionIndicator } from './live-indicator'
@@ -18,31 +20,48 @@ export interface JobHeaderProps {
   now: string
   /** When the newest metric or log line was received. */
   lastReceivedAt: string | null
+  /** The "…" menu after the update state, for those who can manage the project. */
+  actions?: React.ReactNode
 }
 
-/** Right side of the title row: the live state, or when updates stopped. */
+/** "最終受信 09:42:18 UTC", or a dash before anything has arrived. */
+function LastReceived({ at }: { at: string | null }) {
+  return (
+    <span className="text-xs text-muted-foreground">
+      最終受信 {at === null ? '—' : formatUtcClock(at)}
+    </span>
+  )
+}
+
+/** Right side of the title row: the live state, the final result, or when updates stopped. */
 function UpdateState({
   job,
   connection,
   lastReceivedAt,
 }: Pick<JobHeaderProps, 'job' | 'connection' | 'lastReceivedAt'>) {
-  if (job.status === 'running') {
-    return (
-      <div className="flex items-center gap-3">
-        <ConnectionIndicator connection={connection} />
-        {lastReceivedAt === null ? null : (
-          <span className="text-xs text-muted-foreground">
-            最終受信 {formatUtcClock(lastReceivedAt)}
-          </span>
-        )}
-      </div>
-    )
+  switch (job.status) {
+    case 'running':
+      return (
+        <div className="flex items-center gap-3">
+          <ConnectionIndicator connection={connection} />
+          <LastReceived at={lastReceivedAt} />
+        </div>
+      )
+    case 'finished':
+      return (
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">{ENDED_NOTES.finished}</span>
+          <LastReceived at={lastReceivedAt} />
+        </div>
+      )
+    case 'failed':
+      return (
+        <span className="text-xs text-muted-foreground">
+          {ENDED_NOTES.failed}
+          {job.finished_at === null ? '' : ` · ${formatUtcClock(job.finished_at)}`}
+        </span>
+      )
   }
-  return (
-    <span className="text-xs text-muted-foreground">
-      更新終了{job.finished_at === null ? '' : ` · ${formatUtcClock(job.finished_at)}`}
-    </span>
-  )
 }
 
 /** Breadcrumb, title with status, update state, and the start line. Ruled below. */
@@ -54,6 +73,7 @@ export function JobHeader({
   connection,
   now,
   lastReceivedAt,
+  actions,
 }: JobHeaderProps) {
   const running = job.status === 'running'
   const description = describeJob(job.config)
@@ -93,12 +113,20 @@ export function JobHeader({
             <h1 className="text-2xl leading-8">{jobDisplayName(job)}</h1>
             <Status status={job.status}>{STATUS_LABELS[job.status]}</Status>
           </div>
-          <UpdateState job={job} connection={connection} lastReceivedAt={lastReceivedAt} />
+          <div className="flex items-center gap-3">
+            <UpdateState job={job} connection={connection} lastReceivedAt={lastReceivedAt} />
+            {actions}
+          </div>
         </div>
         <div className="flex items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
             {creator === null ? '開始' : `${creator.display_name} が開始`} ·{' '}
             <time dateTime={job.started_at}>{formatUtcDateTime(job.started_at)}</time> ·{' '}
+            {job.status === 'finished' && job.finished_at !== null ? (
+              <>
+                終了 <time dateTime={job.finished_at}>{formatUtcDateTime(job.finished_at)}</time> ·{' '}
+              </>
+            ) : null}
             {running ? '経過' : '所要時間'}{' '}
             {formatDuration(job.started_at, job.finished_at, elapsedUntil)}
           </p>

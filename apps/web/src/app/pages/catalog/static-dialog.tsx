@@ -12,7 +12,8 @@ export interface StaticDialogProps {
   description: string
   closeLabel: string
   footer: React.ReactNode
-  children: React.ReactNode
+  children?: React.ReactNode
+  role?: 'dialog' | 'alertdialog'
 }
 
 export function StaticDialog({
@@ -22,14 +23,15 @@ export function StaticDialog({
   closeLabel,
   footer,
   children,
+  role = 'dialog',
 }: StaticDialogProps) {
-  return (
-    <div
-      role="dialog"
-      aria-labelledby={`${id}-title`}
-      aria-describedby={`${id}-description`}
-      className={cn(dialogStyles.content, 'relative')}
-    >
+  const labels = {
+    'aria-labelledby': `${id}-title`,
+    'aria-describedby': `${id}-description`,
+    className: cn(dialogStyles.content, 'relative'),
+  }
+  const body = (
+    <>
       <Button variant="ghost" size="icon" aria-label={closeLabel} className={dialogStyles.close}>
         <XIcon />
       </Button>
@@ -39,8 +41,19 @@ export function StaticDialog({
       <p id={`${id}-description`} className={dialogStyles.description}>
         {description}
       </p>
-      <div className={cn(dialogStyles.body, 'grid gap-4')}>{children}</div>
+      {children === undefined ? null : (
+        <div className={cn(dialogStyles.body, 'grid gap-4')}>{children}</div>
+      )}
       <div className={dialogStyles.footer}>{footer}</div>
+    </>
+  )
+  return role === 'alertdialog' ? (
+    <div role="alertdialog" {...labels}>
+      {body}
+    </div>
+  ) : (
+    <div role="dialog" {...labels}>
+      {body}
     </div>
   )
 }
