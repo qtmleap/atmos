@@ -1,7 +1,7 @@
 // docs/SPEC.md §3 — Admin: user list/create/role-change, all Access + admin.
 import { count, desc, eq, or } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { createDb, users } from '../../db/schema'
+import { users } from '#schema'
 import { adminCreateUserRequestSchema, adminUpdateUserRequestSchema } from '../../shared/schemas'
 import { requireAccessUser, requireAdmin } from '../lib/auth'
 import { conflict, notFound, readJson } from '../lib/errors'
@@ -14,13 +14,14 @@ import {
   toPage,
 } from '../lib/pagination'
 import { toUserWithEmail } from '../lib/serialize'
+import { type AppEnv, getPlatform } from '../platform/context'
 
-export const adminRoutes = new Hono<{ Bindings: CloudflareBindings }>()
+export const adminRoutes = new Hono<AppEnv>()
 
 adminRoutes.get('/admin/users', async (c) => {
-  requireAdmin(await requireAccessUser(c.env, c.req.raw))
+  requireAdmin(await requireAccessUser(getPlatform(c), c.req.raw))
   const { limit, cursor } = parsePagination(c.req.query())
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
   const rows = await db
     .select()
     .from(users)
@@ -37,9 +38,9 @@ adminRoutes.get('/admin/users', async (c) => {
 })
 
 adminRoutes.post('/admin/users', async (c) => {
-  requireAdmin(await requireAccessUser(c.env, c.req.raw))
+  requireAdmin(await requireAccessUser(getPlatform(c), c.req.raw))
   const body = await readJson(c.req.raw, adminCreateUserRequestSchema)
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
 
   const existing = await db.query.users.findFirst({
     where: or(eq(users.handle, body.handle), eq(users.cfAccessEmail, body.cf_access_email)),
@@ -62,9 +63,9 @@ adminRoutes.post('/admin/users', async (c) => {
 })
 
 adminRoutes.patch('/admin/users/:user_id', async (c) => {
-  requireAdmin(await requireAccessUser(c.env, c.req.raw))
+  requireAdmin(await requireAccessUser(getPlatform(c), c.req.raw))
   const body = await readJson(c.req.raw, adminUpdateUserRequestSchema)
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
 
   const target = await db.query.users.findFirst({
     where: eq(users.id, c.req.param('user_id')),
