@@ -144,6 +144,26 @@ screens:
         versions:
           astra: {type: html, path: designs/pages/project-jobs-compare-drawer.html}
         actual: {type: url, url: "http://localhost:12155/projects/prj_vits?view=compare&drawer=jobs"}
+  - id: page-project-jobs-compare-unselected
+    name: 未選択
+    category: ページ/ジョブ/比較
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/project-jobs-compare-unselected.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits?view=compare&jobs="}
+  - id: page-project-jobs-compare-no-metrics
+    name: メトリクスなし
+    category: ページ/ジョブ/比較
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/project-jobs-compare-no-metrics.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits?view=compare&jobs=job_8a21f6c3,job_7b32e5d4&scenario=no-metrics"}
   - id: page-job-detail
     name: 実行中
     category: ページ/ジョブ/詳細

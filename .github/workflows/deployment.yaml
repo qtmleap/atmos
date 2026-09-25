@@ -52,9 +52,29 @@ jobs:
         run: bun run cf-typegen
 
       - name: Build
-        run: bun run build
+        # Vite only warns when a CSS url() does not resolve, and the url then
+        # falls through to index.html at runtime (every font did, once). Fail
+        # the deploy instead.
+        run: |
+          set -o pipefail
+          bun run build 2>&1 | tee build.log
+          if grep -q "didn't resolve at build time" build.log; then
+            echo "::error::CSS url() left unresolved by the build"
+            exit 1
+          fi
         env:
           CLOUDFLARE_ENV: ${{ env.ENVIRONMENT }}
+
+      # Before the deploy, so new code never runs against a schema it does not
+      # expect. A failed migration stops the deploy.
+      - name: Apply D1 migrations
+        uses: cloudflare/wrangler-action@v4
+        with:
+          wranglerVersion: latest
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/web
+          command: d1 migrations apply DB --remote --env ${{ env.ENVIRONMENT }}
 
       - name: Wrangler deploy
         uses: cloudflare/wrangler-action@v4
