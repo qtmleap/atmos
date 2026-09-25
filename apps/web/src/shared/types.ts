@@ -213,7 +213,7 @@ export type UpdateProjectRequest = z.input<typeof updateProjectRequestSchema>
 
 // ---------------------------------------------------------------------------
 // §7 Jobs
-// POST   /api/projects/:project_id/jobs                 CreateJobRequest -> 201 Job
+// POST   /api/projects/:project_id/jobs                 CreateJobRequest -> 200 Job (resumed) | 201 Job (created)
 // GET    /api/projects/:project_id/jobs                 ListJobsQuery -> Page<Job>
 // GET    /api/projects/:project_id/jobs/:job_id         -> Job
 // PATCH  /api/projects/:project_id/jobs/:job_id         UpdateJobRequest -> Job
@@ -260,7 +260,7 @@ export const MEDIA_CONTENT_TYPES = {
   image: ['image/png', 'image/jpeg', 'image/webp'],
   audio: ['audio/wav', 'audio/mpeg'],
 } as const satisfies Record<MediaKind, readonly string[]>
-export const MEDIA_MAX_BYTES = 25 * 1024 * 1024
+export const MEDIA_MAX_BYTES = 2048 * 1024
 
 export type ListMediaQuery = z.input<typeof listMediaQuerySchema>
 

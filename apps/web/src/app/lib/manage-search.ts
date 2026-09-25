@@ -7,7 +7,14 @@
 //   ?delete=1   the delete confirmation (either page)
 // Like ?new=1 (project-search.ts) the value is the number 1, since the router
 // runs query values through JSON.parse.
+//
+// The job page's own chart (lib/job-metric-view.ts) shares the comparison
+// chart's controls, so `jobSearchSchema` also carries `chartViewSearchShape`
+// (chart-view-search.ts): ?run=, ?smooth=, ?logx=/?logy=, ?size=, ?chart=
+// (documented in full at the top of job-filter.ts, whose `jobsSearchSchema`
+// carries the same shape).
 import { z } from 'zod'
+import { chartViewSearchShape } from './chart-view-search'
 
 const flag = z.literal(1).optional().catch(undefined)
 
@@ -15,7 +22,14 @@ const flag = z.literal(1).optional().catch(undefined)
 export const projectActionsSearchShape = { menu: flag, edit: flag, delete: flag }
 
 /** The search params of /projects/:projectId/jobs/:jobId. */
-export const jobSearchSchema = z.object({ menu: flag, rename: flag, delete: flag })
+export const jobSearchSchema = z.object({
+  menu: flag,
+  rename: flag,
+  delete: flag,
+  /** The settings sheet (components/job/job-settings-sheet.tsx). */
+  settings: flag,
+  ...chartViewSearchShape,
+})
 
 export type JobSearch = z.infer<typeof jobSearchSchema>
 

@@ -10,7 +10,7 @@ import { Button } from './button'
  * apart from the dimmed page.
  */
 const dialogStyles = {
-  overlay: 'bg-black/50',
+  overlay: 'bg-overlay',
   content: 'w-full max-w-lg rounded-lg border bg-background p-6 text-foreground',
   close: 'absolute top-3 right-3 text-muted-foreground',
   title: 'pr-6 text-lg leading-6 font-semibold',

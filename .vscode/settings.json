@@ -30,6 +30,10 @@
     "**/.ruff_cache": true,
     "**/dist": true,
     "**/.wrangler": true,
+    "**/.tanstack": true,
+    "**/.intlayer": true,
+    "**/.vite": true,
+    "**/*.tsbuildinfo": true,
     "**/.cache": true,
     "**/coverage": true
   },
@@ -38,7 +42,10 @@
     "**/node_modules/**": true,
     "**/.venv/**": true,
     "**/dist/**": true,
-    "**/.wrangler/**": true
+    "**/.wrangler/**": true,
+    "**/.tanstack/**": true,
+    "**/.intlayer/**": true,
+    "**/.vite/**": true
   },
   "search.exclude": {
     "**/node_modules": true,

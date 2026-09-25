@@ -1,7 +1,7 @@
 // docs/SPEC.md §4 — Users: directory, profile, their projects, avatar, `/me`.
 import { and, desc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { createDb, projects, users } from '../../db/schema'
+import { projects, users } from '#schema'
 import { projectVisibilityCondition, requireAccessUser, resolveViewer } from '../lib/auth'
 import { notFound } from '../lib/errors'
 import {
@@ -12,13 +12,14 @@ import {
   toPage,
 } from '../lib/pagination'
 import { toProject, toUser, toUserWithEmail } from '../lib/serialize'
+import { type AppEnv, getPlatform } from '../platform/context'
 
-export const usersRoutes = new Hono<{ Bindings: CloudflareBindings }>()
+export const usersRoutes = new Hono<AppEnv>()
 
 usersRoutes.get('/users', async (c) => {
-  await requireAccessUser(c.env, c.req.raw)
+  await requireAccessUser(getPlatform(c), c.req.raw)
   const { limit, cursor } = parsePagination(c.req.query())
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
   const rows = await db
     .select()
     .from(users)
@@ -33,7 +34,7 @@ usersRoutes.get('/users', async (c) => {
 })
 
 usersRoutes.get('/users/:handle', async (c) => {
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
   const target = await db.query.users.findFirst({
     where: eq(users.handle, c.req.param('handle')),
   })
@@ -44,7 +45,7 @@ usersRoutes.get('/users/:handle', async (c) => {
 })
 
 usersRoutes.get('/users/:handle/projects', async (c) => {
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
   const owner = await db.query.users.findFirst({
     where: eq(users.handle, c.req.param('handle')),
   })
@@ -52,7 +53,7 @@ usersRoutes.get('/users/:handle/projects', async (c) => {
     throw notFound('user not found')
   }
 
-  const viewer = await resolveViewer(c.env, c.req.raw)
+  const viewer = await resolveViewer(getPlatform(c), c.req.raw)
   const { limit, cursor } = parsePagination(c.req.query())
 
   const rows = await db
@@ -81,26 +82,25 @@ usersRoutes.get('/users/:handle/projects', async (c) => {
 })
 
 usersRoutes.get('/users/:handle/avatar', async (c) => {
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
   const target = await db.query.users.findFirst({
     where: eq(users.handle, c.req.param('handle')),
   })
   if (target === undefined || target.avatarKey === null) {
     throw notFound('avatar not set')
   }
-  const object = await c.env.BUCKET.get(target.avatarKey)
+  const object = await getPlatform(c).storage.get(target.avatarKey)
   if (object === null) {
     throw notFound('avatar not set')
   }
-  const contentType = object.httpMetadata?.contentType
   return new Response(object.body, {
     headers: {
-      'Content-Type': contentType === undefined ? 'application/octet-stream' : contentType,
+      'Content-Type': object.contentType === null ? 'application/octet-stream' : object.contentType,
     },
   })
 })
 
 usersRoutes.get('/me', async (c) => {
-  const user = await requireAccessUser(c.env, c.req.raw)
+  const user = await requireAccessUser(getPlatform(c), c.req.raw)
   return c.json(toUserWithEmail(user))
 })

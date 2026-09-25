@@ -16,8 +16,10 @@
 // left silent, so a running job shows as connected instead of reconnecting.
 //
 // Switching:
-//   - On by default. `ATMOS_DEV_API=real bun run dev` turns it off and lets
-//     /api reach the real Worker again.
+//   - On by default. `ATMOS_DEV_API=real` turns it off and lets /api reach
+//     the real Worker again. Set it in apps/web/.env.local (or .env, both
+//     git-ignored) or on the command line (`ATMOS_DEV_API=real bun run dev`);
+//     the command line wins. Restart the dev server after changing it.
 //   - States: a page navigation (Accept: text/html) with `?scenario=<name>`
 //     stores the name in the `atmos-fixture-scenario` cookie; a navigation
 //     without it clears the cookie. Handlers branch on that cookie. Used
@@ -28,7 +30,7 @@
 import { createHash } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Duplex } from 'node:stream'
-import type { Plugin } from 'vite'
+import { loadEnv, type Plugin } from 'vite'
 import { handleFixtureRequest, matchPath } from './index'
 import { isLiveJob } from './job-detail'
 
@@ -142,11 +144,16 @@ const acceptSilentSocket = (req: IncomingMessage, socket: Duplex): void => {
 }
 
 export default function atmosDevFixtures(): Plugin {
-  const enabled = process.env.ATMOS_DEV_API !== 'real'
+  let enabled = true
   return {
     name: 'atmos-dev-fixtures',
     apply: 'serve',
     enforce: 'pre',
+    configResolved(config) {
+      // loadEnv gives the shell's value precedence over the .env files.
+      enabled =
+        loadEnv(config.mode, config.envDir || config.root, 'ATMOS_').ATMOS_DEV_API !== 'real'
+    },
     configureServer(server) {
       if (!enabled) {
         server.config.logger.info('[atmos-dev-fixtures] off (ATMOS_DEV_API=real)')

@@ -1,15 +1,50 @@
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, mock, test } from 'bun:test'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ListFooter } from '../../src/app/components/common/list-footer'
 import { UserMenu } from '../../src/app/components/layout/user-menu'
+import { validateCreateProjectForm } from '../../src/app/hooks/use-create-project'
+import { forgetCachedProject } from '../../src/app/hooks/use-project'
 import { installFetch, restoreFetch } from './fetch-stub'
 import { JOB_ID, job, logLine, metric, PROJECT_ID, project } from './fixtures'
+import { primeCurrentUser } from './prime-current-user'
 import { renderInRouter, renderRoute } from './render-route'
+import { userWithEmail } from './user-fixtures'
+
+const realFetch = globalThis.fetch
 
 afterEach(() => {
   cleanup()
   restoreFetch()
+  // useProject caches by id at module scope so the pages under
+  // /projects/:projectId stay put between navigations; without this every
+  // test after the first to touch PROJECT_ID would see its cached project.
+  forgetCachedProject(PROJECT_ID)
+})
+
+describe('validateCreateProjectForm', () => {
+  test('accepts a non-empty name', () => {
+    expect(
+      validateCreateProjectForm({
+        name: 'voice-synthesis-v5',
+        visibility: 'private',
+      }),
+    ).toEqual({
+      success: true,
+      data: { name: 'voice-synthesis-v5', visibility: 'private' },
+    })
+  })
+
+  test('rejects an empty name', () => {
+    const result = validateCreateProjectForm({
+      name: '',
+      visibility: 'private',
+    })
+    expect(result).toEqual({
+      success: false,
+      message: 'プロジェクト名を入力してください',
+    })
+  })
 })
 
 describe('HomePage', () => {
@@ -17,7 +52,10 @@ describe('HomePage', () => {
     const requested = installFetch({
       '/api/projects': (url) =>
         url.searchParams.get('cursor') === 'c1'
-          ? { items: [project({ id: 'p2', name: '二つ目' })], next_cursor: null }
+          ? {
+              items: [project({ id: 'p2', name: '二つ目' })],
+              next_cursor: null,
+            }
           : { items: [project()], next_cursor: 'c1' },
     })
     await renderRoute('/')
@@ -47,6 +85,7 @@ describe('HomePage', () => {
 
   test('narrows the loaded rows by the search box and the selects', async () => {
     installFetch({
+      '/api/me': () => userWithEmail(),
       '/api/projects': () => ({
         items: [
           project({ id: 'p1', name: '音声合成の実験', visibility: 'public' }),
@@ -60,6 +99,8 @@ describe('HomePage', () => {
         next_cursor: null,
       }),
     })
+    // Signed in: the visibility select needs to offer 非公開 (private) below.
+    await primeCurrentUser()
     await renderRoute('/')
     expect(await screen.findByRole('link', { name: '画像生成の実験' })).toBeInTheDocument()
 
@@ -77,9 +118,123 @@ describe('HomePage', () => {
   })
 
   test('shows the empty message', async () => {
-    installFetch({ '/api/projects': () => ({ items: [], next_cursor: null }) })
+    installFetch({
+      '/api/me': () => userWithEmail(),
+      '/api/projects': () => ({ items: [], next_cursor: null }),
+    })
+    await primeCurrentUser()
     await renderRoute('/')
-    expect(await screen.findByText(/閲覧できるプロジェクトはまだありません/)).toBeInTheDocument()
+    expect(await screen.findByText('プロジェクトはまだありません')).toBeInTheDocument()
+  })
+
+  test('signed out, the visibility select only offers 公開', async () => {
+    installFetch({
+      '/api/projects': () => ({ items: [project()], next_cursor: null }),
+    })
+    await primeCurrentUser()
+    await renderRoute('/')
+    await screen.findByRole('link', { name: '音声合成の実験' })
+    const select = screen.getByRole('combobox', { name: '公開範囲' })
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['すべての公開範囲', '公開'])
+  })
+
+  test('signed in, the visibility select offers all three tiers in order', async () => {
+    installFetch({
+      '/api/me': () => userWithEmail(),
+      '/api/projects': () => ({ items: [project()], next_cursor: null }),
+    })
+    await primeCurrentUser()
+    await renderRoute('/')
+    await screen.findByRole('link', { name: '音声合成の実験' })
+    const select = screen.getByRole('combobox', { name: '公開範囲' })
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['すべての公開範囲', '公開', 'メンバー限定', '非公開'])
+  })
+
+  test('only a signed-in user sees the 新規プロジェクト button', async () => {
+    installFetch({
+      '/api/projects': () => ({ items: [project()], next_cursor: null }),
+    })
+    await primeCurrentUser()
+    await renderRoute('/')
+    await screen.findByRole('link', { name: '音声合成の実験' })
+    expect(screen.queryByRole('button', { name: '新規プロジェクト' })).not.toBeInTheDocument()
+  })
+
+  test('?new=1 opens the create-project dialog, and creating navigates to the new project', async () => {
+    const created = project({
+      id: 'p9',
+      name: 'new-exp',
+      visibility: 'private',
+    })
+    const calls: string[] = []
+    installFetch({
+      '/api/me': () => userWithEmail(),
+      '/api/projects': () => {
+        calls.push('projects')
+        return calls.length === 1 ? { items: [project()], next_cursor: null } : created
+      },
+      [`/api/projects/${created.id}`]: () => created,
+      [`/api/projects/${created.id}/jobs`]: () => ({
+        items: [],
+        next_cursor: null,
+      }),
+    })
+    await primeCurrentUser()
+    await renderRoute('/?new=1')
+
+    const dialog = await screen.findByRole('dialog', {
+      name: '新規プロジェクト',
+    })
+    await userEvent.type(within(dialog).getByLabelText(/プロジェクト名/), 'new-exp')
+    await userEvent.click(within(dialog).getByRole('button', { name: '作成する' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'new-exp' })).toBeInTheDocument()
+  })
+
+  test('a duplicate project name shows the conflict message under the field', async () => {
+    const fake = mock(async (input: unknown, init?: RequestInit) => {
+      const url = new URL(String(input), 'http://localhost/')
+      if (url.pathname === '/api/me') {
+        return Response.json(userWithEmail())
+      }
+      if (url.pathname === '/api/projects') {
+        if (init?.method === 'POST') {
+          return Response.json(
+            {
+              error: {
+                code: 'conflict',
+                message: 'a project with this name already exists',
+              },
+            },
+            { status: 409 },
+          )
+        }
+        return Response.json({ items: [project()], next_cursor: null })
+      }
+      return Response.json({ error: { code: 'not_found', message: 'not found' } }, { status: 404 })
+    })
+    globalThis.fetch = Object.assign(fake, {
+      preconnect: realFetch.preconnect,
+    })
+    await primeCurrentUser()
+    await renderRoute('/?new=1')
+
+    const dialog = await screen.findByRole('dialog', {
+      name: '新規プロジェクト',
+    })
+    await userEvent.type(within(dialog).getByLabelText(/プロジェクト名/), '音声合成の実験')
+    await userEvent.click(within(dialog).getByRole('button', { name: '作成する' }))
+
+    expect(await screen.findByText('同じ名前のプロジェクトがすでにあります')).toBeInTheDocument()
+    expect(dialog).toBeInTheDocument()
   })
 })
 
@@ -149,7 +304,10 @@ describe('ProjectJobsPage', () => {
     expect(within(drawer).getByRole('checkbox', { name: 'older を比較に含める' })).toBeChecked()
     // The page behind the drawer is aria-hidden while it is open.
     const chart = (key: string) =>
-      screen.queryByRole('img', { name: `${key} の推移をジョブごとに重ねた折れ線`, hidden: true })
+      screen.queryByRole('img', {
+        name: `${key} の推移をジョブごとに重ねた折れ線`,
+        hidden: true,
+      })
     expect(await screen.findByText(/比較対象 2 \/ 3件/)).toBeInTheDocument()
     await waitFor(() => expect(chart('train/loss')).not.toBeNull())
     expect(chart('val/loss')).not.toBeNull()
@@ -195,7 +353,9 @@ describe('ProjectJobsPage', () => {
     expect(screen.queryByText(/既定は/)).toBeNull()
     for (const name of ['newest', 'middle', 'older']) {
       expect(
-        within(drawer).getByRole('checkbox', { name: `${name} を比較に含める` }),
+        within(drawer).getByRole('checkbox', {
+          name: `${name} を比較に含める`,
+        }),
       ).not.toBeChecked()
     }
   })
@@ -212,39 +372,57 @@ describe('JobDetailPage', () => {
         next_cursor: null,
       }),
       [`${base}/media`]: () => ({ items: [], next_cursor: null }),
-      [`${base}/logs`]: () => ({ items: [logLine(1, 'epoch 1 done')], next_cursor: null }),
+      [`${base}/logs`]: () => ({
+        items: [logLine(1, 'epoch 1 done')],
+        next_cursor: null,
+      }),
     })
     await renderRoute(`/projects/${PROJECT_ID}/jobs/${JOB_ID}`)
     expect(await screen.findByRole('heading', { level: 1, name: 'exp1' })).toBeInTheDocument()
     expect(screen.getByText('完了')).toBeInTheDocument()
-    expect(screen.getByText('更新終了 · 01:02:03 UTC')).toBeInTheDocument()
-    const config = screen.getByRole('table', { name: '学習ハイパーパラメータ' })
-    expect(within(config).getByRole('rowheader', { name: 'optimizer' })).toBeInTheDocument()
-    expect(within(config).getByRole('cell', { name: '{"lr": 0.001}' })).toBeInTheDocument()
+    expect(screen.getAllByText('最終結果').length).toBeGreaterThanOrEqual(1)
     expect(await screen.findByRole('heading', { level: 3, name: 'train/loss' })).toBeInTheDocument()
     // The summary tile and the chart header both show the latest value.
     expect(screen.getAllByText('0.4').length).toBeGreaterThanOrEqual(2)
     // The starter is the project owner; no member list is read for it.
     expect(await screen.findByText(/^Alice が開始 · /)).toBeInTheDocument()
-    expect(screen.getByText(/^実行者\sAlice/)).toBeInTheDocument()
     expect(requested.some((url) => url.startsWith('/api/users'))).toBe(false)
+
+    // The config stays in a sheet until asked for, so the charts get the width.
+    expect(screen.queryByRole('table', { name: '学習ハイパーパラメータ' })).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: '設定' }))
+    const sheet = await screen.findByRole('dialog', { name: '設定' })
+    const config = within(sheet).getByRole('table', { name: '学習ハイパーパラメータ' })
+    expect(within(config).getByRole('rowheader', { name: 'optimizer' })).toBeInTheDocument()
+    expect(within(config).getByRole('cell', { name: '{"lr": 0.001}' })).toBeInTheDocument()
+    const runInfo = within(sheet).getByRole('table', { name: '実行情報' })
+    expect(within(runInfo).getByRole('rowheader', { name: '実行者' })).toBeInTheDocument()
+    expect(within(runInfo).getByRole('cell', { name: 'Alice' })).toBeInTheDocument()
+    await userEvent.click(within(sheet).getByRole('button', { name: '設定を閉じる' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 
     await userEvent.click(screen.getByRole('tab', { name: 'ログ' }))
     const log = await screen.findByRole('log')
     expect(await within(log).findByText('epoch 1 done')).toBeInTheDocument()
   })
 
-  test('explains a missing job', async () => {
+  test('shows the 404 page for a missing job', async () => {
     installFetch({})
     await renderRoute(`/projects/${PROJECT_ID}/jobs/${JOB_ID}`)
-    expect(await screen.findByRole('alert')).toHaveTextContent('見つかりませんでした。')
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'ジョブが見つかりません',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('404')).toBeInTheDocument()
   })
 })
 
 describe('UserMenu', () => {
   test('signed out shows a full page sign-in link', async () => {
     await renderInRouter(<UserMenu user={null} loading={false} />)
-    expect(screen.getByRole('link', { name: 'サインイン' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'ログイン' })).toHaveAttribute(
       'href',
       '/settings/profile',
     )

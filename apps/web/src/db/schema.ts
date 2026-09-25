@@ -16,6 +16,13 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core'
 
+/**
+ * Which schema module `#schema` resolved to. The default is this one (D1 /
+ * SQLite); `--conditions=postgres` picks src/db/pg/schema.ts instead
+ * (package.json "imports").
+ */
+export const DIALECT = 'sqlite'
+
 export const users = sqliteTable(
   'users',
   {

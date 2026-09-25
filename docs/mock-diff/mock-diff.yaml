@@ -14,18 +14,10 @@ screens:
       - id: desktop
         name: Desktop 1440
         viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        colorSchemes: [light, dark]
         versions:
           astra: {type: html, path: designs/components/foundations.html}
         actual: {type: url, url: "http://localhost:12155/catalog/foundations"}
-  - id: component-foundations-dark
-    name: 基礎（ダーク）
-    category: コンポーネント
-    devices:
-      - id: desktop
-        name: Desktop 1440
-        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
-        versions:
-          astra: {type: html, path: designs/components/foundations-dark.html}
   - id: component-controls
     name: 操作部品
     category: コンポーネント
@@ -33,6 +25,7 @@ screens:
       - id: desktop
         name: Desktop 1440
         viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        colorSchemes: [light, dark]
         versions:
           astra: {type: html, path: designs/components/controls.html}
         actual: {type: url, url: "http://localhost:12155/catalog/controls"}
@@ -43,6 +36,7 @@ screens:
       - id: desktop
         name: Desktop 1440
         viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        colorSchemes: [light, dark]
         versions:
           astra: {type: html, path: designs/components/data-display.html}
         actual: {type: url, url: "http://localhost:12155/catalog/data-display"}
@@ -53,6 +47,7 @@ screens:
       - id: desktop
         name: Desktop 1440
         viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        colorSchemes: [light, dark]
         versions:
           astra: {type: html, path: designs/components/navigation.html}
         actual: {type: url, url: "http://localhost:12155/catalog/navigation"}
@@ -63,6 +58,7 @@ screens:
       - id: desktop
         name: Desktop 1440
         viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        colorSchemes: [light, dark]
         versions:
           astra: {type: html, path: designs/components/overlays.html}
         actual: {type: url, url: "http://localhost:12155/catalog/overlays"}
@@ -73,6 +69,7 @@ screens:
       - id: desktop
         name: Desktop 1440
         viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        colorSchemes: [light, dark]
         versions:
           astra: {type: html, path: designs/components/run-widgets.html}
         actual: {type: url, url: "http://localhost:12155/catalog/run-widgets"}
@@ -83,21 +80,13 @@ screens:
       - id: desktop
         name: Desktop 1440
         viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        colorSchemes: [light, dark]
         versions:
           astra: {type: html, path: designs/components/feedback.html}
         actual: {type: url, url: "http://localhost:12155/catalog/feedback"}
-  - id: component-theme-dark
-    name: ダークモード（見本）
-    category: コンポーネント
-    devices:
-      - id: desktop
-        name: Desktop 1440
-        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
-        versions:
-          astra: {type: html, path: designs/components/theme-dark.html}
   - id: page-projects
-    name: プロジェクト一覧
-    category: ページ
+    name: 一覧
+    category: ページ/プロジェクト
     devices:
       - id: desktop
         name: Desktop 1440
@@ -106,8 +95,8 @@ screens:
           astra: {type: html, path: designs/pages/projects.html}
         actual: {type: url, url: "http://localhost:12155/"}
   - id: page-projects-new
-    name: 新規プロジェクト
-    category: ページ
+    name: 新規作成
+    category: ページ/プロジェクト
     devices:
       - id: desktop
         name: Desktop 1440
@@ -116,8 +105,8 @@ screens:
           astra: {type: html, path: designs/pages/projects-new.html}
         actual: {type: url, url: "http://localhost:12155/?new=1"}
   - id: page-project-jobs
-    name: ジョブ一覧
-    category: ページ
+    name: 一覧
+    category: ページ/ジョブ/一覧
     devices:
       - id: desktop
         name: Desktop 1440
@@ -126,8 +115,8 @@ screens:
           astra: {type: html, path: designs/pages/project-jobs.html}
         actual: {type: url, url: "http://localhost:12155/projects/prj_vits"}
   - id: page-project-jobs-compare
-    name: ジョブ一覧（比較つき）
-    category: ページ
+    name: 比較つき
+    category: ページ/ジョブ/比較
     devices:
       - id: desktop
         name: Desktop 1440
@@ -135,9 +124,19 @@ screens:
         versions:
           astra: {type: html, path: designs/pages/project-jobs-compare.html}
         actual: {type: url, url: "http://localhost:12155/projects/prj_vits?view=compare"}
+  - id: page-project-jobs-compare-expanded
+    name: 拡大表示
+    category: ページ/ジョブ/比較
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/project-jobs-compare-expanded.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits?view=compare&chart=train%2Floss"}
   - id: page-project-jobs-compare-drawer
-    name: ジョブ一覧（比較・ジョブを選ぶ）
-    category: ページ
+    name: ジョブを選ぶ
+    category: ページ/ジョブ/比較
     devices:
       - id: desktop
         name: Desktop 1440
@@ -145,9 +144,29 @@ screens:
         versions:
           astra: {type: html, path: designs/pages/project-jobs-compare-drawer.html}
         actual: {type: url, url: "http://localhost:12155/projects/prj_vits?view=compare&drawer=jobs"}
+  - id: page-project-jobs-compare-unselected
+    name: 未選択
+    category: ページ/ジョブ/比較
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/project-jobs-compare-unselected.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits?view=compare&jobs="}
+  - id: page-project-jobs-compare-no-metrics
+    name: メトリクスなし
+    category: ページ/ジョブ/比較
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/project-jobs-compare-no-metrics.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits?view=compare&jobs=job_8a21f6c3,job_7b32e5d4&scenario=no-metrics"}
   - id: page-job-detail
-    name: ジョブ詳細（実行中）
-    category: ページ
+    name: 実行中
+    category: ページ/ジョブ/詳細
     devices:
       - id: desktop
         name: Desktop 1440
@@ -155,9 +174,19 @@ screens:
         versions:
           astra: {type: html, path: designs/pages/job-detail.html}
         actual: {type: url, url: "http://localhost:12155/projects/prj_vits/jobs/job_vits_baseline_042"}
+  - id: page-job-detail-settings
+    name: 設定
+    category: ページ/ジョブ/詳細
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/job-detail-settings.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits/jobs/job_vits_baseline_042?settings=1"}
   - id: page-job-detail-failed
-    name: ジョブ詳細（失敗）
-    category: ページ
+    name: 失敗
+    category: ページ/ジョブ/詳細
     devices:
       - id: desktop
         name: Desktop 1440
@@ -166,8 +195,8 @@ screens:
           astra: {type: html, path: designs/pages/job-detail-failed.html}
         actual: {type: url, url: "http://localhost:12155/projects/prj_vits/jobs/job_vits_baseline_042_failed"}
   - id: page-users
-    name: メンバー一覧
-    category: ページ
+    name: 一覧
+    category: ページ/メンバー
     devices:
       - id: desktop
         name: Desktop 1440
@@ -176,8 +205,8 @@ screens:
           astra: {type: html, path: designs/pages/users.html}
         actual: {type: url, url: "http://localhost:12155/users"}
   - id: page-user-profile
-    name: プロフィール
-    category: ページ
+    name: プロフィール（本人）
+    category: ページ/メンバー
     devices:
       - id: desktop
         name: Desktop 1440
@@ -186,8 +215,8 @@ screens:
           astra: {type: html, path: designs/pages/user-profile.html}
         actual: {type: url, url: "http://localhost:12155/users/misaki_t"}
   - id: page-settings-profile
-    name: プロフィール設定
-    category: ページ
+    name: プロフィール
+    category: ページ/設定
     devices:
       - id: desktop
         name: Desktop 1440
@@ -196,8 +225,8 @@ screens:
           astra: {type: html, path: designs/pages/settings-profile.html}
         actual: {type: url, url: "http://localhost:12155/settings/profile"}
   - id: page-settings-tokens
-    name: アクセストークン（発行直後）
-    category: ページ
+    name: 発行直後
+    category: ページ/設定/アクセストークン
     devices:
       - id: desktop
         name: Desktop 1440
@@ -206,8 +235,8 @@ screens:
           astra: {type: html, path: designs/pages/settings-tokens.html}
         actual: {type: url, url: "http://localhost:12155/settings/tokens?scenario=issued"}
   - id: page-settings-tokens-active
-    name: アクセストークン（発行済み）
-    category: ページ
+    name: 発行済み
+    category: ページ/設定/アクセストークン
     devices:
       - id: desktop
         name: Desktop 1440
@@ -216,8 +245,8 @@ screens:
           astra: {type: html, path: designs/pages/settings-tokens-active.html}
         actual: {type: url, url: "http://localhost:12155/settings/tokens"}
   - id: page-settings-tokens-reissue
-    name: アクセストークン（再発行の確認）
-    category: ページ
+    name: 再発行の確認
+    category: ページ/設定/アクセストークン
     devices:
       - id: desktop
         name: Desktop 1440
@@ -225,29 +254,9 @@ screens:
         versions:
           astra: {type: html, path: designs/pages/settings-tokens-reissue.html}
         actual: {type: url, url: "http://localhost:12155/settings/tokens?dialog=reissue"}
-  - id: page-settings-tokens-none
-    name: アクセストークン（未発行）
-    category: ページ
-    devices:
-      - id: desktop
-        name: Desktop 1440
-        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
-        versions:
-          astra: {type: html, path: designs/pages/settings-tokens-none.html}
-        actual: {type: url, url: "http://localhost:12155/settings/tokens?scenario=none"}
-  - id: page-settings-tokens-revoked
-    name: アクセストークン（失効後）
-    category: ページ
-    devices:
-      - id: desktop
-        name: Desktop 1440
-        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
-        versions:
-          astra: {type: html, path: designs/pages/settings-tokens-revoked.html}
-        actual: {type: url, url: "http://localhost:12155/settings/tokens?scenario=revoked"}
   - id: page-admin
     name: ユーザー管理
-    category: ページ
+    category: ページ/管理
     devices:
       - id: desktop
         name: Desktop 1440
@@ -256,8 +265,8 @@ screens:
           astra: {type: html, path: designs/pages/admin.html}
         actual: {type: url, url: "http://localhost:12155/admin"}
   - id: page-setup
-    name: 初回セットアップ
-    category: ページ
+    name: 初回
+    category: ページ/セットアップ
     devices:
       - id: desktop
         name: Desktop 1440
@@ -267,7 +276,7 @@ screens:
         actual: {type: url, url: "http://localhost:12155/setup"}
   - id: page-setup-closed
     name: セットアップ済み
-    category: ページ
+    category: ページ/セットアップ
     devices:
       - id: desktop
         name: Desktop 1440
@@ -275,6 +284,136 @@ screens:
         versions:
           astra: {type: html, path: designs/pages/setup-closed.html}
         actual: {type: url, url: "http://localhost:12155/setup?scenario=closed"}
+  - id: page-projects-signed-out
+    name: 一覧（未ログイン）
+    category: ページ/プロジェクト
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/projects-signed-out.html}
+        actual: {type: url, url: "http://localhost:12155/?scenario=signed-out"}
+  - id: page-projects-empty
+    name: 一覧（まだ無い）
+    category: ページ/プロジェクト
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/projects-empty.html}
+        actual: {type: url, url: "http://localhost:12155/?scenario=empty"}
+  - id: page-project-jobs-empty
+    name: まだ無い
+    category: ページ/ジョブ/一覧
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/project-jobs-empty.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits?scenario=empty"}
+  - id: page-project-jobs-compare-unselected
+    name: 未選択
+    category: ページ/ジョブ/比較
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/project-jobs-compare-unselected.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits?view=compare&jobs="}
+  - id: page-project-jobs-compare-no-metrics
+    name: メトリクスなし
+    category: ページ/ジョブ/比較
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/project-jobs-compare-no-metrics.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits?view=compare&jobs=job_8a21f6c3,job_7b32e5d4&scenario=no-metrics"}
+  - id: page-job-detail-finished
+    name: 完了
+    category: ページ/ジョブ/詳細
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/job-detail-finished.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits/jobs/job_vits_baseline_042_finished"}
+  - id: page-job-detail-waiting
+    name: 受信待ち
+    category: ページ/ジョブ/詳細
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/job-detail-waiting.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_vits/jobs/job_vits_baseline_042_waiting"}
+  - id: page-user-profile-other
+    name: プロフィール（他のメンバー）
+    category: ページ/メンバー
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/user-profile-other.html}
+        actual: {type: url, url: "http://localhost:12155/users/yuto_s"}
+  - id: page-settings-tokens-none
+    name: 未発行
+    category: ページ/設定/アクセストークン
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/settings-tokens-none.html}
+        actual: {type: url, url: "http://localhost:12155/settings/tokens?scenario=none"}
+  - id: page-settings-tokens-revoked
+    name: 失効後
+    category: ページ/設定/アクセストークン
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/settings-tokens-revoked.html}
+        actual: {type: url, url: "http://localhost:12155/settings/tokens?scenario=revoked"}
+  - id: page-signin-required
+    name: ログインが必要
+    category: ページ/エラー
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/signin-required.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_internal_asr?scenario=signed-out"}
+  - id: page-forbidden
+    name: 閲覧権限なし
+    category: ページ/エラー
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/forbidden.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_private_other"}
+  - id: page-not-found
+    name: 見つからない
+    category: ページ/エラー
+    devices:
+      - id: desktop
+        name: Desktop 1440
+        viewport: {width: 1440, height: 900, deviceScaleFactor: 2}
+        versions:
+          astra: {type: html, path: designs/pages/not-found.html}
+        actual: {type: url, url: "http://localhost:12155/projects/prj_missing"}
   - id: page-project-jobs-menu
     name: 操作メニュー
     category: ページ/ジョブ/一覧

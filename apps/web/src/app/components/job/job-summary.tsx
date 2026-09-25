@@ -27,7 +27,8 @@ const plannedSteps = (config: Record<string, unknown>): number | null =>
 
 /**
  * The four headline numbers under the header: the latest step (over the
- * planned total when the config names one) and three metric values.
+ * planned total when the config names one and a step has arrived) and three
+ * metric values.
  */
 export function JobSummary({ series, config }: JobSummaryProps) {
   const step = latestStep(series)
@@ -39,17 +40,14 @@ export function JobSummary({ series, config }: JobSummaryProps) {
         <dt className="text-xs text-muted-foreground">最終受信ステップ</dt>
         <dd className="mt-1 font-mono text-2xl leading-[30px] tabular-nums">
           {step === null ? '—' : formatStep(step)}
-          {total === null ? null : (
+          {step === null || total === null ? null : (
             <span className="text-xs text-muted-foreground"> / {formatStep(total)}</span>
           )}
         </dd>
       </div>
       {stats.map((stat) => (
         <div key={stat.key} className="border-l pl-7">
-          <dt className="text-xs text-muted-foreground">
-            {stat.label === null ? null : `${stat.label} `}
-            <span className="font-mono">{stat.key}</span>
-          </dt>
+          <dt className="font-mono text-xs text-muted-foreground">{stat.key}</dt>
           <dd className="mt-1 font-mono text-2xl leading-[30px] tabular-nums">
             {stat.value === null ? '—' : formatMetricStat(stat.value)}
           </dd>

@@ -32,9 +32,10 @@
 	"workflows": {
 		"releaseFiles": [
 			".github/workflows/deployment.yaml",
-			".github/workflows/integration.yaml"
+			".github/workflows/integration.yaml",
+			".github/workflows/python-sdk-release.yaml"
 		],
-		"triggerFingerprint": "49d2e54a258858ded87abc5e489f1c22543908732a04c6d0ddaac7acdabcab77"
+		"triggerFingerprint": "5e06dfb86cfda7610b87ecbae1279afb5cfda50d44ab975232e807d8593be588"
 	},
 	"notes": {
 		"mode": "github-generated",

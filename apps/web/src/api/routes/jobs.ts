@@ -1,15 +1,7 @@
 // Jobs endpoints (docs/SPEC.md §7).
 import { and, desc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
-import {
-  createDb,
-  type Db,
-  type JobRow,
-  jobs,
-  type ProjectRow,
-  projects,
-  type UserRow,
-} from '../../db/schema'
+import { type Db, type JobRow, jobs, type ProjectRow, projects, type UserRow } from '#schema'
 import {
   createJobRequestSchema,
   finishJobRequestSchema,
@@ -32,8 +24,9 @@ import { newId, now, toIsoString, toIsoStringOrNull } from '../lib/ids'
 import { notifyLive } from '../lib/live'
 import { deleteJobMedia } from '../lib/media-cleanup'
 import { decodeKeysetCursor, encodeKeysetCursor, keysetCondition, toPage } from '../lib/pagination'
+import { type AppEnv, getPlatform } from '../platform/context'
 
-export const jobsRoutes = new Hono<{ Bindings: CloudflareBindings }>()
+export const jobsRoutes = new Hono<AppEnv>()
 
 const toJob = (job: JobRow): Job => ({
   id: job.id,
@@ -48,7 +41,9 @@ const toJob = (job: JobRow): Job => ({
 
 /** project_id/job_id mismatches are reported as a job 404 (docs/SPEC.md §7). */
 const findProject = async (db: Db, projectId: string): Promise<ProjectRow | null> => {
-  const project = await db.query.projects.findFirst({ where: eq(projects.id, projectId) })
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, projectId),
+  })
   return project === undefined ? null : project
 }
 
@@ -59,21 +54,69 @@ const findScopedJob = async (db: Db, projectId: string, jobId: string): Promise<
   return job === undefined ? null : job
 }
 
+/** Unscoped lookup, used by POST .../jobs to tell "resume in this project" from "id taken elsewhere". */
+const findJobById = async (db: Db, jobId: string): Promise<JobRow | null> => {
+  const job = await db.query.jobs.findFirst({ where: eq(jobs.id, jobId) })
+  return job === undefined ? null : job
+}
+
 // POST /api/projects/:project_id/jobs — Bearer token; only the project owner writes.
+//
+// `id` makes this resumable (wandb's `wandb.init(id=..., resume="allow")`): a
+// caller that lost its process can start a new one with the same `id` and get
+// the same job back instead of a duplicate. Three cases once write access is
+// confirmed:
+//   - no `id`, or an `id` nobody has used yet: create, 201 (unchanged).
+//   - `id` already used by a job in *this* project: reopen it, 200.
+//   - `id` already used by a job in *another* project: 409, ids are global.
 jobsRoutes.post('/:project_id/jobs', async (c) => {
-  const user = await requireBearerUser(c.env, c.req.raw)
-  const db = createDb(c.env.DB)
+  const user = await requireBearerUser(getPlatform(c), c.req.raw)
+  const db = getPlatform(c).db
   const project = await findProject(db, c.req.param('project_id'))
   if (project === null || !canWriteProject(project, user)) {
     throw notFound('project not found')
   }
   const body = await readJson(c.req.raw, createJobRequestSchema)
+
+  const existing = body.id === undefined ? null : await findJobById(db, body.id)
+  if (existing !== null) {
+    if (existing.projectId !== project.id) {
+      throw conflict('this id already belongs to a job in another project')
+    }
+    const wasRunning = existing.status === 'running'
+    const resumed: JobRow = {
+      ...existing,
+      name: body.name === undefined ? existing.name : body.name,
+      config: body.config === undefined ? existing.config : body.config,
+      status: 'running',
+      finishedAt: null,
+    }
+    await db
+      .update(jobs)
+      .set({
+        name: resumed.name,
+        config: resumed.config,
+        status: resumed.status,
+        finishedAt: resumed.finishedAt,
+      })
+      .where(eq(jobs.id, existing.id))
+    if (!wasRunning) {
+      getPlatform(c).waitUntil(
+        notifyLive(getPlatform(c).live, existing.id, {
+          type: 'status',
+          data: { status: 'running', finished_at: null },
+        }),
+      )
+    }
+    return c.json(toJob(resumed), 200)
+  }
+
   const created: JobRow = {
-    id: newId(),
+    id: body.id === undefined ? newId() : body.id,
     projectId: project.id,
     name: body.name === undefined ? null : body.name,
     status: 'running',
-    config: body.config,
+    config: body.config === undefined ? {} : body.config,
     createdBy: user.id,
     startedAt: now(),
     finishedAt: null,
@@ -84,12 +127,12 @@ jobsRoutes.post('/:project_id/jobs', async (c) => {
 
 // GET /api/projects/:project_id/jobs — public unless the project is private.
 jobsRoutes.get('/:project_id/jobs', async (c) => {
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
   const project = await findProject(db, c.req.param('project_id'))
   if (project === null) {
     throw notFound('project not found')
   }
-  const viewer = await resolveViewer(c.env, c.req.raw)
+  const viewer = await resolveViewer(getPlatform(c), c.req.raw)
   assertCanViewProject(project, viewer)
   const query = validate(listJobsQuerySchema, c.req.query())
   const cursorCondition =
@@ -115,12 +158,12 @@ jobsRoutes.get('/:project_id/jobs', async (c) => {
 
 // GET /api/projects/:project_id/jobs/:job_id
 jobsRoutes.get('/:project_id/jobs/:job_id', async (c) => {
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
   const project = await findProject(db, c.req.param('project_id'))
   if (project === null) {
     throw notFound('project not found')
   }
-  const viewer = await resolveViewer(c.env, c.req.raw)
+  const viewer = await resolveViewer(getPlatform(c), c.req.raw)
   assertCanViewProject(project, viewer)
   const job = await findScopedJob(db, project.id, c.req.param('job_id'))
   if (job === null) {
@@ -131,8 +174,8 @@ jobsRoutes.get('/:project_id/jobs/:job_id', async (c) => {
 
 // POST /api/projects/:project_id/jobs/:job_id/finish — Bearer token.
 jobsRoutes.post('/:project_id/jobs/:job_id/finish', async (c) => {
-  const user = await requireBearerUser(c.env, c.req.raw)
-  const db = createDb(c.env.DB)
+  const user = await requireBearerUser(getPlatform(c), c.req.raw)
+  const db = getPlatform(c).db
   const project = await findProject(db, c.req.param('project_id'))
   if (project === null || !canWriteProject(project, user)) {
     throw notFound('project not found')
@@ -148,8 +191,8 @@ jobsRoutes.post('/:project_id/jobs/:job_id/finish', async (c) => {
   const finishedAt = now()
   await db.update(jobs).set({ status: body.status, finishedAt }).where(eq(jobs.id, job.id))
   const updated: JobRow = { ...job, status: body.status, finishedAt }
-  c.executionCtx.waitUntil(
-    notifyLive(c.env, job.id, {
+  getPlatform(c).waitUntil(
+    notifyLive(getPlatform(c).live, job.id, {
       type: 'status',
       data: { status: body.status, finished_at: toIsoString(finishedAt) },
     }),
@@ -189,9 +232,9 @@ const findManageableJob = async (
 jobsRoutes.patch('/:project_id/jobs/:job_id', async (c) => {
   const viaBearer = readBearerToken(c.req.raw) !== null
   const user = viaBearer
-    ? await requireBearerUser(c.env, c.req.raw)
-    : await requireAccessUser(c.env, c.req.raw)
-  const db = createDb(c.env.DB)
+    ? await requireBearerUser(getPlatform(c), c.req.raw)
+    : await requireAccessUser(getPlatform(c), c.req.raw)
+  const db = getPlatform(c).db
   const { job } = await findManageableJob(
     db,
     user,
@@ -210,16 +253,16 @@ jobsRoutes.patch('/:project_id/jobs/:job_id', async (c) => {
 jobsRoutes.delete('/:project_id/jobs/:job_id', async (c) => {
   const viaBearer = readBearerToken(c.req.raw) !== null
   const user = viaBearer
-    ? await requireBearerUser(c.env, c.req.raw)
-    : await requireAccessUser(c.env, c.req.raw)
-  const db = createDb(c.env.DB)
+    ? await requireBearerUser(getPlatform(c), c.req.raw)
+    : await requireAccessUser(getPlatform(c), c.req.raw)
+  const db = getPlatform(c).db
   const { job } = await findManageableJob(
     db,
     user,
     c.req.param('project_id'),
     c.req.param('job_id'),
   )
-  await deleteJobMedia(c.env.BUCKET, db, job.id)
+  await deleteJobMedia(getPlatform(c).storage, db, job.id)
   await db.delete(jobs).where(eq(jobs.id, job.id))
   return c.body(null, 204)
 })

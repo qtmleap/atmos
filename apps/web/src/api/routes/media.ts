@@ -6,7 +6,6 @@
 import { and, desc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import {
-  createDb,
   type Db,
   type JobRow,
   jobs,
@@ -14,7 +13,7 @@ import {
   mediaAssets,
   type ProjectRow,
   projects,
-} from '../../db/schema'
+} from '#schema'
 import { listMediaQuerySchema, uploadMediaFieldsSchema } from '../../shared/schemas'
 import { MEDIA_CONTENT_TYPES, MEDIA_MAX_BYTES, type MediaAsset } from '../../shared/types'
 import {
@@ -27,8 +26,9 @@ import { ApiError, badRequest, notFound, payloadTooLarge, validate } from '../li
 import { newId, now, toIsoString } from '../lib/ids'
 import { notifyLive } from '../lib/live'
 import { decodeKeysetCursor, encodeKeysetCursor, keysetCondition, toPage } from '../lib/pagination'
+import { type AppEnv, getPlatform } from '../platform/context'
 
-export const mediaRoutes = new Hono<{ Bindings: CloudflareBindings }>()
+export const mediaRoutes = new Hono<AppEnv>()
 
 /** `project_id` / `job_id` from the mount prefix, required by every handler below. */
 const pathIds = (
@@ -72,8 +72,8 @@ const toMediaAsset = (row: MediaAssetRow, projectId: string): MediaAsset => ({
 
 mediaRoutes.post('/', async (c) => {
   const { projectId, jobId } = pathIds(c.req.param('project_id'), c.req.param('job_id'))
-  const db = createDb(c.env.DB)
-  const user = await requireBearerUser(c.env, c.req.raw)
+  const db = getPlatform(c).db
+  const user = await requireBearerUser(getPlatform(c), c.req.raw)
   const { project } = await findProjectAndJob(db, projectId, jobId)
   if (!canWriteProject(project, user)) {
     // docs/SPEC.md §7 treats a missing write permission as 404 (hides existence); §9 follows the same rule.
@@ -94,7 +94,7 @@ mediaRoutes.post('/', async (c) => {
   })
 
   if (file.size > MEDIA_MAX_BYTES) {
-    throw payloadTooLarge('file exceeds the 25MB limit')
+    throw payloadTooLarge('file exceeds the 2048KB limit')
   }
   const allowedTypes: readonly string[] = MEDIA_CONTENT_TYPES[fields.kind]
   if (!allowedTypes.includes(file.type)) {
@@ -107,7 +107,7 @@ mediaRoutes.post('/', async (c) => {
 
   const id = newId()
   const r2Key = `media/${jobId}/${id}`
-  await c.env.BUCKET.put(r2Key, file, { httpMetadata: { contentType: file.type } })
+  await getPlatform(c).storage.put(r2Key, file, { contentType: file.type })
 
   const row: MediaAssetRow = {
     id,
@@ -123,15 +123,15 @@ mediaRoutes.post('/', async (c) => {
   await db.insert(mediaAssets).values(row)
 
   const asset = toMediaAsset(row, projectId)
-  c.executionCtx.waitUntil(notifyLive(c.env, jobId, { type: 'media', data: asset }))
+  getPlatform(c).waitUntil(notifyLive(getPlatform(c).live, jobId, { type: 'media', data: asset }))
   return c.json(asset, 201)
 })
 
 mediaRoutes.get('/', async (c) => {
   const { projectId, jobId } = pathIds(c.req.param('project_id'), c.req.param('job_id'))
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
   const { project, job } = await findProjectAndJob(db, projectId, jobId)
-  const viewer = await resolveViewer(c.env, c.req.raw)
+  const viewer = await resolveViewer(getPlatform(c), c.req.raw)
   assertCanViewProject(project, viewer)
 
   const query = validate(listMediaQuerySchema, c.req.query())
@@ -164,16 +164,16 @@ mediaRoutes.get('/', async (c) => {
 mediaRoutes.get('/:media_id', async (c) => {
   const { projectId, jobId } = pathIds(c.req.param('project_id'), c.req.param('job_id'))
   const mediaId = c.req.param('media_id')
-  const db = createDb(c.env.DB)
+  const db = getPlatform(c).db
   const { project, job } = await findProjectAndJob(db, projectId, jobId)
-  const viewer = await resolveViewer(c.env, c.req.raw)
+  const viewer = await resolveViewer(getPlatform(c), c.req.raw)
   assertCanViewProject(project, viewer)
 
   const row = await db.query.mediaAssets.findFirst({ where: eq(mediaAssets.id, mediaId) })
   if (row === undefined || row.jobId !== job.id) {
     throw notFound('media not found')
   }
-  const object = await c.env.BUCKET.get(row.r2Key)
+  const object = await getPlatform(c).storage.get(row.r2Key)
   if (object === null) {
     throw notFound('media not found')
   }

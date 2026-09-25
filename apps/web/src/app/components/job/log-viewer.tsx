@@ -1,6 +1,7 @@
 import { useId, useMemo, useState } from 'react'
 import { useFollowScroll } from '../../hooks/use-follow-scroll'
 import type { JobLogs } from '../../hooks/use-job-logs'
+import { type JobPhase, logHeaderNote } from '../../lib/job-phase'
 import {
   filterLogLines,
   isStreamFilter,
@@ -16,19 +17,15 @@ import { LogLines } from './log-lines'
 
 export interface LogViewerProps {
   logs: JobLogs
-  running: boolean
-  /** `finished_at` of an ended job, for the closing note. */
+  phase: JobPhase
+  /** `finished_at` of a failed job, for the closing note. */
   finishedAt: string | null
-  /** When the newest line was received, for the running note. */
+  /** When the newest line was received, for the closing note. */
   lastReceivedAt: string | null
 }
 
-/** Right-hand note of the header: how the list is kept up to date. */
-const headerNote = (running: boolean, following: boolean): string =>
-  running ? (following ? '自動追従中 · UTC' : '追従停止中 · UTC') : '最終ログ · 更新終了 · UTC'
-
 /** The logs tab: stream filter, the lines (following their tail), paging and a note. */
-export function LogViewer({ logs, running, finishedAt, lastReceivedAt }: LogViewerProps) {
+export function LogViewer({ logs, phase, finishedAt, lastReceivedAt }: LogViewerProps) {
   const [stream, setStream] = useState<StreamFilter>('all')
   const lines = useMemo(() => filterLogLines(logs.lines, stream), [logs.lines, stream])
   const scroll = useFollowScroll<HTMLDivElement>(lines.at(0)?.id, lines.length)
@@ -59,7 +56,7 @@ export function LogViewer({ logs, running, finishedAt, lastReceivedAt }: LogView
           </NativeSelect>
         </div>
         <span className="text-xs text-muted-foreground">
-          {headerNote(running, scroll.following)}
+          {logHeaderNote(phase, scroll.following)}
         </span>
       </div>
       {logs.hasOlder || logs.error !== null ? (
@@ -117,8 +114,8 @@ export function LogViewer({ logs, running, finishedAt, lastReceivedAt }: LogView
         </div>
       )}
       <p className="mt-3.5 text-xs text-muted-foreground">
-        {running || finishedAt === null
-          ? `${lastReceivedAt === null ? '' : `最終受信 ${formatUtcClock(lastReceivedAt)} · `}stdout / stderr`
+        {phase !== 'failed' || finishedAt === null
+          ? `最終受信 ${lastReceivedAt === null ? '—' : formatUtcClock(lastReceivedAt)} · stdout / stderr`
           : `終了 ${formatUtcDateTime(finishedAt)} · 受信済みのメトリクス・メディアは引き続き閲覧できます。`}
       </p>
     </section>

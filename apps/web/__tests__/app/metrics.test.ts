@@ -14,6 +14,7 @@ import {
   niceTicks,
   reuseUnchangedSeries,
   seriesColor,
+  stepTicks,
   summaryStats,
 } from '../../src/app/lib/metrics'
 import { metric } from './fixtures'
@@ -116,9 +117,9 @@ describe('summaryStats', () => {
       metric(3, 'lr', 1, 1e-4),
     ])
     expect(summaryStats(series, 3)).toEqual([
-      { key: 'train/loss', label: '学習損失', value: 0.5 },
-      { key: 'lr', label: '学習率', value: 1e-4 },
-      { key: 'grad_norm', label: '勾配ノルム', value: 2 },
+      { key: 'train/loss', value: 0.5 },
+      { key: 'lr', value: 1e-4 },
+      { key: 'grad_norm', value: 2 },
     ])
   })
 
@@ -160,18 +161,27 @@ describe('formatting', () => {
 })
 
 describe('niceTicks', () => {
-  test('rules the axis the way the mocks do', () => {
-    expect(niceTicks(0.1759, 0.92)).toEqual([0.1, 0.4, 0.7, 1])
-    expect(niceTicks(0, 2.98e-4)).toEqual([0, 0.00015, 0.0003])
-    expect(niceTicks(1.68, 5.2)).toEqual([0, 3, 6])
+  test('about five round ticks, the axis widened to end on them', () => {
+    expect(niceTicks(0.1759, 0.9775)).toEqual([0, 0.2, 0.4, 0.6, 0.8, 1])
+    expect(niceTicks(0, 3e-4)).toEqual([0, 0.0001, 0.0002, 0.0003])
+    expect(niceTicks(1.65, 5.2)).toEqual([1, 2, 3, 4, 5, 6])
   })
 
   test('a flat series is one tick; labels share their decimals', () => {
     expect(niceTicks(0.5, 0.5)).toEqual([0.5])
-    const ticks = niceTicks(0.1759, 0.92)
-    expect(ticks.map(formatTicks(ticks))).toEqual(['0.1', '0.4', '0.7', '1.0'])
-    const rates = niceTicks(0, 2.98e-4)
-    expect(rates.map(formatTicks(rates))).toEqual(['0', '1.5e-4', '3e-4'])
+    const ticks = niceTicks(0.1759, 0.9775)
+    expect(ticks.map(formatTicks(ticks))).toEqual(['0.0', '0.2', '0.4', '0.6', '0.8', '1.0'])
+    const rates = niceTicks(0, 3e-4)
+    expect(rates.map(formatTicks(rates))).toEqual(['0', '1e-4', '2e-4', '3e-4'])
+  })
+})
+
+describe('stepTicks', () => {
+  test('round steps inside the data range', () => {
+    expect(stepTicks(0, 48_000)).toEqual([0, 10_000, 20_000, 30_000, 40_000])
+    expect(stepTicks(0, 200_000)).toEqual([0, 50_000, 100_000, 150_000, 200_000])
+    expect(stepTicks(0, 84_200)).toEqual([0, 20_000, 40_000, 60_000, 80_000])
+    expect(stepTicks(7, 7)).toEqual([7])
   })
 })
 
