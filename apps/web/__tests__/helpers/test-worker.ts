@@ -6,23 +6,26 @@ import { app } from '../../src/api/app'
 import { requireAccessUser, resolveViewer } from '../../src/api/lib/auth'
 import { handleError } from '../../src/api/lib/errors'
 import { connectLive } from '../../src/api/lib/live'
+import { type AppEnv, getPlatform } from '../../src/api/platform/context'
 
-const testApp = new Hono<{ Bindings: CloudflareBindings }>()
+const testApp = new Hono<AppEnv>()
 
 testApp.onError(handleError)
 
 // Visibility checks go through the live JWKS fetch (outboundService in the test).
 testApp.get('/__test/viewer', async (c) => {
-  const viewer = await resolveViewer(c.env, c.req.raw)
+  const viewer = await resolveViewer(getPlatform(c), c.req.raw)
   return c.json({ viewer: viewer === null ? null : viewer.handle })
 })
 
 testApp.get('/__test/me', async (c) => {
-  const user = await requireAccessUser(c.env, c.req.raw)
+  const user = await requireAccessUser(getPlatform(c), c.req.raw)
   return c.json({ handle: user.handle })
 })
 
-testApp.get('/__test/live/:job_id', (c) => connectLive(c.env, c.req.param('job_id'), c.req.raw))
+testApp.get('/__test/live/:job_id', (c) =>
+  connectLive(getPlatform(c).live, c.req.param('job_id'), c.req.raw),
+)
 
 testApp.route('/', app)
 

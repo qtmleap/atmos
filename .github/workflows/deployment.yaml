@@ -84,3 +84,48 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/web
           command: deploy --env ${{ env.ENVIRONMENT }}
+
+  # The self-hosted image (apps/web/Dockerfile). Built here so whoever runs it
+  # only pulls from GHCR; the GitHub Packages token that `bun install` needs
+  # stays inside CI. develop publishes :staging, master publishes :latest and
+  # :<version>.
+  image:
+    name: Publish Docker image
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: self-hosted
+    permissions:
+      contents: read
+      packages: write
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Determine tags
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}
+          VERSION=$(jq -r .version package.json)
+          if [[ '${{ github.event.pull_request.base.ref }}' =~ ^(master|main)$ ]] \
+            || [[ '${{ github.event_name }}' == 'workflow_dispatch' && '${{ github.ref_name }}' =~ ^(master|main)$ ]]; then
+            echo "TAGS=$IMAGE:latest,$IMAGE:$VERSION,$IMAGE:sha-${GITHUB_SHA::7}" >> $GITHUB_ENV
+          else
+            echo "TAGS=$IMAGE:staging,$IMAGE:sha-${GITHUB_SHA::7}" >> $GITHUB_ENV
+          fi
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: apps/web
+          push: true
+          tags: ${{ env.TAGS }}
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}

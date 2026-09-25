@@ -1,17 +1,27 @@
 {
   "name": "atmos-web",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "type": "module",
+  "imports": {
+    "#schema": {
+      "postgres": "./src/db/pg/schema.ts",
+      "default": "./src/db/schema.ts"
+    }
+  },
   "scripts": {
     "dev": "vite --host",
     "build": "intlayer build && tsc -b --noEmit && vite build",
     "preview": "vite preview",
     "deploy": "vite build && wrangler deploy --keep-vars",
+    "build:server": "vite build && bun build src/server/index.ts --target=bun --conditions=postgres --outdir dist/server && cp -r src/db/pg/migrations dist/server/migrations",
+    "start:server": "bun dist/server/index.js",
     "typecheck": "intlayer build && tsc --noEmit",
     "lint": "bunx --bun biome check",
     "format": "bunx --bun biome check --write",
     "test": "intlayer build && NODE_ENV=test bun test",
+    "test:pg": "intlayer build && NODE_ENV=test bun test --conditions=postgres __tests__/pg",
+    "db:generate:pg": "drizzle-kit generate --config drizzle.pg.config.ts",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
@@ -25,6 +35,7 @@
     "intlayer": "^9.5.8",
     "jose": "^6.2.12",
     "lucide-react": "^1.47.0",
+    "postgres": "3.4.9",
     "radix-ui": "^1.6.7",
     "react": "^19",
     "react-dom": "^19",
@@ -37,6 +48,7 @@
     "@biomejs/biome": "^2",
     "@cloudflare/vite-plugin": "^1",
     "@cloudflare/workers-types": "^4",
+    "@electric-sql/pglite": "0.5.8",
     "@fontsource/ibm-plex-mono": "5.3.0",
     "@fontsource/ibm-plex-sans-jp": "5.3.0",
     "@happy-dom/global-registrator": "^20.14.5",
