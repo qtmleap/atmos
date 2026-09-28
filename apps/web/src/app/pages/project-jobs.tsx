@@ -1,8 +1,13 @@
 // /projects/:projectId — the job list of a project (designs/pages/project-jobs.html)
 // and, with `?view=compare`, the metrics comparison of chosen jobs
 // (project-jobs-compare.html; `&drawer=jobs` opens the picker,
-// project-jobs-compare-drawer.html). Every state is in the URL (lib/job-filter.ts).
+// project-jobs-compare-drawer.html). The "一覧 / グラフで比較" switch under the
+// heading moves between the two (jobs-view-nav.tsx); on the comparison the
+// "ジョブを選ぶ" button and the count of the pick sit beside it. A project with
+// no job has nothing to compare, so its empty state goes without the switch
+// (project-jobs-empty.html). Every state is in the URL (lib/job-filter.ts).
 import { useSearch } from '@tanstack/react-router'
+import { ChevronRightIcon } from 'lucide-react'
 import { AccessErrorPage } from '../components/common/error-page'
 import { ListFooter } from '../components/common/list-footer'
 import { LoadingRows } from '../components/common/loading-rows'
@@ -12,15 +17,17 @@ import { JobTable } from '../components/project/job-table'
 import { JobsEmptyState } from '../components/project/jobs-empty-state'
 import { JobsFootnote } from '../components/project/jobs-footnote'
 import { JobsToolbar } from '../components/project/jobs-toolbar'
+import { JobsViewNav } from '../components/project/jobs-view-nav'
 import { ProjectActions } from '../components/project/project-actions'
 import { ProjectHeader } from '../components/project/project-header'
+import { Button } from '../components/ui/button'
 import { useCompareJobs } from '../hooks/use-compare-jobs'
 import { useCompareMetrics } from '../hooks/use-compare-metrics'
 import { useNow } from '../hooks/use-now'
 import { type ProjectHeading, useProjectHeading, useProjectJobs } from '../hooks/use-project-jobs'
 import { useRequiredParam } from '../hooks/use-required-param'
 import { accessErrorKind } from '../lib/access-error'
-import { parseJobsView } from '../lib/job-filter'
+import { COMPARE_MAX_JOBS, parseJobsView } from '../lib/job-filter'
 import { projectLinkState } from '../lib/project-link'
 
 /** Page width and padding shared with the other pages (docs/mock-diff/designs/pages). */
@@ -47,6 +54,7 @@ function JobsListView({ projectId, project }: ViewProps) {
   }
   return (
     <>
+      <JobsViewNav className="pt-4" />
       <JobsToolbar
         query={query}
         onQueryChange={setQuery}
@@ -101,6 +109,17 @@ function CompareView({ projectId, project }: ViewProps) {
   const linkState = project === null ? null : projectLinkState(project)
   return (
     <>
+      {/* 8px below plus the layout's own 8px top make 16px to its controls. */}
+      <JobsViewNav className="pt-4 pb-2">
+        <Button variant="outline" type="button" aria-haspopup="dialog" onClick={compare.openDrawer}>
+          ジョブを選ぶ
+          <ChevronRightIcon aria-hidden="true" />
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          比較対象 {compare.selected.length} / {compare.jobs.length}件
+          {selectedJobs === undefined ? ` ・ 既定は失敗を除く新しい${COMPARE_MAX_JOBS}件です` : ''}
+        </span>
+      </JobsViewNav>
       {compare.error === null ? null : (
         <p role="alert" className="pt-4 text-xs text-destructive">
           {compare.error}
@@ -109,7 +128,6 @@ function CompareView({ projectId, project }: ViewProps) {
       <CompareLayout
         jobs={compare.jobs}
         selected={compare.selected}
-        defaultSelection={selectedJobs === undefined}
         metrics={metrics}
         onOpenDrawer={compare.openDrawer}
       />

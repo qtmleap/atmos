@@ -39,7 +39,9 @@ function CompareChartImpl({
 }: CompareChartProps) {
   const interaction = useChartInteraction(runs, xDomain, yDomain)
   return (
-    <figure className="min-w-0">
+    // A column, the chart pushed to its foot: a legend of fewer lines leaves
+    // its gap above the chart, so charts side by side share their bottom.
+    <figure className="flex min-w-0 flex-col">
       <figcaption className="flex items-center justify-between gap-4 border-b py-2">
         <h4 className="font-mono">{metricKey}</h4>
         <div className="flex items-center gap-1">
@@ -84,6 +86,7 @@ function CompareChartImpl({
         drag={interaction.drag}
         smooth={smooth}
         heightClassName={heightClassName}
+        className="mt-auto"
         onPointerDown={interaction.svgHandlers.onPointerDown}
         onPointerMove={interaction.svgHandlers.onPointerMove}
         onPointerUp={interaction.svgHandlers.onPointerUp}

@@ -380,7 +380,9 @@ describe('JobDetailPage', () => {
     await renderRoute(`/projects/${PROJECT_ID}/jobs/${JOB_ID}`)
     expect(await screen.findByRole('heading', { level: 1, name: 'exp1' })).toBeInTheDocument()
     expect(screen.getByText('完了')).toBeInTheDocument()
-    expect(screen.getAllByText('最終結果').length).toBeGreaterThanOrEqual(1)
+    expect(screen.queryByText(/最終受信 .* UTC/)).toBeNull()
+    expect(screen.queryByText(/終了 .* UTC/)).toBeNull()
+    expect(screen.getByText(/所要時間 01:02:03/)).toBeInTheDocument()
     expect(await screen.findByRole('heading', { level: 3, name: 'train/loss' })).toBeInTheDocument()
     // The summary tile and the chart header both show the latest value.
     expect(screen.getAllByText('0.4').length).toBeGreaterThanOrEqual(2)
