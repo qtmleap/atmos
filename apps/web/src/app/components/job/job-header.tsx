@@ -48,12 +48,7 @@ function UpdateState({
         </div>
       )
     case 'finished':
-      return (
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">{ENDED_NOTES.finished}</span>
-          <LastReceived at={lastReceivedAt} />
-        </div>
-      )
+      return null
     case 'failed':
       return (
         <span className="text-xs text-muted-foreground">
@@ -122,11 +117,6 @@ export function JobHeader({
           <p className="text-xs text-muted-foreground">
             {creator === null ? '開始' : `${creator.display_name} が開始`} ·{' '}
             <time dateTime={job.started_at}>{formatUtcDateTime(job.started_at)}</time> ·{' '}
-            {job.status === 'finished' && job.finished_at !== null ? (
-              <>
-                終了 <time dateTime={job.finished_at}>{formatUtcDateTime(job.finished_at)}</time> ·{' '}
-              </>
-            ) : null}
             {running ? '経過' : '所要時間'}{' '}
             {formatDuration(job.started_at, job.finished_at, elapsedUntil)}
           </p>
