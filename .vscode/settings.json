@@ -138,7 +138,7 @@
   "[toml]": {
     "editor.defaultFormatter": "tamasfe.even-better-toml"
   },
-  "python.defaultInterpreterPath": "packages/python-sdk/.venv/bin/python",
+  "python.defaultInterpreterPath": "${workspaceFolder}/packages/python-sdk/.venv/bin/python",
   "python.terminal.activateEnvironment": false,
   "python.testing.pytestEnabled": true,
   "python.testing.unittestEnabled": false,
