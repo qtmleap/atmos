@@ -21,7 +21,6 @@
     @media (max-width: 700px) { .page-content { padding: 20px 16px; } .list-toolbar { flex-wrap: wrap; } .list-search { width: 100%; } .list-note { margin-left: 0; } }
     .jobs-table td { height: 58px; }
     .compare-layout { display: flex; flex-direction: column; gap: 16px; padding-block: 8px 24px; border-bottom: 1px solid var(--border); }
-    .compare-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
     .compare-main { min-width: 0; }
     .compare-main .chart-svg { height: 248px; }
     .compare-main .widget-header { padding-block: 8px; }
@@ -50,12 +49,16 @@
     .chart-run { fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
     .check-cell { width: 40px; }
     .check-cell input { width: 16px; height: 16px; accent-color: var(--primary); vertical-align: middle; }
-    .metric-chart { position: relative; }
+    /* 凡例の行数が違っても、横に並んだグラフの下端を揃える */
+    .metric-chart { position: relative; display: flex; flex-direction: column; }
+    .metric-chart > .chart-svg { margin-top: auto; }
     .chart-run { transition: opacity .12s, stroke-width .12s; }
     .chart-svg.is-hover .chart-run { opacity: .2; }
     .chart-svg .chart-run.is-hover { opacity: 1; stroke-width: 3; }
     .chart-dot { fill: var(--background); stroke-width: 2; pointer-events: none; }
     .chart-hit { fill: none; stroke: transparent; stroke-width: 10; pointer-events: stroke; }
+    /* 一覧とグラフで比較の切り替え、その隣にジョブを選ぶと比較対象の件数。compare-layout の上 8px と合わせて 16px */
+    .jobs-view { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-block: 16px 8px; }
   </style>
 </head>
 <body>
@@ -72,8 +75,8 @@
     <div class="between"><div class="row"><h1>日本語音声合成 / VITS</h1><span class="badge badge-outline visibility"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>非公開</span></div><div class="row"><span class="small muted">所有者 田中 美咲</span><button class="btn btn-ghost btn-icon" type="button" aria-label="プロジェクトの操作" aria-haspopup="menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div></div>
     <p class="description">ジョブ一覧</p>
   </header>
+  <div class="jobs-view"><nav aria-label="ジョブの表示"><div class="tabs-list"><a class="tabs-trigger" href="project-jobs.html">一覧</a><a class="tabs-trigger" href="project-jobs-compare.html" aria-current="page">グラフで比較</a></div></nav><a class="btn btn-outline" href="project-jobs-compare-drawer.html">ジョブを選ぶ<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a><span class="small muted">比較対象 2 / 12件</span></div>
       <div class="compare-layout">
-    <div class="compare-toolbar"><span class="small muted">比較対象 2 / 12件</span><a class="btn btn-outline" href="project-jobs-compare-drawer.html">ジョブを選ぶ</a></div>
     <section aria-labelledby="selected-jobs-title"><div class="widget-header"><h2 id="selected-jobs-title">選択中のジョブ</h2></div><table class="table"><thead><tr><th scope="col">ジョブ名</th><th scope="col">状態</th><th scope="col">最終受信ステップ</th></tr></thead><tbody><tr><td class="mono">vits-ja-v3-lr2e4</td><td><span class="status status-running"><span class="status-dot" aria-hidden="true"></span>実行中</span></td><td>—</td></tr><tr><td class="mono">vits-ja-v3-speaker128</td><td><span class="status status-running"><span class="status-dot" aria-hidden="true"></span>実行中</span></td><td>—</td></tr></tbody></table></section><section class="compare-main" aria-label="選んだジョブのメトリクス比較"><div class="empty-state"><h2>比較できるメトリクスはありません</h2></div></section>
   </div>
   <div class="between list-footer"><span class="small muted">表示時点 2026-09-24 14:32 UTC</span></div>

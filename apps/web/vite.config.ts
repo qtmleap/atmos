@@ -3,7 +3,7 @@ import { cloudflare } from '@cloudflare/vite-plugin'
 import mockDiff from '@qtmleap/vite-plugin-mock-diff'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import { intlayer } from 'vite-intlayer'
 import { VitePWA } from 'vite-plugin-pwa'
 import atmosDevFixtures from './dev/fixtures/plugin'
@@ -12,6 +12,27 @@ import atmosDevFixtures from './dev/fixtures/plugin'
 // where no Cloudflare Access sits in front (src/api/lib/auth.ts). Never set for
 // `vite build`, so the deployed Worker keeps verifying the Access JWT.
 const LOCAL_ACCESS_EMAIL = 'local@example.com'
+
+// IBM Plex Sans JP spreads its 1.5em line box as ascent 1.06 / descent 0.44
+// (hhea), which leaves the ideographic em box (0.88 / -0.12) 0.07em above the
+// middle of the line, so every label beside a 16px icon rode high (0.5px at
+// 12px, over 1px at 14px). 1.14 / 0.36 keeps the 1.5em total, so no line box
+// changes size, and brings the glyphs down to the middle. The mocks load the
+// same faces from docs/mock-diff/designs/_shared/fonts.css, which
+// scripts/mock-fonts.mjs writes with the same two numbers.
+function plexSansJpMetrics(): Plugin {
+  return {
+    name: 'atmos:plex-sans-jp-metrics',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!id.includes('/@fontsource/ibm-plex-sans-jp/') || !id.endsWith('.css')) return undefined
+      return code.replaceAll(
+        "font-family: 'IBM Plex Sans JP';",
+        "font-family: 'IBM Plex Sans JP';\n  ascent-override: 114%;\n  descent-override: 36%;",
+      )
+    },
+  }
+}
 
 export default defineConfig(({ command }) => ({
   server: {
@@ -26,6 +47,8 @@ export default defineConfig(({ command }) => ({
     // the Worker needs Cloudflare Access and a filled D1 (dev/fixtures/plugin.ts).
     // ATMOS_DEV_API=real (shell or apps/web/.env.local) sends /api to the Worker instead.
     atmosDevFixtures(),
+    // Recentres Japanese text in its line box (see plexSansJpMetrics above).
+    plexSansJpMetrics(),
     // File-based routes under src/app/routes; the generated tree is committed
     // because `bun test` and `tsc` run without Vite. Must come before react().
     tanstackRouter({
@@ -63,7 +86,12 @@ export default defineConfig(({ command }) => ({
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          {
+            src: 'maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
         ],
       },
       workbox: {
