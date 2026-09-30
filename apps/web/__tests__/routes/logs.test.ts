@@ -319,6 +319,13 @@ describe('GET /api/projects/:project_id/jobs/:job_id/logs', () => {
       headers: { 'Cf-Access-Jwt-Assertion': await access.sign({ email: owner.cfAccessEmail }) },
     })
     expect(allowed.status).toBe(200)
+
+    const ownerToken = await insertAccessToken(env.DB, owner)
+    const tokenRead = await dispatch(`/api/projects/${project.id}/jobs/${job.id}/logs`, {
+      headers: { Authorization: `Bearer ${ownerToken}` },
+    })
+    expect(tokenRead.status).toBe(200)
+    expect((await jsonShaped(logPageSchema, tokenRead)).items).toEqual([])
   })
 
   test('404 when project_id/job_id do not share a parent-child relationship', async () => {

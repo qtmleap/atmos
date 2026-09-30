@@ -1,0 +1,1 @@
+ALTER TABLE "jobs" ADD COLUMN "last_activity_at" timestamptz(0) DEFAULT now() NOT NULL;

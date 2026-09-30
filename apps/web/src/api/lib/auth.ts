@@ -253,15 +253,17 @@ export const findUserByEmail = async (db: Db, email: string): Promise<UserRow | 
 }
 
 /**
- * The registered user behind the request's identity, or null when the
- * request is anonymous, the JWT does not verify, or the email has no `users` row.
- * This is the "viewer" of visibility checks.
+ * The registered viewer from a Bearer token or Cloudflare Access identity.
+ * An explicit invalid Bearer credential never falls back to a browser cookie.
  */
 export const resolveViewer = async (
   platform: Pick<Platform, 'auth' | 'db'>,
   request: Request,
   jwks?: JwksResolver,
 ): Promise<UserRow | null> => {
+  if (request.headers.has('Authorization')) {
+    return requireBearerUser(platform, request)
+  }
   const identity = await readAccessIdentity(platform, request, jwks)
   if (identity === null) {
     return null

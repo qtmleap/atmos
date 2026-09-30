@@ -7,6 +7,7 @@ import logging
 import math
 import os
 import sys
+import threading
 import time
 import weakref
 from collections.abc import Callable, Mapping
@@ -30,6 +31,7 @@ Visibility = Literal["public", "internal", "private"]
 _VISIBILITIES: tuple[Visibility, ...] = ("public", "internal", "private")
 
 _DEFAULT_FLUSH_INTERVAL = 5.0
+_HEARTBEAT_INTERVAL = 60.0
 _DEFAULT_BATCH_SIZE = 100
 _DEFAULT_MAX_RETRIES = 5
 _DEFAULT_RETRY_INITIAL_DELAY = 0.5
@@ -289,6 +291,14 @@ class Run:
             flush_interval=flush_interval, batch_size=batch_size
         )
         self._flusher.start(send_metrics=self._send_metrics, send_logs=self._send_logs)
+        self._heartbeat_stop = threading.Event()
+        self._heartbeat_thread = threading.Thread(
+            target=Run._heartbeat_loop,
+            args=(client, project_id, job_id, self._retry_config, self._heartbeat_stop),
+            name="atmos-heartbeat",
+            daemon=True,
+        )
+        self._heartbeat_thread.start()
         _active_runs.add(self)
 
     @property
@@ -373,6 +383,27 @@ class Run:
         """標準`logging`と連携するハンドラを返す（`WARNING`以上は`stream="stderr"`）。"""
         return RunLogHandler(self)
 
+    @staticmethod
+    def _heartbeat_loop(
+        client: httpx.Client,
+        project_id: str,
+        job_id: str,
+        retry_config: RetryConfig,
+        stop: threading.Event,
+    ) -> None:
+        while not stop.wait(_HEARTBEAT_INTERVAL):
+            if client.is_closed:
+                return
+            try:
+                _post_with_retry(
+                    client,
+                    retry_config,
+                    f"/api/projects/{project_id}/jobs/{job_id}/heartbeat",
+                    label="send heartbeat",
+                )
+            except Exception:
+                logger.warning("atmos: failed to send heartbeat", exc_info=True)
+
     def finish(self, status: Status = "finished") -> None:
         """バッファを最終flushしてから`finish`エンドポイントを呼ぶ。
 
@@ -397,6 +428,9 @@ class Run:
         self._finished = True
         _active_runs.discard(self)
         try:
+            self._heartbeat_stop.set()
+            if threading.current_thread() is not self._heartbeat_thread:
+                self._heartbeat_thread.join()
             self._flusher.stop()
             flush_error: Exception | None = None
             try:

@@ -11,6 +11,7 @@
 // accepting new connections, wait for in-flight `waitUntil` work, then close
 // the database connection.
 import { app } from '../api/app'
+import { failStaleJobs } from '../api/lib/job-liveness'
 import { createPgDatabase, migratePg } from '../db/pg/client'
 import { loadServerConfig } from './config'
 import { createLiveHub } from './live-hub'
@@ -35,6 +36,10 @@ live.attach(server)
 
 console.log(`atmos listening on http://localhost:${server.port}`)
 
+const staleJobSweep = setInterval(() => {
+  platform.waitUntil(failStaleJobs(platform.db, platform.live).then(() => {}))
+}, 60_000)
+
 const shutdownState = { started: false }
 
 const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
@@ -42,6 +47,7 @@ const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
     return
   }
   shutdownState.started = true
+  clearInterval(staleJobSweep)
   console.log(`${signal} received, shutting down`)
   await server.stop()
   await platform.drain()

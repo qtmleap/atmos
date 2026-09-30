@@ -303,14 +303,20 @@ describe('GET /api/projects/:project_id/jobs/:job_id/metrics', () => {
     expect(secondBody.next_cursor).toBeNull()
   })
 
-  test('a private project requires Access', async () => {
+  test('a private project is readable with the owner Bearer token', async () => {
     const { dispatch, env } = testEnv()
     const owner = await insertUser(env.DB)
     const project = await insertProject(env.DB, owner, { visibility: 'private' })
     const job = await insertJob(env.DB, project)
+    const token = await insertAccessToken(env.DB, owner)
+    const path = `/api/projects/${project.id}/jobs/${job.id}/metrics`
 
-    const res = await dispatch(`/api/projects/${project.id}/jobs/${job.id}/metrics`)
-    expect(res.status).toBe(401)
-    await jsonError(res, 'unauthenticated')
+    const anonymous = await dispatch(path)
+    expect(anonymous.status).toBe(401)
+    await jsonError(anonymous, 'unauthenticated')
+
+    const res = await dispatch(path, { headers: bearer(token) })
+    expect(res.status).toBe(200)
+    expect((await jsonShaped(metricPageSchema, res)).items).toEqual([])
   })
 })
