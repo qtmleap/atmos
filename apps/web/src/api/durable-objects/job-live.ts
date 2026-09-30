@@ -1,8 +1,8 @@
 // Per-job live channel (docs/PLAN.md §1, docs/SPEC.md §11).
 //
 // One instance per job_id (`env.JOB_LIVE.idFromName(jobId)`). It holds the
-// browsers' WebSockets through the Hibernation API and stores nothing: the
-// data itself lives in D1 and clients load history through the REST API.
+// browsers' WebSockets through the Hibernation API and stores a per-job
+// heartbeat lease; job data itself lives in D1.
 //
 // - The Worker authenticates and checks visibility, then forwards the upgrade
 //   request with `stub.fetch(request)` (see api/lib/live.ts `connectLive`).
@@ -13,7 +13,11 @@
 // - A `status` message for a finished/failed job closes every socket with
 //   code 1000 right after it is sent.
 import { DurableObject } from 'cloudflare:workers'
+import dayjs from 'dayjs'
+import { and, eq, lt } from 'drizzle-orm'
+import { createDb, jobs } from '../../db/schema'
 import { LIVE_CLOSE_CODES, type LiveMessage } from '../../shared/types'
+import { JOB_STALE_AFTER_SECONDS } from '../lib/job-liveness'
 
 export interface NotifyResult {
   /** Sockets the message was written to. */
@@ -53,6 +57,72 @@ export class JobLive extends DurableObject<CloudflareBindings> {
       }
     }
     return { delivered }
+  }
+
+  /** A handshake from the authorized Worker arms or extends this job's lease. */
+  async renewLease(projectId: string, jobId: string): Promise<void> {
+    await this.ctx.storage.put('lease', { projectId, jobId })
+    await this.ctx.storage.setAlarm(Date.now() + JOB_STALE_AFTER_SECONDS * 1000)
+  }
+
+  /** A finished or deleted job must not be marked failed by an old alarm. */
+  async cancelLease(): Promise<void> {
+    await this.ctx.storage.delete('lease')
+    await this.ctx.storage.deleteAlarm()
+  }
+
+  override async alarm(): Promise<void> {
+    await this.checkLease()
+  }
+
+  /** Inspect the lease when its alarm fires; exposed for route integration tests. */
+  async checkLease(): Promise<void> {
+    await this.ctx.blockConcurrencyWhile(async () => {
+      const lease = await this.ctx.storage.get<{ projectId: string; jobId: string }>('lease')
+      if (lease === undefined) return
+      const db = createDb(this.env.DB)
+      const cutoff = dayjs().subtract(JOB_STALE_AFTER_SECONDS, 'second').toDate()
+      const scope = and(eq(jobs.id, lease.jobId), eq(jobs.projectId, lease.projectId))
+      const job = await db.query.jobs.findFirst({ where: scope })
+      if (job === undefined || job.status !== 'running') {
+        await this.cancelLease()
+        return
+      }
+      if (job.lastActivityAt.getTime() >= cutoff.getTime()) {
+        await this.ctx.storage.setAlarm(
+          Math.max(
+            job.lastActivityAt.getTime() + JOB_STALE_AFTER_SECONDS * 1000 + 1000,
+            Date.now() + 1000,
+          ),
+        )
+        return
+      }
+      const finishedAt = dayjs().toDate()
+      const updated = await db
+        .update(jobs)
+        .set({ status: 'failed', finishedAt })
+        .where(and(scope, eq(jobs.status, 'running'), lt(jobs.lastActivityAt, cutoff)))
+        .returning({ id: jobs.id })
+      if (updated.length > 0) {
+        await this.notify({
+          type: 'status',
+          data: { status: 'failed', finished_at: finishedAt.toISOString() },
+        })
+        await this.cancelLease()
+        return
+      }
+      const refreshed = await db.query.jobs.findFirst({ where: scope })
+      if (refreshed?.status === 'running') {
+        await this.ctx.storage.setAlarm(
+          Math.max(
+            refreshed.lastActivityAt.getTime() + JOB_STALE_AFTER_SECONDS * 1000 + 1000,
+            Date.now() + 1000,
+          ),
+        )
+      } else {
+        await this.cancelLease()
+      }
+    })
   }
 
   /** Number of currently connected sockets. */

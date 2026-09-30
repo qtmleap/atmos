@@ -67,6 +67,7 @@ export const insertJob = async (
     config: {},
     createdBy: project.ownerId,
     startedAt: now(),
+    lastActivityAt: now(),
     finishedAt: null,
     ...overrides,
   }

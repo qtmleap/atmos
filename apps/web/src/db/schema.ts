@@ -94,6 +94,9 @@ export const jobs = sqliteTable(
       .notNull()
       .references(() => users.id),
     startedAt: integer('started_at', { mode: 'timestamp' }).notNull(),
+    // SQLite cannot add a column with a dynamic default to a populated table.
+    // The job routes always write the current time; the migration backfills old rows.
+    lastActivityAt: integer('last_activity_at', { mode: 'timestamp' }).notNull().default(sql`0`),
     finishedAt: integer('finished_at', { mode: 'timestamp' }),
   },
   (t) => [

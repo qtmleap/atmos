@@ -123,6 +123,7 @@ export const jobs = pgTable(
       .notNull()
       .references(() => users.id),
     startedAt: timestampSeconds('started_at').notNull(),
+    lastActivityAt: timestampSeconds('last_activity_at').notNull().default(sql`now()`),
     finishedAt: timestampSeconds('finished_at'),
   },
   (t) => [
