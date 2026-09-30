@@ -40,6 +40,12 @@ export interface StaticAssets {
   fetch(request: Request): Promise<Response>
 }
 
+/** Per-job alarm lease on Workers; the Bun server uses a periodic DB sweep instead. */
+export interface JobLease {
+  renew(projectId: string, jobId: string): Promise<void>
+  cancel(jobId: string): Promise<void>
+}
+
 export interface Platform {
   /**
    * Typed as the D1 client on every platform. On PostgreSQL the tables come
@@ -55,6 +61,7 @@ export interface Platform {
   batch<Q extends BatchItem<'sqlite'>>(build: (db: Db) => readonly Q[]): Promise<Awaited<Q>[]>
   storage: ObjectStorage
   live: LiveHub
+  jobLease?: JobLease
   auth: AuthConfig
   /** Compared with `init_admin_key` of POST /api/setup. */
   initAdminKey: string

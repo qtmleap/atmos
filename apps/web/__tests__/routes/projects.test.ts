@@ -70,6 +70,34 @@ describe('GET /api/projects', () => {
     expect(names).not.toContain('stranger private')
   })
 
+  test('the owner token sees private projects without an Access session', async () => {
+    const { dispatch, env, access } = testEnv()
+    const owner = await insertUser(env.DB)
+    const project = await insertProject(env.DB, owner, {
+      name: 'token private',
+      visibility: 'private',
+    })
+    const token = await insertAccessToken(env.DB, owner)
+    const path = `/api/projects/${project.id}`
+
+    const list = await dispatch('/api/projects', { headers: bearer(token) })
+    expect((await jsonShaped(projectPageSchema, list)).items.map((item) => item.id)).toContain(
+      project.id,
+    )
+    expect(
+      (await jsonShaped(projectSchema, await dispatch(path, { headers: bearer(token) }))).id,
+    ).toBe(project.id)
+
+    const invalid = await dispatch(path, {
+      headers: {
+        ...bearer('invalid'),
+        'Cf-Access-Jwt-Assertion': await access.sign({ email: owner.cfAccessEmail }),
+      },
+    })
+    expect(invalid.status).toBe(401)
+    await jsonError(invalid, 'unauthenticated')
+  })
+
   test('the CF_Authorization cookie identifies the viewer outside Access', async () => {
     const { dispatch, env, access } = testEnv()
     const owner = await insertUser(env.DB, { cfAccessEmail: 'cookie-owner@example.com' })

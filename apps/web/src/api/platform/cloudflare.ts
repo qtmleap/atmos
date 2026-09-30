@@ -4,7 +4,7 @@ import type { BatchItem } from 'drizzle-orm/batch'
 import { createDb, type Db } from '../../db/schema'
 import type { JobLive } from '../durable-objects/job-live'
 import { accessAuthConfig, accessConfigFromEnv } from '../lib/auth'
-import type { LiveHub, ObjectStorage, Platform } from './types'
+import type { JobLease, LiveHub, ObjectStorage, Platform } from './types'
 
 export const cloudflarePlatform = (
   env: CloudflareBindings,
@@ -16,6 +16,7 @@ export const cloudflarePlatform = (
     batch: (build) => d1Batch(db, build(db)),
     storage: r2Storage(env.BUCKET),
     live: durableObjectLiveHub(env.JOB_LIVE),
+    jobLease: durableObjectJobLease(env.JOB_LIVE),
     auth: accessAuthConfig(accessConfigFromEnv(env)),
     initAdminKey: env.INIT_ADMIN_KEY,
     assets: env.ASSETS,
@@ -54,6 +55,14 @@ export const r2Storage = (bucket: R2Bucket): ObjectStorage => ({
   },
   delete: (keys) => bucket.delete([...keys]),
 })
+
+export const durableObjectJobLease = (namespace: DurableObjectNamespace<JobLive>): JobLease => {
+  const stubFor = (jobId: string) => namespace.get(namespace.idFromName(jobId))
+  return {
+    renew: (projectId, jobId) => stubFor(jobId).renewLease(projectId, jobId),
+    cancel: (jobId) => stubFor(jobId).cancelLease(),
+  }
+}
 
 export const durableObjectLiveHub = (namespace: DurableObjectNamespace<JobLive>): LiveHub => {
   const stubFor = (jobId: string) => namespace.get(namespace.idFromName(jobId))

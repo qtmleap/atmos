@@ -115,6 +115,7 @@ logsRoutes.post('/', async (c) => {
     message: line.message,
     loggedAt: line.logged_at === undefined ? receivedAt : dayjs(line.logged_at).toDate(),
   }))
+  await db.update(jobs).set({ lastActivityAt: receivedAt }).where(eq(jobs.id, jobId))
   const inserted = (
     await getPlatform(c).batch((tx) =>
       chunk(rows, LOGS_INSERT_CHUNK_ROWS).map((part) => tx.insert(logs).values(part).returning()),

@@ -30,7 +30,7 @@ PLAN.mdの5節には無いが、5節の用途説明・6節のUI要件を満た�
 |---|---|---|
 | `Cf-Access-Jwt-Assertion` | Cloudflare Access（ログイン済みブラウザに自動付与） | ブラウザ閲覧時のログイン状態判定 |
 | `Cookie: CF_Authorization=<JWT>` | Cloudflare Access（ログイン時にホスト全体へ発行） | Access の対象外のパス（`/api/projects/*` など）でのログイン状態判定。ヘッダーが無いときだけ読む。GET 以外は同じオリジンからの要求に限る |
-| `Authorization: Bearer <token>` | クライアント（Python SDK）が明示的に付与 | SDKからのデータ送信（ingest系） |
+| `Authorization: Bearer <token>` | クライアント（Python SDK）が明示的に付与 | SDKからの送信と閲覧。閲覧時も通常の公開範囲制限を適用する。不正なBearerはAccessへ切り替えず`401` |
 
 ### 0.3 共通エラーレスポンス
 
@@ -339,7 +339,7 @@ Response: `Page<Project>`（閲覧権限のない`internal`・`private`プロジ
 
 ### `GET /api/projects/:project_id`（追加分）
 
-認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ閲覧可）
+認証: 不要（`internal`/`private`はAccessまたはBearer Token必須。`private`はownerまたはadminのみ閲覧可）
 
 Response: `Project`
 
@@ -429,7 +429,7 @@ Response:
 
 ### `GET /api/projects/:project_id/jobs`
 
-認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ閲覧可）
+認証: 不要（`internal`/`private`はAccessまたはBearer Token必須。`private`はownerまたはadminのみ閲覧可）
 
 Query:
 ```ts
@@ -442,11 +442,21 @@ Response: `Page<Job>`
 
 ### `GET /api/projects/:project_id/jobs/:job_id`
 
-認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ閲覧可）
+認証: 不要（`internal`/`private`はAccessまたはBearer Token必須。`private`はownerまたはadminのみ閲覧可）
 
 Response: `Job`
 
 エラー: `404 not_found`（`project_id`と`job_id`の親子関係が一致しない場合を含む）
+
+### `POST /api/projects/:project_id/jobs/:job_id/heartbeat`
+
+認証: Bearer Token。実行中のジョブだけ受け付け、受信時刻を更新する。Python SDKはメトリクスが出ない間も60秒ごとに送る。
+
+Response: `204 No Content`
+
+エラー: `404 not_found` — 対象が存在しない、実行中でない、または書き込み権限がない
+
+Cloudflare上ではジョブごとのDurable Objectが15分の期限を管理する。期限までにheartbeat、metrics、logsのいずれも届かなければ`failed`にして`finished_at`を記録する。自己ホスト版は同じ条件を定期的に確認する。異常終了で`finish`が送れなかった場合も、実行中のまま残さない。
 
 ### `POST /api/projects/:project_id/jobs/:job_id/finish`
 
@@ -522,7 +532,7 @@ interface IngestAcceptedResponse {
 
 ### `GET /api/projects/:project_id/jobs/:job_id/metrics`
 
-認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ閲覧可）
+認証: 不要（`internal`/`private`はAccessまたはBearer Token必須。`private`はownerまたはadminのみ閲覧可）
 
 Query:
 ```ts
@@ -555,7 +565,7 @@ Response `201`: `MediaAsset`
 
 ### `GET /api/projects/:project_id/jobs/:job_id/media`（追加分）
 
-認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ閲覧可）
+認証: 不要（`internal`/`private`はAccessまたはBearer Token必須。`private`はownerまたはadminのみ閲覧可）
 
 Query:
 ```ts
@@ -568,7 +578,7 @@ Response: `Page<MediaAsset>`
 
 ### `GET /api/projects/:project_id/jobs/:job_id/media/:media_id`
 
-認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ閲覧可）
+認証: 不要（`internal`/`private`はAccessまたはBearer Token必須。`private`はownerまたはadminのみ閲覧可）
 
 Response: `200`、`Content-Type`は`media_assets.content_type`、bodyはバイナリ（Workerがr2からストリーミング）
 
@@ -596,7 +606,7 @@ Response `202`: `IngestAcceptedResponse`
 
 ### `GET /api/projects/:project_id/jobs/:job_id/logs`
 
-認証: 不要（`internal`/`private`はAccess必須。`private`はownerまたはadminのみ閲覧可）
+認証: 不要（`internal`/`private`はAccessまたはBearer Token必須。`private`はownerまたはadminのみ閲覧可）
 
 Query:
 ```ts

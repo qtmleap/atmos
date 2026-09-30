@@ -309,16 +309,31 @@ describe('GET /api/projects/:project_id/jobs', () => {
     expect(res.status).toBe(404)
   })
 
-  test('a private project requires Access', async () => {
+  test('a private project requires a Bearer token or Access', async () => {
     const { dispatch, env } = testEnv()
     const owner = await insertUser(env.DB)
-    const project = await insertProject(env.DB, owner, {
-      visibility: 'private',
-    })
+    const project = await insertProject(env.DB, owner, { visibility: 'private' })
+    const job = await insertJob(env.DB, project)
+    const ownerToken = await insertAccessToken(env.DB, owner)
+    const stranger = await insertUser(env.DB)
+    const strangerToken = await insertAccessToken(env.DB, stranger)
+    const path = `/api/projects/${project.id}/jobs`
 
-    const res = await dispatch(`/api/projects/${project.id}/jobs`)
-    expect(res.status).toBe(401)
-    await jsonError(res, 'unauthenticated')
+    const anonymous = await dispatch(path)
+    expect(anonymous.status).toBe(401)
+    await jsonError(anonymous, 'unauthenticated')
+
+    const authorized = await dispatch(path, { headers: bearer(ownerToken) })
+    expect(authorized.status).toBe(200)
+    expect((await jsonShaped(jobPageSchema, authorized)).items[0]?.id).toBe(job.id)
+
+    const unauthorized = await dispatch(path, { headers: bearer(strangerToken) })
+    expect(unauthorized.status).toBe(403)
+    await jsonError(unauthorized, 'forbidden')
+
+    const invalid = await dispatch(path, { headers: bearer('invalid') })
+    expect(invalid.status).toBe(401)
+    await jsonError(invalid, 'unauthenticated')
   })
 })
 
@@ -330,6 +345,20 @@ describe('GET /api/projects/:project_id/jobs/:job_id', () => {
     const job = await insertJob(env.DB, project, { name: 'exp' })
 
     const res = await dispatch(`/api/projects/${project.id}/jobs/${job.id}`)
+    expect(res.status).toBe(200)
+    expect((await jsonShaped(jobSchema, res)).id).toBe(job.id)
+  })
+
+  test('the owner reads a private job using a Bearer token', async () => {
+    const { dispatch, env } = testEnv()
+    const owner = await insertUser(env.DB)
+    const project = await insertProject(env.DB, owner, { visibility: 'private' })
+    const job = await insertJob(env.DB, project)
+    const token = await insertAccessToken(env.DB, owner)
+
+    const res = await dispatch(`/api/projects/${project.id}/jobs/${job.id}`, {
+      headers: bearer(token),
+    })
     expect(res.status).toBe(200)
     expect((await jsonShaped(jobSchema, res)).id).toBe(job.id)
   })

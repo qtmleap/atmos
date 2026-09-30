@@ -98,6 +98,7 @@ metricsRoutes.post('/:project_id/jobs/:job_id/metrics', async (c) => {
     loggedAt: item.logged_at === undefined ? receivedAt : dayjs(item.logged_at).toDate(),
   }))
   const platform = getPlatform(c)
+  await db.update(jobs).set({ lastActivityAt: receivedAt }).where(eq(jobs.id, job.id))
   const inserted = (
     await platform.batch((tx) =>
       chunk(values, METRICS_INSERT_CHUNK_ROWS).map((rows) =>

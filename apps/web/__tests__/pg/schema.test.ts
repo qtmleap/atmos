@@ -144,6 +144,7 @@ describe.skipIf(dialect !== 'postgresql')('src/db/pg/schema.ts round trips', () 
       config,
       createdBy: 'user-owner',
       startedAt,
+      lastActivityAt: startedAt,
       finishedAt: null,
     })
     const [row] = await db.select().from(jobs).where(eq(jobs.id, 'job-1'))
@@ -155,6 +156,7 @@ describe.skipIf(dialect !== 'postgresql')('src/db/pg/schema.ts round trips', () 
       config,
       createdBy: 'user-owner',
       startedAt,
+      lastActivityAt: startedAt,
       finishedAt: null,
     })
   })
@@ -202,6 +204,7 @@ describe.skipIf(dialect !== 'postgresql')('src/db/pg/schema.ts round trips', () 
       config: {},
       createdBy: 'user-for-metrics',
       startedAt: createdAt,
+      lastActivityAt: createdAt,
       finishedAt: createdAt,
     })
 

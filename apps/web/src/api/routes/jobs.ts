@@ -90,6 +90,7 @@ jobsRoutes.post('/:project_id/jobs', async (c) => {
       config: body.config === undefined ? existing.config : body.config,
       status: 'running',
       finishedAt: null,
+      lastActivityAt: now(),
     }
     await db
       .update(jobs)
@@ -98,8 +99,10 @@ jobsRoutes.post('/:project_id/jobs', async (c) => {
         config: resumed.config,
         status: resumed.status,
         finishedAt: resumed.finishedAt,
+        lastActivityAt: resumed.lastActivityAt,
       })
       .where(eq(jobs.id, existing.id))
+    await getPlatform(c).jobLease?.renew(project.id, existing.id)
     if (!wasRunning) {
       getPlatform(c).waitUntil(
         notifyLive(getPlatform(c).live, existing.id, {
@@ -119,9 +122,11 @@ jobsRoutes.post('/:project_id/jobs', async (c) => {
     config: body.config === undefined ? {} : body.config,
     createdBy: user.id,
     startedAt: now(),
+    lastActivityAt: now(),
     finishedAt: null,
   }
   await db.insert(jobs).values(created)
+  await getPlatform(c).jobLease?.renew(project.id, created.id)
   return c.json(toJob(created), 201)
 })
 
@@ -172,6 +177,34 @@ jobsRoutes.get('/:project_id/jobs/:job_id', async (c) => {
   return c.json(toJob(job))
 })
 
+// POST /api/projects/:project_id/jobs/:job_id/heartbeat — Bearer token.
+// This stays active even while training emits no metrics.
+jobsRoutes.post('/:project_id/jobs/:job_id/heartbeat', async (c) => {
+  const user = await requireBearerUser(getPlatform(c), c.req.raw)
+  const db = getPlatform(c).db
+  const project = await findProject(db, c.req.param('project_id'))
+  if (project === null || !canWriteProject(project, user)) {
+    throw notFound('project not found')
+  }
+  const updated = await db
+    .update(jobs)
+    .set({ lastActivityAt: now() })
+    .where(
+      and(
+        eq(jobs.id, c.req.param('job_id')),
+        eq(jobs.projectId, project.id),
+        eq(jobs.status, 'running'),
+      ),
+    )
+    .returning({ id: jobs.id })
+  const renewed = updated[0]
+  if (renewed === undefined) {
+    throw notFound('running job not found')
+  }
+  await getPlatform(c).jobLease?.renew(project.id, renewed.id)
+  return c.body(null, 204)
+})
+
 // POST /api/projects/:project_id/jobs/:job_id/finish — Bearer token.
 jobsRoutes.post('/:project_id/jobs/:job_id/finish', async (c) => {
   const user = await requireBearerUser(getPlatform(c), c.req.raw)
@@ -190,6 +223,7 @@ jobsRoutes.post('/:project_id/jobs/:job_id/finish', async (c) => {
   const body = await readJson(c.req.raw, finishJobRequestSchema)
   const finishedAt = now()
   await db.update(jobs).set({ status: body.status, finishedAt }).where(eq(jobs.id, job.id))
+  await getPlatform(c).jobLease?.cancel(job.id)
   const updated: JobRow = { ...job, status: body.status, finishedAt }
   getPlatform(c).waitUntil(
     notifyLive(getPlatform(c).live, job.id, {
@@ -264,5 +298,6 @@ jobsRoutes.delete('/:project_id/jobs/:job_id', async (c) => {
   )
   await deleteJobMedia(getPlatform(c).storage, db, job.id)
   await db.delete(jobs).where(eq(jobs.id, job.id))
+  await getPlatform(c).jobLease?.cancel(job.id)
   return c.body(null, 204)
 })
