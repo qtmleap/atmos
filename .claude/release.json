@@ -2,7 +2,11 @@
 	"schemaVersion": 1,
 	"version": {
 		"source": "apps/web/package.json",
-		"derivedFiles": ["packages/python-sdk/pyproject.toml"],
+		"derivedFiles": [
+			"packages/python-sdk/pyproject.toml",
+			"packages/python-sdk/src/atmos/__init__.py",
+			"packages/python-sdk/uv.lock"
+		],
 		"bumpCommand": null
 	},
 	"branches": {
