@@ -25,3 +25,6 @@ Thumbs.db
 
 # === Playwright MCP (outputDir from playwright-mcp.config.json) ===
 screenshots/
+
+# Local Codex configuration, credentials, and session state.
+/.codex/
