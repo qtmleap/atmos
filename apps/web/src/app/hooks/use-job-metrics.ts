@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { type Metric, PAGINATION_MAX_LIMIT, type Page } from '@/shared/types'
+import {
+  METRICS_PAGINATION_MAX_LIMIT,
+  type Metric,
+  PAGINATION_MAX_LIMIT,
+  type Page,
+} from '@/shared/types'
 import { apiFetch, errorMessage, withQuery } from '../lib/api-client'
 import { jobApiPath } from '../lib/job-paths'
 import {
@@ -47,16 +52,14 @@ export function useJobMetrics(projectId: string, jobId: string): JobMetrics {
   }, [])
 
   const loadFrom = useCallback(
-    async (cursor: string | undefined, gen: number): Promise<void> => {
-      const page = await apiFetch<Page<Metric>>(
-        withQuery(basePath, { limit: PAGINATION_MAX_LIMIT, cursor }),
-      )
+    async (cursor: string | undefined, gen: number, limit: number): Promise<void> => {
+      const page = await apiFetch<Page<Metric>>(withQuery(basePath, { limit, cursor }))
       if (gen !== generation.current) {
         return
       }
       merge(page.items)
       if (page.next_cursor !== null) {
-        await loadFrom(page.next_cursor, gen)
+        await loadFrom(page.next_cursor, gen, limit)
       }
     },
     [basePath, merge],
@@ -72,7 +75,8 @@ export function useJobMetrics(projectId: string, jobId: string): JobMetrics {
       setLoading(true)
       setError(null)
       try {
-        await loadFrom(cursor, gen)
+        const limit = cursor === undefined ? METRICS_PAGINATION_MAX_LIMIT : PAGINATION_MAX_LIMIT
+        await loadFrom(cursor, gen, limit)
       } catch (caught) {
         if (gen === generation.current) {
           setError(errorMessage(caught))

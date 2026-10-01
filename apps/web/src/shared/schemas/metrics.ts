@@ -7,6 +7,7 @@
 // 413 `payload_too_large`, not by the schema, which would report it as 400.
 import dayjs from 'dayjs'
 import { z } from 'zod'
+import { METRICS_PAGINATION_MAX_LIMIT, PAGINATION_DEFAULT_LIMIT } from '../types'
 import { isoDateTimeSchema, paginationQuerySchema, serialIdSchema, uuidSchema } from './common'
 
 export const metricSchema = z.object({
@@ -47,6 +48,12 @@ export const ingestAcceptedResponseSchema = z.object({
 })
 
 export const listMetricsQuerySchema = paginationQuerySchema.extend({
+  limit: z.coerce
+    .number<number>()
+    .int()
+    .min(1)
+    .max(METRICS_PAGINATION_MAX_LIMIT)
+    .default(PAGINATION_DEFAULT_LIMIT),
   /** Only this metric name. */
   key: z.string().nonempty().optional(),
   since_step: z.coerce.number<number>().int().optional(),
