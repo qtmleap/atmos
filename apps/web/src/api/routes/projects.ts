@@ -3,7 +3,6 @@ import { and, desc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { type Db, type ProjectRow, projects, type UserRow, users } from '#schema'
 import { createProjectRequestSchema, updateProjectRequestSchema } from '../../shared/schemas'
-import type { Project } from '../../shared/types'
 import {
   assertCanViewProject,
   canManageProject,
@@ -15,7 +14,7 @@ import {
   resolveViewer,
 } from '../lib/auth'
 import { conflict, forbidden, notFound, readJson } from '../lib/errors'
-import { newId, now, toIsoString } from '../lib/ids'
+import { newId, now } from '../lib/ids'
 import { deleteProjectMedia } from '../lib/media-cleanup'
 import {
   decodeKeysetCursor,
@@ -24,20 +23,11 @@ import {
   parsePagination,
   toPage,
 } from '../lib/pagination'
+import { loadProjectSummaries } from '../lib/project-summary'
+import { toProject } from '../lib/serialize'
 import { type AppEnv, getPlatform } from '../platform/context'
 
 export const projectsRoutes = new Hono<AppEnv>()
-
-const toProject = (
-  project: ProjectRow,
-  owner: Pick<UserRow, 'id' | 'handle' | 'displayName'>,
-): Project => ({
-  id: project.id,
-  name: project.name,
-  visibility: project.visibility,
-  owner: { id: owner.id, handle: owner.handle, display_name: owner.displayName },
-  created_at: toIsoString(project.createdAt),
-})
 
 // GET /api/projects — public projects to everyone, internal ones to any
 // signed-in registered user, private ones only to their owner and admins.
@@ -57,11 +47,15 @@ projectsRoutes.get('/', async (c) => {
     .where(and(visibilityCondition, cursorCondition))
     .orderBy(desc(projects.createdAt), desc(projects.id))
     .limit(limit + 1)
+  const summaries = await loadProjectSummaries(
+    db,
+    rows.slice(0, limit).map((row) => row.project),
+  )
   return c.json(
     toPage(
       rows,
       limit,
-      (row) => toProject(row.project, row.owner),
+      (row) => toProject(row.project, row.owner, summaries.get(row.project.id)),
       (row) => encodeKeysetCursor(row.project.createdAt, row.project.id),
     ),
   )
@@ -84,7 +78,8 @@ projectsRoutes.get('/:project_id', async (c) => {
   }
   const viewer = await resolveViewer(getPlatform(c), c.req.raw)
   assertCanViewProject(row.project, viewer)
-  return c.json(toProject(row.project, row.owner))
+  const summaries = await loadProjectSummaries(db, [row.project])
+  return c.json(toProject(row.project, row.owner, summaries.get(row.project.id)))
 })
 
 // POST /api/projects — two credentials, two semantics:
@@ -112,7 +107,8 @@ projectsRoutes.post('/', async (c) => {
     if (!viaBearer) {
       throw conflict('a project with this name already exists')
     }
-    return c.json(toProject(existing, user), 200)
+    const summaries = await loadProjectSummaries(db, [existing])
+    return c.json(toProject(existing, user, summaries.get(existing.id)), 200)
   }
   const created: ProjectRow = {
     id: newId(),
@@ -176,7 +172,8 @@ projectsRoutes.patch('/:project_id', async (c) => {
     .update(projects)
     .set({ name: updated.name, visibility: updated.visibility })
     .where(eq(projects.id, updated.id))
-  return c.json(toProject(updated, found.owner))
+  const summaries = await loadProjectSummaries(db, [updated])
+  return c.json(toProject(updated, found.owner, summaries.get(updated.id)))
 })
 
 // DELETE /api/projects/:project_id (追加分) — the owner or an admin deletes

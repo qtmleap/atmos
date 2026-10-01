@@ -5,9 +5,10 @@
 // __tests__/helpers/test-worker.ts).
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import dayjs from 'dayjs'
 import { eq } from 'drizzle-orm'
 import { now } from '../../src/api/lib/ids'
-import { createDb, jobs, logs, mediaAssets, metrics } from '../../src/db/schema'
+import { createDb, jobs, logs, mediaAssets, metrics, projects } from '../../src/db/schema'
 import { mediaAssetSchema, pageSchema, projectSchema } from '../../src/shared/schemas'
 import { insertAccessToken, insertJob, insertProject, insertUser } from '../helpers/fixtures'
 import { jsonError, jsonShaped } from '../helpers/http'
@@ -38,6 +39,92 @@ afterAll(async () => {
 const bearer = (token: string) => ({ Authorization: `Bearer ${token}` })
 
 describe('GET /api/projects', () => {
+  test('returns job counts and latest activity consistently across project endpoints', async () => {
+    const { dispatch, env } = testEnv()
+    const owner = await insertUser(env.DB)
+    const createdAt = dayjs('2026-01-01T00:00:00.000Z').toDate()
+    const active = await insertProject(env.DB, owner, { createdAt })
+    const finished = await insertProject(env.DB, owner, { createdAt })
+    const empty = await insertProject(env.DB, owner, { createdAt })
+    await insertJob(env.DB, active, {
+      startedAt: dayjs('2026-01-02T00:00:00.000Z').toDate(),
+      lastActivityAt: dayjs('2026-01-04T00:00:00.000Z').toDate(),
+    })
+    await insertJob(env.DB, active, {
+      startedAt: dayjs('2026-01-03T00:00:00.000Z').toDate(),
+      lastActivityAt: dayjs('2026-01-03T00:00:00.000Z').toDate(),
+    })
+    await insertJob(env.DB, finished, {
+      status: 'finished',
+      startedAt: dayjs('2026-01-02T00:00:00.000Z').toDate(),
+      lastActivityAt: dayjs('2026-01-03T00:00:00.000Z').toDate(),
+      finishedAt: dayjs('2026-01-05T00:00:00.000Z').toDate(),
+    })
+    const expected = [
+      { id: active.id, job_count: 2, updated_at: '2026-01-04T00:00:00.000Z' },
+      { id: finished.id, job_count: 1, updated_at: '2026-01-05T00:00:00.000Z' },
+      { id: empty.id, job_count: 0, updated_at: createdAt.toISOString() },
+    ]
+    for (const path of ['/api/projects?limit=100', `/api/users/${owner.handle}/projects`]) {
+      const res = await dispatch(path)
+      expect(res.status).toBe(200)
+      const body = await jsonShaped(projectPageSchema, res)
+      for (const item of expected) {
+        expect(body.items.find((project) => project.id === item.id)).toMatchObject(item)
+      }
+    }
+    const token = await insertAccessToken(env.DB, owner)
+    for (const item of expected) {
+      const path = `/api/projects/${item.id}`
+      expect(await jsonShaped(projectSchema, await dispatch(path))).toMatchObject(item)
+      const patch = await dispatch(path, {
+        method: 'PATCH',
+        headers: { ...bearer(token), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visibility: 'public' }),
+      })
+      expect(await jsonShaped(projectSchema, patch)).toMatchObject(item)
+    }
+    const existing = await dispatch('/api/projects', {
+      method: 'POST',
+      headers: { ...bearer(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: active.name }),
+    })
+    expect(existing.status).toBe(200)
+    expect(await jsonShaped(projectSchema, existing)).toMatchObject(expected[0])
+  })
+
+  test('summarizes a full 100-project page without exceeding D1 bind limits', async () => {
+    const { dispatch, env } = testEnv()
+    const owner = await insertUser(env.DB)
+    const ids: string[] = []
+    try {
+      for (let index = 0; index < 101; index += 1) {
+        const project = await insertProject(env.DB, owner, {
+          createdAt: dayjs('2030-01-01T00:00:00.000Z').add(index, 'second').toDate(),
+        })
+        ids.push(project.id)
+      }
+      for (const path of ['/api/projects', `/api/users/${owner.handle}/projects`]) {
+        const first = await dispatch(`${path}?limit=100`)
+        expect(first.status).toBe(200)
+        const page = await jsonShaped(projectPageSchema, first)
+        expect(page.items).toHaveLength(100)
+        expect(page.next_cursor).not.toBeNull()
+        expect(page.items.map((item) => item.id)).toEqual(ids.slice(1).reverse())
+        for (const item of page.items) {
+          expect(item.job_count).toBe(0)
+          expect(item.updated_at).toBe(item.created_at)
+        }
+        const next = await dispatch(`${path}?limit=100&cursor=${page.next_cursor}`)
+        expect(next.status).toBe(200)
+        const nextPage = await jsonShaped(projectPageSchema, next)
+        expect(nextPage.items[0]?.id).toBe(ids[0])
+      }
+    } finally {
+      await createDb(env.DB).delete(projects).where(eq(projects.ownerId, owner.id))
+    }
+  })
+
   test('lists public projects and hides private ones from an anonymous viewer', async () => {
     const { dispatch, env } = testEnv()
     const owner = await insertUser(env.DB)

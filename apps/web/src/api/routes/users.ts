@@ -11,6 +11,7 @@ import {
   parsePagination,
   toPage,
 } from '../lib/pagination'
+import { loadProjectSummaries } from '../lib/project-summary'
 import { toProject, toUser, toUserWithEmail } from '../lib/serialize'
 import { type AppEnv, getPlatform } from '../platform/context'
 
@@ -71,11 +72,12 @@ usersRoutes.get('/users/:handle/projects', async (c) => {
     .orderBy(desc(projects.createdAt), desc(projects.id))
     .limit(limit + 1)
 
+  const summaries = await loadProjectSummaries(db, rows.slice(0, limit))
   return c.json(
     toPage(
       rows,
       limit,
-      (row) => toProject(row, owner),
+      (row) => toProject(row, owner, summaries.get(row.id)),
       (row) => encodeKeysetCursor(row.createdAt, row.id),
     ),
   )

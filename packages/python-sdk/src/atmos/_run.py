@@ -18,6 +18,7 @@ from typing import Any, Literal, Self
 import httpx
 
 from atmos._buffering import BackgroundFlusher
+from atmos._connection import resolve_connection
 from atmos._log_handler import RunLogHandler
 from atmos._media import check_size, guess_content_type
 from atmos._retry import RetryConfig, call_with_retry
@@ -153,19 +154,7 @@ def init(
     `transport`/`retry_sleep`は主にテスト用（`httpx.MockTransport`等の注入、
     再試行の待機時間の差し替え）。
     """
-    resolved_api_url = api_url or os.environ.get("ATMOS_API_URL")
-    resolved_token = token or os.environ.get("ATMOS_TOKEN")
-
-    if not resolved_api_url:
-        raise ValueError(
-            "atmos: api_url が指定されていません。"
-            "wb.init(api_url=...) 引数か ATMOS_API_URL 環境変数で指定してください。"
-        )
-    if not resolved_token:
-        raise ValueError(
-            "atmos: token が指定されていません。"
-            "wb.init(token=...) 引数か ATMOS_TOKEN 環境変数で指定してください。"
-        )
+    resolved_api_url, resolved_token = resolve_connection(api_url, token)
     # flush_interval/batch_size/再試行設定の検証はそれぞれの実体
     # （BackgroundFlusher/RetryConfig）も行うが、project/jobの作成リクエストを
     # 送る前にここでも早期にチェックする。
