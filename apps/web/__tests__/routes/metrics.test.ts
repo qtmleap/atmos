@@ -17,7 +17,7 @@ import {
   metricSchema,
   pageSchema,
 } from '../../src/shared/schemas'
-import { INGEST_METRICS_MAX_ITEMS } from '../../src/shared/types'
+import { INGEST_METRICS_MAX_ITEMS, METRICS_PAGINATION_MAX_LIMIT } from '../../src/shared/types'
 import { insertAccessToken, insertJob, insertProject, insertUser } from '../helpers/fixtures'
 import { expectShape, jsonError, jsonShaped } from '../helpers/http'
 import { createRouteTestEnv, type RouteTestEnv } from './test-env'
@@ -266,6 +266,36 @@ describe('GET /api/projects/:project_id/jobs/:job_id/metrics', () => {
     })
     return { project, job }
   }
+
+  test('returns more than 100 rows in a single history request', async () => {
+    const { dispatch, env } = testEnv()
+    const owner = await insertUser(env.DB)
+    const project = await insertProject(env.DB, owner)
+    const job = await insertJob(env.DB, project)
+    const token = await insertAccessToken(env.DB, owner)
+    const path = `/api/projects/${project.id}/jobs/${job.id}/metrics`
+    const items = Array.from({ length: 250 }, (_, index) => ({
+      step: index + 1,
+      key: 'train/loss',
+      value: 1 / (index + 1),
+    }))
+    const ingest = await dispatch(path, {
+      method: 'POST',
+      headers: jsonHeaders(token),
+      body: JSON.stringify({ metrics: items }),
+    })
+    expect(ingest.status).toBe(202)
+
+    const res = await dispatch(`${path}?limit=${METRICS_PAGINATION_MAX_LIMIT}`)
+    expect(res.status).toBe(200)
+    const body = await jsonShaped(metricPageSchema, res)
+    expect(body.items.map((item) => item.step)).toEqual(items.map((item) => item.step))
+    expect(body.next_cursor).toBeNull()
+
+    const invalid = await dispatch(`${path}?limit=${METRICS_PAGINATION_MAX_LIMIT + 1}`)
+    expect(invalid.status).toBe(400)
+    await jsonError(invalid, 'validation_error')
+  })
 
   test('filters by key', async () => {
     const { dispatch } = testEnv()

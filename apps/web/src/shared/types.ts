@@ -105,6 +105,7 @@ export type ErrorResponse = z.output<typeof errorResponseSchema>
 
 export const PAGINATION_DEFAULT_LIMIT = 20
 export const PAGINATION_MAX_LIMIT = 100
+export const METRICS_PAGINATION_MAX_LIMIT = 10_000
 
 /** `limit` defaults to 20 (max 100); `cursor` is the previous page's `next_cursor`. */
 export type PaginationQuery = z.input<typeof paginationQuerySchema>

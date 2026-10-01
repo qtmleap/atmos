@@ -35,6 +35,7 @@ import {
   JOB_STATUSES,
   LOG_STREAMS,
   MEDIA_KINDS,
+  METRICS_PAGINATION_MAX_LIMIT,
   PAGINATION_DEFAULT_LIMIT,
   PAGINATION_MAX_LIMIT,
   ROLES,
@@ -103,8 +104,18 @@ describe('pagination (SPEC §0.4)', () => {
     expect(accepts(listMetricsQuerySchema, { since_step: '1.5' })).toBe(false)
     expect(accepts(listMediaQuerySchema, { kind: 'audio' })).toBe(true)
     expect(accepts(listMediaQuerySchema, { kind: 'video' })).toBe(false)
-    for (const schema of [listJobsQuerySchema, listMetricsQuerySchema, listMediaQuerySchema]) {
+    for (const schema of [listJobsQuerySchema, listMediaQuerySchema]) {
       expect(accepts(schema, { limit: '101' })).toBe(false)
+    }
+  })
+
+  test('metrics allow larger history pages without changing other list limits', () => {
+    expect(METRICS_PAGINATION_MAX_LIMIT).toBe(10_000)
+    for (const limit of ['1', '101', '10000']) {
+      expect(accepts(listMetricsQuerySchema, { limit })).toBe(true)
+    }
+    for (const limit of ['0', '10001', '1.5', '-1', 'x', '']) {
+      expect(accepts(listMetricsQuerySchema, { limit })).toBe(false)
     }
   })
 
