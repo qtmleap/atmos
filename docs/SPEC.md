@@ -537,6 +537,7 @@ interface IngestAcceptedResponse {
 Query:
 ```ts
 interface ListMetricsQuery extends PaginationQuery {
+  limit?: number        // デフォルト20、最大10,000（メトリクス専用）
   key?: string          // 特定のメトリクス名のみ絞り込み
   since_step?: number
 }
