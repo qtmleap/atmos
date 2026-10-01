@@ -18,11 +18,13 @@ import { logsRoutes } from '../../src/api/routes/logs'
 import { mediaRoutes } from '../../src/api/routes/media'
 import { metricsRoutes } from '../../src/api/routes/metrics'
 import { projectsRoutes } from '../../src/api/routes/projects'
+import { usersRoutes } from '../../src/api/routes/users'
 
 const app = new Hono<{ Bindings: CloudflareBindings }>()
 
 app.onError(handleError)
 
+app.route('/api', usersRoutes)
 app.route('/api/projects', projectsRoutes)
 app.route('/api/projects', jobsRoutes)
 app.route('/api/projects', metricsRoutes)
