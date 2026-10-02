@@ -21,9 +21,9 @@ export const projectSchema = z.object({
   visibility: visibilitySchema,
   owner: projectOwnerSchema,
   created_at: isoDateTimeSchema,
-  /** Number of jobs in the project. Shown in lists; the API does not send it yet. */
+  /** Number of jobs in the project. */
   job_count: z.number().int().nonnegative().optional(),
-  /** When the newest job was created or finished. Shown in lists; the API does not send it yet. */
+  /** Latest job start, finish, or activity; the project creation time when there are no jobs. */
   updated_at: isoDateTimeSchema.optional(),
 })
 

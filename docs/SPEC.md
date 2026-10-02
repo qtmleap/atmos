@@ -90,6 +90,8 @@ interface Project {
     display_name: string
   }
   created_at: string
+  job_count?: number           // プロジェクト内のジョブ数。APIは常に返す
+  updated_at?: string          // ジョブの開始・終了・直近活動の最新日時。0件ならcreated_at
 }
 
 interface Job {

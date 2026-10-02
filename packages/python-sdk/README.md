@@ -76,7 +76,36 @@ export ATMOS_API_URL="https://atmos.example.com"
 export ATMOS_TOKEN="xxxxx"  # /settings/tokens で発行したアクセストークン
 ```
 
+## ジョブ・プロジェクトの削除
+
+学習を開始せずに、IDを指定して削除できます。接続先とトークンの指定方法は
+`init()`と同じです。指定できるのは所有者または管理者が削除権限を持つデータです。
+
+```python
+import atmos
+
+with atmos.Client() as client:
+    client.delete_job(project_id="project-id", job_id="job-id")
+    client.delete_project(project_id="another-project-id")
+```
+
+ジョブを削除すると、関連するメトリクス・ログ・音声なども削除されます。
+プロジェクトの削除では配下の全ジョブと関連データが削除されます。元には戻せません。
+`Client`の作成ではプロジェクトやジョブを作成しません。
+
+成功時の戻り値は`None`です。401・403・404などの失敗は`httpx.HTTPStatusError`として
+返します。一時的な失敗は既存の再試行規則に従います。削除後に応答だけが失われた場合、
+再試行の結果が404になることがあります。この場合も成功とはみなさず例外を返すため、
+必要に応じてサーバーの状態を確認してください。`with`を使わない場合は`close()`で
+HTTP接続を閉じてください。学習中のジョブを削除する前には、学習側からの送信を止めてください。
+
 ## 公開API
+
+- `atmos.Client(*, api_url=None, token=None, max_retries=5, retry_initial_delay=0.5, retry_max_delay=30.0)`
+- `Client.delete_job(project_id: str, job_id: str) -> None`
+- `Client.delete_project(project_id: str) -> None`
+- `Client.close() -> None` / `Client.is_closed -> bool`
+- `Client`は`with`文に対応し、正常終了時も例外時も接続を閉じます。
 
 - `atmos.init(project, *, name=None, config=None, job_id=None, visibility="private", api_url=None, token=None, flush_interval=5.0, batch_size=100, max_retries=5, retry_initial_delay=0.5, retry_max_delay=30.0) -> Run`
   - `project`のget-or-create（`POST /api/projects`）→ job作成（`POST /api/projects/:project_id/jobs`）を行い`Run`を返す。

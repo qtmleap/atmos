@@ -4,6 +4,7 @@
 import type { ProjectRow, UserRow } from '../../db/schema'
 import type { Project, ProjectOwner, User, UserWithEmail } from '../../shared/types'
 import { toIsoString } from './ids'
+import type { ProjectSummary } from './project-summary'
 
 /** `/api/users/:handle/avatar` path for a handle, independent of whether an avatar exists. */
 export const avatarPath = (handle: string): string =>
@@ -33,10 +34,16 @@ export const toProjectOwner = (owner: UserRow): ProjectOwner => ({
   display_name: owner.displayName,
 })
 
-export const toProject = (row: ProjectRow, owner: UserRow): Project => ({
+export const toProject = (
+  row: ProjectRow,
+  owner: UserRow,
+  summary: ProjectSummary = { jobCount: 0, updatedAt: row.createdAt },
+): Project => ({
   id: row.id,
   name: row.name,
   visibility: row.visibility,
   owner: toProjectOwner(owner),
   created_at: toIsoString(row.createdAt),
+  job_count: summary.jobCount,
+  updated_at: toIsoString(summary.updatedAt),
 })
