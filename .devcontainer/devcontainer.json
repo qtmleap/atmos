@@ -43,7 +43,7 @@
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/shyim/devcontainers-features/bun:0": {},
     "ghcr.io/devcontainers/features/node:1.5.0": {
-      "version": "26.5.0"
+      "version": "26.12.1"
     },
     "ghcr.io/va-h/devcontainers-features/uv:1": {
       "version": "latest"
