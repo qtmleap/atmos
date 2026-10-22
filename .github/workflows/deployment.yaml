@@ -103,9 +103,11 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Determine tags
+        id: tags
         run: |
           IMAGE=ghcr.io/${{ github.repository }}
           VERSION=$(jq -r .version package.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if [[ '${{ github.event.pull_request.base.ref }}' =~ ^(master|main)$ ]] \
             || [[ '${{ github.event_name }}' == 'workflow_dispatch' && '${{ github.ref_name }}' =~ ^(master|main)$ ]]; then
             echo "TAGS=$IMAGE:latest,$IMAGE:$VERSION,$IMAGE:sha-${GITHUB_SHA::7}" >> $GITHUB_ENV
@@ -127,5 +129,9 @@ jobs:
           context: apps/web
           push: true
           tags: ${{ env.TAGS }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.tags.outputs.version }}
           secrets: |
             github_token=${{ secrets.GITHUB_TOKEN }}
