@@ -136,6 +136,38 @@ describe('SetupPage', () => {
 })
 
 describe('AppLayout setup gate', () => {
+  test('does not ask /api/setup at all for a signed-in user, who proves atmos is set up', async () => {
+    const requested = installFetch({
+      '/api/me': () => userWithEmail({ display_name: '田中 美咲' }),
+      '/api/setup': () => ({ initialized: false }),
+    })
+    await primeCurrentUser()
+    await renderRoute('/')
+    expect(await screen.findByText('田中 美咲')).toBeInTheDocument()
+    expect(requested.some((url) => url.startsWith('/api/setup'))).toBe(false)
+    expect(screen.queryByText('atmos へようこそ')).toBeNull()
+  })
+
+  test('still asks when signed in at the identity provider but not registered, the first-run case', async () => {
+    const requested = installFetch({
+      '/api/me': () =>
+        Response.json(
+          {
+            error: {
+              code: 'not_registered',
+              message: 'the identity a@example.com is not registered',
+            },
+          },
+          { status: 401 },
+        ),
+      '/api/setup': () => ({ initialized: false }),
+    })
+    await primeCurrentUser()
+    await renderRoute('/')
+    expect(await screen.findByText('atmos へようこそ')).toBeInTheDocument()
+    expect(requested.some((url) => url.startsWith('/api/setup'))).toBe(true)
+  })
+
   test('redirects any other page to /setup while atmos has no registered user yet', async () => {
     installFetch({ '/api/setup': () => ({ initialized: false }) })
     // A signed-in leftover from an earlier test would also close /setup

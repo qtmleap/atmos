@@ -43,6 +43,25 @@ describe('apiFetch', () => {
     expect(new Headers(form[0]?.init?.headers).has('Content-Type')).toBe(false)
   })
 
+  test("does not follow redirects, and reports Access's login redirect as signed out", async () => {
+    const login = new Response(null, {
+      status: 302,
+      headers: { Location: 'https://team.cloudflareaccess.com/cdn-cgi/access/login/x' },
+    })
+    const calls = stubFetch(login)
+    const error = await apiFetch('/api/me').catch((caught: unknown) => caught)
+    expect(calls[0]?.init?.redirect).toBe('manual')
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error).toMatchObject({ status: 401, code: 'unauthenticated' })
+  })
+
+  test("treats the browser's opaque-redirect response the same way", async () => {
+    // Browsers give a redirect that was not followed as type "opaqueredirect" (status 0).
+    stubFetch(Object.defineProperty(new Response(null), 'type', { value: 'opaqueredirect' }))
+    const error = await apiFetch('/api/setup').catch((caught: unknown) => caught)
+    expect(error).toMatchObject({ status: 401, code: 'unauthenticated' })
+  })
+
   test('resolves an empty 204 body to null', async () => {
     stubFetch(new Response(null, { status: 204 }))
     expect(await apiFetch<null>('/api/settings/tokens', { method: 'DELETE' })).toBeNull()

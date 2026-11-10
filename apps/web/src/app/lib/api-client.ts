@@ -3,6 +3,11 @@
 //   const page = await apiFetch<Page<Project>>('/api/projects?limit=50')
 //
 // - Credentials (the Cloudflare Access cookie) are always sent.
+// - Redirects are not followed. Without a valid session, Cloudflare Access
+//   answers a protected path with a 302 to its login page on another origin,
+//   which a followed fetch reports as a CORS failure with no status at all.
+//   No API endpoint redirects otherwise, so a redirect is turned into the
+//   401 it means: "signed out".
 // - A string body gets `Content-Type: application/json` unless the caller set
 //   one; FormData and other bodies are passed through untouched.
 // - Non-2xx responses throw ApiError carrying the SPEC error code and message.
@@ -61,12 +66,23 @@ const withJsonContentType = (init: RequestInit | undefined): Headers => {
   return headers
 }
 
+/**
+ * A redirect that was not followed: the browser hands back an opaque-redirect
+ * response (status 0); other runtimes return the 3xx itself.
+ */
+const isRedirect = (response: Response): boolean =>
+  response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
     headers: withJsonContentType(init),
     credentials: 'include',
+    redirect: 'manual',
   })
+  if (isRedirect(response)) {
+    throw new ApiError(401, 'unauthenticated', 'redirected to the login page (not signed in)')
+  }
   const text = await response.text()
   if (!response.ok) {
     throw toApiError(response.status, response.statusText, text)
