@@ -175,6 +175,16 @@ describe('GET /api/me', () => {
     expect(res.status).toBe(401)
   })
 
+  test('401 not_registered for a valid identity whose email has no user, naming the email', async () => {
+    const { access, dispatch } = testEnv()
+    const res = await dispatch('/api/me', {
+      headers: { 'Cf-Access-Jwt-Assertion': await access.sign({ email: 'stranger@example.com' }) },
+    })
+    expect(res.status).toBe(401)
+    const body = await jsonError(res, 'not_registered')
+    expect(body.error.message).toContain('stranger@example.com')
+  })
+
   test('returns the caller with their email', async () => {
     const { access, dispatch, env } = testEnv()
     const user = await insertUser(env.DB, { handle: 'me-user' })

@@ -431,6 +431,15 @@ describe('UserMenu', () => {
   })
 })
 
+describe('UserMenu, signed in without an atmos user', () => {
+  test('offers logging out instead of a login link that leads back here', async () => {
+    await renderInRouter(<UserMenu user={null} loading={false} unregistered />)
+    expect(screen.getByText('未登録のアカウント')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'ログイン' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'ログアウト' })).toBeInTheDocument()
+  })
+})
+
 describe('ListFooter', () => {
   test('counts the rows and pages forward only', () => {
     render(

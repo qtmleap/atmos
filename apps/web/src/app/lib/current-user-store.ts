@@ -7,6 +7,12 @@ import { ApiError } from './api-client'
 export interface CurrentUserState {
   user: UserWithEmail | null
   loading: boolean
+  /**
+   * Set only when the visitor is signed in at the identity provider but their
+   * email has no atmos user (401 `not_registered`): the server's message, which
+   * names that email. Absent otherwise, so signed out stays `{ user: null, loading: false }`.
+   */
+  unregistered?: string
 }
 
 export type FetchMe = () => Promise<UserWithEmail>
@@ -40,6 +46,12 @@ export const createCurrentUserStore = (fetchMe: FetchMe): CurrentUserStore => {
     } catch (error) {
       // 401 means "not signed in"; any other failure is also shown as signed
       // out rather than thrown, so a broken /api/me never takes a page down.
+      // The exception is `not_registered`: that visitor did sign in, so
+      // offering the login again only sends them round in a circle.
+      if (error instanceof ApiError && error.code === 'not_registered') {
+        set({ user: null, loading: false, unregistered: error.message })
+        return
+      }
       if (!(error instanceof ApiError && error.status === 401)) {
         console.warn('GET /api/me failed', error)
       }

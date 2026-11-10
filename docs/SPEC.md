@@ -270,7 +270,9 @@ Response: `200`、`Content-Type`は保存時の画像形式、bodyはバイナ�
 
 Response: `UserWithEmail`
 
-エラー: `401 unauthenticated`
+エラー:
+- `401 unauthenticated` — Access のログインが無い、または JWT が検証に通らない
+- `401 not_registered` — Access のログインは有効だが、そのメールアドレスのユーザーが登録されていない。`message` に Access が渡したメールアドレスを含む。Web UI はこれを未ログインと区別し、ログインへ戻す代わりに未登録であることとログアウトを案内する
 
 ## 5. Settings
 

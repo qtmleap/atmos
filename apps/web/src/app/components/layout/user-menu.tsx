@@ -17,6 +17,12 @@ import { Skeleton } from '../ui/skeleton'
 export interface UserMenuProps {
   user: UserWithEmail | null
   loading: boolean
+  /**
+   * The visitor is signed in at the identity provider but has no atmos user.
+   * The login link would only bring them back to the same answer, so the menu
+   * offers logging out (to pick another account) instead.
+   */
+  unregistered?: boolean
 }
 
 /**
@@ -26,10 +32,20 @@ export interface UserMenuProps {
  * (docs/PLAN.md §3.1), so Access can redirect to its login; a client-side
  * route change would never reach Access.
  */
-export function UserMenu({ user, loading }: UserMenuProps) {
+export function UserMenu({ user, loading, unregistered = false }: UserMenuProps) {
   const logout = useLogout()
   if (loading) {
     return <Skeleton className="size-8 rounded-full" />
+  }
+  if (user === null && unregistered) {
+    return (
+      <>
+        <span className="text-xs text-muted-foreground">未登録のアカウント</span>
+        <Button variant="outline" onClick={logout}>
+          ログアウト
+        </Button>
+      </>
+    )
   }
   if (user === null) {
     return (

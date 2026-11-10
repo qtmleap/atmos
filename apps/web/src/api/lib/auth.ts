@@ -29,7 +29,7 @@ import {
 } from 'jose'
 import { accessTokens, type Db, type ProjectRow, projects, type UserRow, users } from '#schema'
 import type { Platform } from '../platform/types'
-import { forbidden, unauthenticated } from './errors'
+import { ApiError, forbidden, unauthenticated } from './errors'
 
 export const ACCESS_JWT_HEADER = 'Cf-Access-Jwt-Assertion'
 export const ACCESS_JWT_COOKIE = 'CF_Authorization'
@@ -273,8 +273,13 @@ export const resolveViewer = async (
 
 /**
  * The registered user behind the request's identity. Throws 401
- * `unauthenticated` when there is no valid identity or when the email is not
- * registered (docs/SPEC.md §4 `GET /api/me` lists only 401).
+ * `unauthenticated` when there is no valid identity, and 401 `not_registered`
+ * when the identity is valid but its email has no `users` row. Both are 401
+ * (docs/SPEC.md §4 `GET /api/me`), but only the second is a signed-in visitor:
+ * sending them to the login again would bring them straight back, so the web
+ * UI tells the two apart by `code`. The message names the email Access
+ * reported (it comes from the caller's own JWT) so a mismatch with the
+ * registered address can be seen.
  */
 export const requireAccessUser = async (
   platform: Pick<Platform, 'auth' | 'db'>,
@@ -284,7 +289,11 @@ export const requireAccessUser = async (
   const identity = await requireAccessIdentity(platform, request, jwks)
   const user = await findUserByEmail(platform.db, identity.email)
   if (user === null) {
-    throw unauthenticated('this Cloudflare Access identity is not registered as an atmos user')
+    throw new ApiError(
+      401,
+      'not_registered',
+      `the identity ${identity.email} is not registered as an atmos user`,
+    )
   }
   return user
 }
