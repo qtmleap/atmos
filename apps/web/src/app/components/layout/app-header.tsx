@@ -62,13 +62,15 @@ export function AppHeaderBar({
 export interface AppHeaderProps {
   user: UserWithEmail | null
   loading: boolean
+  /** Signed in at the identity provider, but not an atmos user (see UserMenu). */
+  unregistered?: boolean
 }
 
 /**
  * The header every page gets, pinned to the top. The theme select comes
  * first on the right so it is there signed out and during setup too.
  */
-export function AppHeader({ user, loading }: AppHeaderProps) {
+export function AppHeader({ user, loading, unregistered = false }: AppHeaderProps) {
   const pathname = useLocation({ select: (location) => location.pathname })
   const isSetup = pathname === '/setup'
   return (
@@ -82,7 +84,7 @@ export function AppHeader({ user, loading }: AppHeaderProps) {
             {isSetup ? (
               <span className="text-xs text-muted-foreground">初回セットアップ</span>
             ) : (
-              <UserMenu user={user} loading={loading} />
+              <UserMenu user={user} loading={loading} unregistered={unregistered} />
             )}
           </>
         }

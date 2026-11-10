@@ -86,6 +86,7 @@ export type LogStream = (typeof LOG_STREAMS)[number]
 export const ERROR_CODES = [
   'validation_error',
   'unauthenticated',
+  'not_registered',
   'forbidden',
   'not_found',
   'conflict',

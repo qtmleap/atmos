@@ -25,6 +25,17 @@ import { createTestEnv, type TestEnv } from '../helpers/miniflare'
 
 const TIMEOUT = 60_000
 
+// Under Bun 1.4.3 the client socket reports `close` (code 1000) as soon as the
+// Durable Object closes its side. Under Bun 1.4.4 it reports the same close
+// about 30 s later (measured: 29.7 to 30.0 s; the figure matches the default
+// close timeout of the `ws` library miniflare uses, which was not confirmed as
+// the cause), while the Durable Object itself already has no connections left
+// 300 ms after the message. The Durable Object behaves the same on both, so the
+// test waits for the event long enough instead of failing on the client's slower
+// teardown. This makes the test take about 30 s under 1.4.4.
+const CLOSE_EVENT_TIMEOUT = 45_000
+const CLOSE_EVENT_TEST_TIMEOUT = 90_000
+
 const t: { current: TestEnv | null } = { current: null }
 const testEnv = (): TestEnv => {
   if (t.current === null) {
@@ -287,6 +298,7 @@ describe('JobLive Durable Object', () => {
     return { ws, received, closed }
   }
 
+  const WAIT_STEP_MS = 20
   const waitFor = async (check: () => boolean, remaining = 100): Promise<void> => {
     if (check()) {
       return
@@ -294,7 +306,7 @@ describe('JobLive Durable Object', () => {
     if (remaining === 0) {
       throw new Error('condition not met in time')
     }
-    await Bun.sleep(20)
+    await Bun.sleep(WAIT_STEP_MS)
     return waitFor(check, remaining - 1)
   }
 
@@ -351,7 +363,7 @@ describe('JobLive Durable Object', () => {
         data: { status: 'finished', finished_at: '2026-09-24T01:00:00.000Z' },
       }
       await notifyLive(durableObjectLiveHub(env.JOB_LIVE), jobId, finished)
-      await waitFor(() => socket.closed.code !== null)
+      await waitFor(() => socket.closed.code !== null, CLOSE_EVENT_TIMEOUT / WAIT_STEP_MS)
       expect(socket.received.map((frame) => JSON.parse(frame))).toEqual([running, finished])
       expect(socket.closed.code).toBe(1000)
 
@@ -366,7 +378,7 @@ describe('JobLive Durable Object', () => {
       }
       expect(await pollCount(100)).toBe(0)
     },
-    TIMEOUT,
+    CLOSE_EVENT_TEST_TIMEOUT,
   )
 
   test('rejects non-upgrade requests', async () => {

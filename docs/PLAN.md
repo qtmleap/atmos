@@ -46,6 +46,7 @@
 - Cloudflare Access Application が保護するのは次のパスだけで、ポリシーは許可したメンバーだけを通すものが一つだけある。
   - 画面: `/setup`、`/settings`、`/admin`
   - API: `/api/setup`、`/api/me`、`/api/settings`、`/api/admin`、`/api/users`
+  - 画面の「ログイン」は `GET /api/me/login?redirect=<今のページ>`。`/api/me` 配下なので追加の設定は要らず、ログイン後に元のページへ戻る（以前は `/settings/profile` へのリンクで、ログイン後は設定画面に着地していた）。
 - `/api/projects/*` は Access の対象外に置く。Everyone を許可する Allow ポリシーも付けない。Allow ポリシーは誰でも通すものでもログイン画面は出すため、SDK からの送信が止まってしまう。
 - Access の対象外のパスには `Cf-Access-Jwt-Assertion` ヘッダーが付かない。そこで Worker は、ヘッダーが無ければ `CF_Authorization` Cookie を読み、ヘッダーと同じ検証（署名、AUD、発行元、有効期限）をかけてログイン状態とメールアドレスを判定する。Cookie はホスト全体に付くので、保護されたパスで一度ログインしていれば `/api/projects/*` でも本人と分かる。
 - Cookie は別サイトからの要求にも付くため、Cookie だけで本人確認した書き込み（GET、HEAD、OPTIONS 以外）は、`Sec-Fetch-Site: same-origin` か、要求先と一致する `Origin` があるときだけ受け付ける。
@@ -75,6 +76,7 @@
 | `GET /api/users/:handle/projects` | 指定ユーザーが所有するプロジェクト一覧（マイページ用の絞り込み） | 不要（非公開はAccessで判定） |
 | `GET /api/users/:handle/avatar` | アバター画像取得（Workerがr2からストリーミング） | 不要 |
 | `GET /api/me` | 自分のユーザー情報取得（マイページへのリンク解決用） | Access |
+| `GET /api/me/login` | ログインの入口。ログイン後に `redirect` のページへ 302 | Access |
 | `PATCH /api/settings/profile` | 自分のhandle・display_name変更 | Access |
 | `PUT /api/settings/avatar` | アバター画像アップロード（Workerがバイナリを受け取りR2へ書き込み） | Access |
 | `POST/DELETE /api/settings/tokens` | アクセストークンIssue/Revoke | Access |

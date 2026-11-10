@@ -31,6 +31,37 @@ describe('createCurrentUserStore', () => {
     expect(store.getSnapshot()).toEqual({ user: null, loading: false })
   })
 
+  test('not_registered is signed out, but keeps the server message to explain it', async () => {
+    const store = createCurrentUserStore(async () => {
+      throw new ApiError(401, 'not_registered', 'the identity bob@example.com is not registered')
+    })
+    await store.load()
+    expect(store.getSnapshot()).toEqual({
+      user: null,
+      loading: false,
+      unregistered: 'the identity bob@example.com is not registered',
+    })
+  })
+
+  test('a later successful load clears unregistered', async () => {
+    const results: Array<() => UserWithEmail> = [
+      () => {
+        throw new ApiError(401, 'not_registered', 'not registered')
+      },
+      () => USER,
+    ]
+    const store = createCurrentUserStore(async () => {
+      const next = results.shift()
+      if (next === undefined) {
+        throw new Error('no more results')
+      }
+      return next()
+    })
+    await store.load()
+    await store.load()
+    expect(store.getSnapshot()).toEqual({ user: USER, loading: false })
+  })
+
   test('shares one request between concurrent loads', async () => {
     const calls: number[] = []
     const store = createCurrentUserStore(async () => {

@@ -168,11 +168,62 @@ describe('GET /api/users/:handle/avatar', () => {
   })
 })
 
+describe('GET /api/me/login', () => {
+  const login = async (redirect: string | null, email: string | null) => {
+    const { access, dispatch } = testEnv()
+    const query = redirect === null ? '' : `?redirect=${encodeURIComponent(redirect)}`
+    return dispatch(`/api/me/login${query}`, {
+      redirect: 'manual',
+      headers: email === null ? {} : { 'Cf-Access-Jwt-Assertion': await access.sign({ email }) },
+    })
+  }
+
+  test('401 without an Access identity, instead of bouncing back as if signed in', async () => {
+    const res = await login('/projects/a', null)
+    expect(res.status).toBe(401)
+    await jsonError(res, 'unauthenticated')
+  })
+
+  test('sends a signed-in visitor back to the page they came from, query included', async () => {
+    const { env } = testEnv()
+    const user = await insertUser(env.DB)
+    const res = await login('/projects/abc?tab=logs', user.cfAccessEmail)
+    expect(res.status).toBe(302)
+    expect(res.headers.get('Location')).toBe('/projects/abc?tab=logs')
+  })
+
+  test('also returns an identity with no atmos user, so the page can explain it', async () => {
+    const res = await login('/settings/profile', 'nobody@example.com')
+    expect(res.status).toBe(302)
+    expect(res.headers.get('Location')).toBe('/settings/profile')
+  })
+
+  test('goes to / without a redirect, and never to another site', async () => {
+    const { env } = testEnv()
+    const user = await insertUser(env.DB)
+    for (const redirect of [null, 'https://evil.example/', '//evil.example', '/\\evil.example']) {
+      const res = await login(redirect, user.cfAccessEmail)
+      expect(res.status).toBe(302)
+      expect(res.headers.get('Location')).toBe('/')
+    }
+  })
+})
+
 describe('GET /api/me', () => {
   test('401 without an Access identity', async () => {
     const { dispatch } = testEnv()
     const res = await dispatch('/api/me')
     expect(res.status).toBe(401)
+  })
+
+  test('401 not_registered for a valid identity whose email has no user, naming the email', async () => {
+    const { access, dispatch } = testEnv()
+    const res = await dispatch('/api/me', {
+      headers: { 'Cf-Access-Jwt-Assertion': await access.sign({ email: 'stranger@example.com' }) },
+    })
+    expect(res.status).toBe(401)
+    const body = await jsonError(res, 'not_registered')
+    expect(body.error.message).toContain('stranger@example.com')
   })
 
   test('returns the caller with their email', async () => {

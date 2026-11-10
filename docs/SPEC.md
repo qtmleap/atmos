@@ -156,7 +156,7 @@ interface AccessTokenStatus {
 
 ### `GET /api/setup`（追加分）
 
-認証: 不要。SPAが起動直後に叩き、未セットアップなら初期設定画面へ誘導するための判定に使う。
+認証: 不要。SPAが起動直後に叩き、未セットアップなら初期設定画面へ誘導するための判定に使う。ただし `GET /api/me` が先に答えてログイン中のユーザーが分かれば、そのユーザー自身が「セットアップ済み」の証拠なので叩かない（未ログイン、または Access のログインは済んでいるが atmos のユーザーが未登録のときだけ叩く）。Cloudflare Access が `/api/setup` を保護している環境では、未ログインの要求はログイン画面への `302` になる。SPA はリダイレクトを辿らず、これを未ログイン（判定できない＝誘導しない）として扱う。
 
 ```ts
 interface SetupStatus {
@@ -270,7 +270,26 @@ Response: `200`、`Content-Type`は保存時の画像形式、bodyはバイナ�
 
 Response: `UserWithEmail`
 
-エラー: `401 unauthenticated`
+エラー:
+- `401 unauthenticated` — Access のログインが無い、または JWT が検証に通らない
+- `401 not_registered` — Access のログインは有効だが、そのメールアドレスのユーザーが登録されていない。`message` に Access が渡したメールアドレスを含む。Web UI はこれを未ログインと区別し、ログインへ戻す代わりに未登録であることとログアウトを案内する
+
+### `GET /api/me/login`
+
+認証: Access
+
+Web UI の「ログイン」の入口。Access が `/api/me` 配下を保護しているので、未ログインならログイン画面に回され、ログイン後にここへ戻る。Worker は Access の本人確認だけを見て（登録済みユーザーかは問わない）、`redirect` のページへ `302` で返す。ログイン直後に設定画面へ飛ばされず、元のページに戻れる。
+
+Query:
+```ts
+interface LoginQuery {
+  redirect?: string   // 戻り先。このサイト内のパス＋クエリのみ（例: /projects/abc?tab=logs）。他サイトや不正な値、省略時は /
+}
+```
+
+Response: `302` + `Location`
+
+エラー: `401 unauthenticated` — 本人確認が無い（このパスが Access の対象外になっている）
 
 ## 5. Settings
 

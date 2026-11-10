@@ -422,12 +422,21 @@ describe('JobDetailPage', () => {
 })
 
 describe('UserMenu', () => {
-  test('signed out shows a full page sign-in link', async () => {
+  test('signed out shows a full page sign-in link that returns to the current page', async () => {
     await renderInRouter(<UserMenu user={null} loading={false} />)
     expect(screen.getByRole('link', { name: 'ログイン' })).toHaveAttribute(
       'href',
-      '/settings/profile',
+      '/api/me/login?redirect=%2F',
     )
+  })
+})
+
+describe('UserMenu, signed in without an atmos user', () => {
+  test('offers logging out instead of a login link that leads back here', async () => {
+    await renderInRouter(<UserMenu user={null} loading={false} unregistered />)
+    expect(screen.getByText('未登録のアカウント')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'ログイン' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'ログアウト' })).toBeInTheDocument()
   })
 })
 

@@ -7,7 +7,9 @@ export type Route = (url: URL) => unknown
 
 /**
  * Installs a fetch that answers `routes[pathname]` (with `url` for query
- * checks) and 404s everything else. Returns the requested URLs.
+ * checks) and 404s everything else. A route returns the JSON body (status
+ * 200), or a Response when the test needs another status. Returns the
+ * requested URLs.
  */
 export const installFetch = (routes: Record<string, Route>): string[] => {
   const requested: string[] = []
@@ -18,7 +20,8 @@ export const installFetch = (routes: Record<string, Route>): string[] => {
     if (route === undefined) {
       return Response.json({ error: { code: 'not_found', message: 'not found' } }, { status: 404 })
     }
-    return Response.json(route(url))
+    const answer = route(url)
+    return answer instanceof Response ? answer : Response.json(answer)
   })
   globalThis.fetch = Object.assign(fake, { preconnect: realFetch.preconnect })
   return requested

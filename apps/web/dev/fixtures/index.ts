@@ -13,7 +13,7 @@ import {
   updateJob,
 } from './job-detail'
 import { listJobs } from './jobs'
-import { getMe } from './me'
+import { getMe, login } from './me'
 import { createProject, deleteProject, getProject, listProjects, updateProject } from './projects'
 import { apiError, type FixtureHandler, type FixtureRequest, type FixtureResponse } from './respond'
 import { getTokenStatus, issueToken, revokeToken, updateAvatar, updateProfile } from './settings'
@@ -32,6 +32,7 @@ const JOB = '/api/projects/:project_id/jobs/:job_id'
 
 export const ROUTES: readonly Route[] = [
   { method: 'GET', pattern: '/api/me', handler: getMe },
+  { method: 'GET', pattern: '/api/me/login', handler: login },
   { method: 'GET', pattern: '/api/setup', handler: getSetup },
   { method: 'POST', pattern: '/api/setup', handler: postSetup },
 

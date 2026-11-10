@@ -489,7 +489,7 @@ describe('POST /api/projects', () => {
     await jsonError(res, 'unauthenticated')
   })
 
-  test('401 unauthenticated for an Access identity that is not a registered user', async () => {
+  test('401 not_registered for an Access identity that is not a registered user', async () => {
     const { dispatch, access } = testEnv()
     const res = await dispatch('/api/projects', {
       method: 'POST',
@@ -500,7 +500,7 @@ describe('POST /api/projects', () => {
       body: JSON.stringify({ name: 'nobody' }),
     })
     expect(res.status).toBe(401)
-    await jsonError(res, 'unauthenticated')
+    await jsonError(res, 'not_registered')
   })
 })
 

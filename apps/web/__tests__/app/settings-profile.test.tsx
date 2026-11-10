@@ -59,6 +59,31 @@ describe('SettingsProfilePage', () => {
     expect(await screen.findByText('サインインが必要です')).toBeInTheDocument()
   })
 
+  test('tells a signed-in visitor without an atmos user so, with the email the server saw', async () => {
+    installFetch({
+      '/api/me': () =>
+        Response.json(
+          {
+            error: {
+              code: 'not_registered',
+              message: 'the identity carol@example.com is not registered as an atmos user',
+            },
+          },
+          { status: 401 },
+        ),
+    })
+    await primeCurrentUser()
+    await renderRoute('/settings/profile')
+    expect(
+      await screen.findByText('このアカウントは atmos に登録されていません'),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/carol@example\.com/)).toBeInTheDocument()
+    expect(screen.queryByText('サインインが必要です')).toBeNull()
+    expect(
+      screen.getByRole('button', { name: '別のアカウントでログインし直す' }),
+    ).toBeInTheDocument()
+  })
+
   test('fills the form from the signed-in user and shows the profile URL', async () => {
     installFetch({
       '/api/me': () => userWithEmail({ handle: 'misaki_t', display_name: '田中 美咲' }),

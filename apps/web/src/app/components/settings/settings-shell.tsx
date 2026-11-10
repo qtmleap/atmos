@@ -5,6 +5,9 @@
 import { Link } from '@tanstack/react-router'
 import { KeyRoundIcon, UserIcon } from 'lucide-react'
 import type * as React from 'react'
+import { useCurrentUser } from '../../hooks/use-current-user'
+import { useLogout } from '../../hooks/use-logout'
+import { Button } from '../ui/button'
 
 export type SettingsSection = 'profile' | 'tokens'
 
@@ -47,11 +50,32 @@ export function SettingsShell({ current, children }: SettingsShellProps) {
   )
 }
 
-/** Sign-in gate text shared by the two settings pages. */
+/**
+ * Sign-in gate text shared by the two settings pages. A visitor who is signed
+ * in at the identity provider but has no atmos user is told so, with the
+ * address the server saw and a way to switch account: "sign in" would send
+ * them to this same page and the same answer.
+ */
 export function SettingsSignedOut() {
+  const { unregistered } = useCurrentUser()
+  const logout = useLogout()
+  if (unregistered === null) {
+    return (
+      <div className="px-4 py-16 sm:px-6">
+        <h1 className="text-lg font-semibold">サインインが必要です</h1>
+      </div>
+    )
+  }
   return (
-    <div className="px-4 py-16 sm:px-6">
-      <h1 className="text-lg font-semibold">サインインが必要です</h1>
+    <div className="grid justify-items-start gap-3 px-4 py-16 sm:px-6">
+      <h1 className="text-lg font-semibold">このアカウントは atmos に登録されていません</h1>
+      <p className="leading-[22px] text-muted-foreground">
+        ログインには成功していますが、このメールアドレスのユーザーがいません。登録済みのアカウントでログインし直すか、管理者に登録を依頼してください。
+      </p>
+      <p className="font-mono text-xs text-muted-foreground">{unregistered}</p>
+      <Button variant="outline" onClick={logout}>
+        別のアカウントでログインし直す
+      </Button>
     </div>
   )
 }

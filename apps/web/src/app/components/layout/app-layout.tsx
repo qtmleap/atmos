@@ -13,7 +13,7 @@ const SETUP_PATH = '/setup'
  * reports a registered user, every page but /setup itself redirects there.
  */
 export default function AppLayout() {
-  const { user, loading } = useCurrentUser()
+  const { user, loading, unregistered } = useCurrentUser()
   const pathname = useLocation({ select: (location) => location.pathname })
   const setup = useSetupStatus()
 
@@ -23,7 +23,7 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-dvh">
-      <AppHeader user={user} loading={loading} />
+      <AppHeader user={user} loading={loading} unregistered={unregistered !== null} />
       <main>
         <Suspense fallback={<LoadingRows />}>
           <Outlet />

@@ -1,7 +1,7 @@
 // Full-page errors (designs/pages/signin-required.html, forbidden.html and
 // not-found.html): a large status code, a heading, one sentence and the ways
 // out, left-aligned under the breadcrumb and set apart by space only.
-import { Link } from '@tanstack/react-router'
+import { Link, useLocation } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import {
   type AccessErrorKind,
@@ -9,6 +9,7 @@ import {
   accessErrorText,
   splitAround,
 } from '../../lib/access-error'
+import { loginHref } from '../../lib/login-url'
 import { ProjectBreadcrumb } from '../project/project-header'
 import { Button } from '../ui/button'
 import { ErrorCode } from '../ui/empty-state'
@@ -67,6 +68,7 @@ export interface AccessErrorPageProps {
 /** A project (or one of its jobs) that could not be shown: 401, 403 or 404. */
 export function AccessErrorPage({ kind, subject, projectId }: AccessErrorPageProps) {
   const text = accessErrorText(kind, subject)
+  const here = useLocation({ select: (location) => `${location.pathname}${location.searchStr}` })
   const parts = text.linked === undefined ? null : splitAround(text.description, text.linked)
   const description =
     parts === null ? (
@@ -79,7 +81,7 @@ export function AccessErrorPage({ kind, subject, projectId }: AccessErrorPagePro
     actions = (
       <>
         <Button asChild>
-          <a href="/settings/profile">ログイン</a>
+          <a href={loginHref(here)}>ログイン</a>
         </Button>
         <BackToList />
       </>
