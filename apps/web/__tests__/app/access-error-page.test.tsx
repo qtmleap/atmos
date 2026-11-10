@@ -37,7 +37,9 @@ describe('project access errors', () => {
     expect(screen.getByText('401')).toBeInTheDocument()
     expect(screen.getByText('prj_err_401')).toHaveAttribute('aria-current', 'page')
     const main = screen.getByRole('main')
-    expect(main.querySelector('a[href="/settings/profile"]')).toHaveTextContent('ログイン')
+    expect(
+      main.querySelector('a[href="/api/me/login?redirect=%2Fprojects%2Fprj_err_401"]'),
+    ).toHaveTextContent('ログイン')
     expect(screen.getByRole('link', { name: 'プロジェクト一覧へ戻る' })).toHaveAttribute(
       'href',
       '/',
@@ -55,7 +57,7 @@ describe('project access errors', () => {
       }),
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'プロジェクト一覧へ戻る' })).toBeInTheDocument()
-    expect(screen.getByRole('main').querySelector('a[href="/settings/profile"]')).toBeNull()
+    expect(screen.getByRole('main').querySelector('a[href^="/api/me/login"]')).toBeNull()
   })
 
   test('404 links the project list inside the sentence', async () => {

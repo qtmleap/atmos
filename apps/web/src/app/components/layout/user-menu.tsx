@@ -1,7 +1,8 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useLocation } from '@tanstack/react-router'
 import { ChevronDownIcon } from 'lucide-react'
 import type { UserWithEmail } from '@/shared/types'
 import { ACCESS_LOGOUT_PATH, useLogout } from '../../hooks/use-logout'
+import { loginHref } from '../../lib/login-url'
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 import { Button } from '../ui/button'
 import {
@@ -27,13 +28,12 @@ export interface UserMenuProps {
 
 /**
  * The account at the right of the header: display name, avatar, and a ghost
- * chevron button that opens the menu. Signed out, a sign-in link instead.
- * Sign-in is a full page load of a page Cloudflare Access protects
- * (docs/PLAN.md §3.1), so Access can redirect to its login; a client-side
- * route change would never reach Access.
+ * chevron button that opens the menu. Signed out, a sign-in link instead,
+ * which brings the visitor back to the page they are on (login-url.ts).
  */
 export function UserMenu({ user, loading, unregistered = false }: UserMenuProps) {
   const logout = useLogout()
+  const here = useLocation({ select: (location) => `${location.pathname}${location.searchStr}` })
   if (loading) {
     return <Skeleton className="size-8 rounded-full" />
   }
@@ -50,7 +50,7 @@ export function UserMenu({ user, loading, unregistered = false }: UserMenuProps)
   if (user === null) {
     return (
       <Button asChild>
-        <a href="/settings/profile">ログイン</a>
+        <a href={loginHref(here)}>ログイン</a>
       </Button>
     )
   }

@@ -1,5 +1,7 @@
 // GET /api/me — the signed-in user every mock header shows: 田中 美咲 (avatar
 // initial 田), an admin.
+
+import { safeReturnPath } from '../../src/shared/return-path'
 import type { UserWithEmail } from '../../src/shared/types'
 import { apiError, type FixtureHandler, json } from './respond'
 
@@ -38,3 +40,13 @@ export const getMe: FixtureHandler = ({ pagePath, scenario }) =>
     : isFreshSetupPage(pagePath, scenario)
       ? apiError(401, 'unauthenticated', 'no user is registered yet (setup scenario)')
       : json(ME)
+
+/**
+ * GET /api/me/login — the login entry. The real one is behind Access, so by
+ * the time it runs the visitor is signed in and only has to be sent back.
+ */
+export const login: FixtureHandler = ({ url }) => ({
+  status: 302,
+  headers: { location: safeReturnPath(url.searchParams.get('redirect')) },
+  body: null,
+})

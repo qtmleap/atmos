@@ -274,6 +274,23 @@ Response: `UserWithEmail`
 - `401 unauthenticated` — Access のログインが無い、または JWT が検証に通らない
 - `401 not_registered` — Access のログインは有効だが、そのメールアドレスのユーザーが登録されていない。`message` に Access が渡したメールアドレスを含む。Web UI はこれを未ログインと区別し、ログインへ戻す代わりに未登録であることとログアウトを案内する
 
+### `GET /api/me/login`
+
+認証: Access
+
+Web UI の「ログイン」の入口。Access が `/api/me` 配下を保護しているので、未ログインならログイン画面に回され、ログイン後にここへ戻る。Worker は Access の本人確認だけを見て（登録済みユーザーかは問わない）、`redirect` のページへ `302` で返す。ログイン直後に設定画面へ飛ばされず、元のページに戻れる。
+
+Query:
+```ts
+interface LoginQuery {
+  redirect?: string   // 戻り先。このサイト内のパス＋クエリのみ（例: /projects/abc?tab=logs）。他サイトや不正な値、省略時は /
+}
+```
+
+Response: `302` + `Location`
+
+エラー: `401 unauthenticated` — 本人確認が無い（このパスが Access の対象外になっている）
+
 ## 5. Settings
 
 ### `PATCH /api/settings/profile`

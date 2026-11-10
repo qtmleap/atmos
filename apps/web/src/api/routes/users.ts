@@ -2,7 +2,13 @@
 import { and, desc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { projects, users } from '#schema'
-import { projectVisibilityCondition, requireAccessUser, resolveViewer } from '../lib/auth'
+import { safeReturnPath } from '../../shared/return-path'
+import {
+  projectVisibilityCondition,
+  requireAccessIdentity,
+  requireAccessUser,
+  resolveViewer,
+} from '../lib/auth'
 import { notFound } from '../lib/errors'
 import {
   decodeKeysetCursor,
@@ -105,4 +111,17 @@ usersRoutes.get('/users/:handle/avatar', async (c) => {
 usersRoutes.get('/me', async (c) => {
   const user = await requireAccessUser(getPlatform(c), c.req.raw)
   return c.json(toUserWithEmail(user))
+})
+
+// The web UI's login entry (docs/SPEC.md §4). Access protects every /api/me
+// path, so a signed-out visitor is sent to the login before this runs and comes
+// back here afterwards; the visitor is then returned to the page they came
+// from. Needs an identity only, not a registered user: someone who signed in
+// but has no atmos user must still land on the page that tells them so.
+// Without an identity (this path not behind the proxy) it is a 401 rather than
+// a silent bounce, so a missing Access path shows up instead of looking like a
+// login that does nothing.
+usersRoutes.get('/me/login', async (c) => {
+  await requireAccessIdentity(getPlatform(c), c.req.raw)
+  return c.redirect(safeReturnPath(c.req.query('redirect')), 302)
 })

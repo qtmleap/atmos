@@ -422,11 +422,11 @@ describe('JobDetailPage', () => {
 })
 
 describe('UserMenu', () => {
-  test('signed out shows a full page sign-in link', async () => {
+  test('signed out shows a full page sign-in link that returns to the current page', async () => {
     await renderInRouter(<UserMenu user={null} loading={false} />)
     expect(screen.getByRole('link', { name: 'ログイン' })).toHaveAttribute(
       'href',
-      '/settings/profile',
+      '/api/me/login?redirect=%2F',
     )
   })
 })
